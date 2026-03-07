@@ -1,30 +1,57 @@
 const PROXIES = [
-  url => `https://proxy.corsfix.com/?${encodeURIComponent(url)}`,
-  url => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.org/?${encodeURIComponent(url)}`,
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  url => `https://everyorigin.jwvbremen.nl/api/get?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+  // corsfix: URL non encodée
+  url => ({ url: `https://proxy.corsfix.com/?${url}` }),
+  // corsproxy.org: URL non encodée
+  url => ({ url: `https://corsproxy.org/?${url}` }),
+  // allorigins: URL encodée, retourne le JSON directement en mode /raw
+  url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` }),
+  // corsproxy.io: URL encodée
+  url => ({ url: `https://corsproxy.io/?url=${encodeURIComponent(url)}` }),
+  // codetabs: URL encodée
+  url => ({ url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` }),
+  // thingproxy: URL directe dans le path
+  url => ({ url: `https://thingproxy.freeboard.io/fetch/${url}` }),
+  // everyorigin: retourne { contents: "..." } — nécessite unwrap
+  url => ({ url: `https://everyorigin.jwvbremen.nl/api/get?url=${encodeURIComponent(url)}`, unwrap: true }),
 ];
 
 const YF_HOSTS = [
-  "https://query1.finance.yahoo.com",
   "https://query2.finance.yahoo.com",
+  "https://query1.finance.yahoo.com",
 ];
 
 export async function proxyFetch(targetUrl) {
+  const errors = [];
   for (const make of PROXIES) {
+    const { url, unwrap } = make(targetUrl);
     try {
-      const res = await fetch(make(targetUrl), { signal: AbortSignal.timeout(9000) });
-      if (!res.ok) continue;
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("json")) return await res.json();
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(8000),
+        headers: { "Accept": "application/json" },
+      });
+      if (!res.ok) {
+        errors.push(`${url.slice(0, 40)}… → ${res.status}`);
+        continue;
+      }
+      let data;
       const text = await res.text();
-      try { return JSON.parse(text); } catch (_) { continue; }
-    } catch (_) {}
+      try { data = JSON.parse(text); } catch (_) {
+        errors.push(`${url.slice(0, 40)}… → pas du JSON`);
+        continue;
+      }
+      // everyorigin wraps response in { contents: "..." }
+      if (unwrap && typeof data.contents === "string") {
+        try { data = JSON.parse(data.contents); } catch (_) {
+          errors.push(`${url.slice(0, 40)}… → unwrap échoué`);
+          continue;
+        }
+      }
+      return data;
+    } catch (e) {
+      errors.push(`${url.slice(0, 40)}… → ${e.name || "erreur"}`);
+    }
   }
+  console.warn("[Foucauld Finance] Tous les proxies ont échoué:", errors);
   throw new Error("Impossible de contacter Yahoo Finance. Réessayez dans quelques secondes.");
 }
 
