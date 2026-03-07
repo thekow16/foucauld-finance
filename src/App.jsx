@@ -9,6 +9,7 @@ import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
 import Watchlist from "./components/Watchlist";
+import WatchlistTab from "./components/WatchlistTab";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { fetchStockData, fetchChartData } from "./utils/api";
@@ -49,6 +50,7 @@ export default function FoucauldFinance() {
   const [chartData, setChartData] = useState([]);
   const [period, setPeriod] = useState(PERIODS[4]);
   const [activeTab, setActiveTab] = useState("ratios");
+  const [showWatchlist, setShowWatchlist] = useState(false);
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
@@ -84,6 +86,7 @@ export default function FoucauldFinance() {
   const handleSearch = (sym) => {
     setSymbol(sym);
     setActiveTab("ratios");
+    setShowWatchlist(false);
     doFetchStock(sym);
   };
 
@@ -477,6 +480,113 @@ export default function FoucauldFinance() {
         }
         .wl-remove:hover { color: #ef4444 }
 
+        .watchlist-header-btn {
+          background: rgba(255,255,255,.15);
+          border: 1px solid rgba(255,255,255,.25);
+          border-radius: 50%;
+          width: 40px; height: 40px;
+          font-size: 20px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f59e0b;
+          transition: background .2s;
+          position: relative;
+        }
+        .watchlist-header-btn:hover { background: rgba(255,255,255,.25) }
+        .wl-count {
+          position: absolute;
+          top: -4px; right: -4px;
+          background: #ef4444;
+          color: white;
+          font-size: 10px;
+          font-weight: 800;
+          width: 18px; height: 18px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Outfit', sans-serif;
+        }
+
+        .wl-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 14px;
+        }
+        .wl-card {
+          background: var(--card);
+          border-radius: 18px;
+          box-shadow: 0 2px 14px var(--shadow);
+          position: relative;
+          transition: transform .15s, box-shadow .15s;
+          overflow: hidden;
+        }
+        .wl-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px var(--shadow) }
+        .wl-card-body {
+          display: block;
+          width: 100%;
+          padding: 20px 18px 16px;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-family: 'Outfit', sans-serif;
+          text-align: left;
+          color: var(--text);
+        }
+        .wl-card-remove {
+          position: absolute;
+          top: 8px; right: 8px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--muted);
+          font-size: 18px;
+          font-weight: 700;
+          width: 26px; height: 26px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all .15s;
+          z-index: 2;
+        }
+        .wl-card-remove:hover { color: #ef4444; background: var(--highlight-row) }
+        .wl-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 4px;
+        }
+        .wl-card-symbol { font-weight: 900; font-size: 16px; color: #4f46e5 }
+        .wl-card-name {
+          font-size: 12px;
+          color: var(--muted);
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 10px;
+        }
+        .wl-card-chart { margin-bottom: 8px }
+        .wl-card-price {
+          font-size: 20px;
+          font-weight: 900;
+          color: var(--text);
+          letter-spacing: -.5px;
+        }
+        .wl-card-change {
+          font-size: 12px;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 10px;
+        }
+        .wl-card-change.up { background: #f0fdf4; color: #16a34a }
+        .wl-card-change.down { background: #fef2f2; color: #dc2626 }
+        .dark .wl-card-change.up { background: #14532d; color: #86efac }
+        .dark .wl-card-change.down { background: #7f1d1d; color: #fca5a5 }
+
         .section-title {
           font-size: 15px;
           font-weight: 800;
@@ -666,9 +776,17 @@ export default function FoucauldFinance() {
         }
       `}</style>
 
-      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} />
+      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} />
 
       <div className="main">
+        {showWatchlist ? (
+          <WatchlistTab
+            watchlist={watchlist}
+            onSelect={handleSearch}
+            onRemove={removeFromWatchlist}
+            onBack={() => setShowWatchlist(false)}
+          />
+        ) : (<>
         <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
 
         {loading && (
@@ -772,6 +890,7 @@ export default function FoucauldFinance() {
             </div>
           </ErrorBoundary>
         )}
+        </>)}
       </div>
     </div>
   );

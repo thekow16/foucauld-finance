@@ -198,6 +198,29 @@ export async function fetchStockData(sym) {
   };
 }
 
+// ── Traduction en français via MyMemory ──
+export async function translateToFrench(text) {
+  if (!text || text.length < 10) return text;
+  // Limiter à 500 caractères pour l'API gratuite
+  const truncated = text.length > 500 ? text.substring(0, 500) : text;
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=en|fr`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const json = await res.json();
+    if (json.responseStatus === 200 && json.responseData?.translatedText) {
+      const translated = json.responseData.translatedText;
+      // L'API retourne parfois en majuscules si elle ne traduit pas
+      if (translated === translated.toUpperCase() && translated.length > 50) return truncated;
+      return translated;
+    }
+    return truncated;
+  } catch {
+    return truncated;
+  }
+}
+
 export async function searchSymbols(query) {
   try {
     const json = await yfFetch(`/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=6&newsCount=0`);

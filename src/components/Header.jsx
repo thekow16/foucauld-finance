@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { searchSymbols } from "../utils/api";
 import { SUGGESTIONS } from "../utils/format";
 
-export default function Header({ onSearch, dark, toggleDark }) {
+export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
@@ -51,9 +51,14 @@ export default function Header({ onSearch, dark, toggleDark }) {
             <div className="logo-icon">📈</div>
             <span className="logo-text">Foucauld Finance</span>
           </div>
-          <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
-            {dark ? "☀️" : "🌙"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={onShowWatchlist} className="watchlist-header-btn" title="Ma Watchlist">
+              ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
+            </button>
+            <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
+              {dark ? "☀️" : "🌙"}
+            </button>
+          </div>
         </div>
         <div ref={wrapRef} style={{ position: "relative", zIndex: 10 }}>
           <form onSubmit={handleSubmit} className="search-wrap">
