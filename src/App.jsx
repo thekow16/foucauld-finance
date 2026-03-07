@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Component } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
@@ -13,6 +13,24 @@ import { useWatchlist } from "./hooks/useWatchlist";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { fetchStockData, fetchChartData } from "./utils/api";
 import { PERIODS } from "./utils/format";
+
+class ErrorBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error("[FF] Render crash:", error, info.componentStack); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="card" style={{ textAlign: "center", padding: "40px 24px" }}>
+          <p style={{ color: "#ef4444", fontWeight: 700 }}>Erreur d'affichage</p>
+          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 8 }}>{this.state.error.message}</p>
+          <button className="ff-btn" style={{ marginTop: 16 }} onClick={() => this.setState({ error: null })}>Réessayer</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const TABS = [
   { id: "ratios", label: "Ratios" },
@@ -705,7 +723,7 @@ export default function FoucauldFinance() {
         )}
 
         {!loading && !error && data && (
-          <>
+          <ErrorBoundary>
             <StockHeader
               data={data}
               symbol={symbol}
@@ -752,7 +770,7 @@ export default function FoucauldFinance() {
               Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
               <strong style={{ color: "#4f46e5" }}>Foucauld Finance</strong>
             </div>
-          </>
+          </ErrorBoundary>
         )}
       </div>
     </div>
