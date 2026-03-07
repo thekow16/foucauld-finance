@@ -100,6 +100,7 @@ export async function fetchStockData(sym) {
   console.log("[FF] fetchStockData:", sym);
   const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile";
   const json = await yfFetch(`/v10/finance/quoteSummary/${sym}?modules=${modules}`);
+  console.log("[FF] quoteSummary response:", JSON.stringify(json).slice(0, 500));
   if (json.quoteSummary?.error) throw new Error("Symbole introuvable — essayez : AAPL, MC.PA, TSLA…");
   const result = json.quoteSummary?.result?.[0];
   if (!result) throw new Error("Aucune donnée reçue pour ce symbole.");
