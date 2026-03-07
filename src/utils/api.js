@@ -1,17 +1,17 @@
-const PROXIES = [
-  // corsfix: URL non encodée
+// ──────────────────────────────────────────────
+// Cloudflare Worker URL — À REMPLIR après déploiement
+// Exemple : "https://foucauld-proxy.moncompte.workers.dev"
+// ──────────────────────────────────────────────
+const WORKER_URL = "";
+
+// Proxies CORS gratuits en fallback
+const FREE_PROXIES = [
   url => ({ url: `https://proxy.corsfix.com/?${url}` }),
-  // corsproxy.org: URL non encodée
   url => ({ url: `https://corsproxy.org/?${url}` }),
-  // allorigins: URL encodée, retourne le JSON directement en mode /raw
   url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` }),
-  // corsproxy.io: URL encodée
   url => ({ url: `https://corsproxy.io/?url=${encodeURIComponent(url)}` }),
-  // codetabs: URL encodée
   url => ({ url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` }),
-  // thingproxy: URL directe dans le path
   url => ({ url: `https://thingproxy.freeboard.io/fetch/${url}` }),
-  // everyorigin: retourne { contents: "..." } — nécessite unwrap
   url => ({ url: `https://everyorigin.jwvbremen.nl/api/get?url=${encodeURIComponent(url)}`, unwrap: true }),
 ];
 
@@ -20,46 +20,64 @@ const YF_HOSTS = [
   "https://query1.finance.yahoo.com",
 ];
 
+async function tryFetch(url, unwrap = false) {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(10000),
+    headers: { "Accept": "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  let data = JSON.parse(text);
+  if (unwrap && typeof data.contents === "string") {
+    data = JSON.parse(data.contents);
+  }
+  return data;
+}
+
 export async function proxyFetch(targetUrl) {
-  const errors = [];
-  for (const make of PROXIES) {
-    const { url, unwrap } = make(targetUrl);
+  console.log("[FF] proxyFetch:", targetUrl);
+
+  // 1) Essayer le Cloudflare Worker en priorité
+  if (WORKER_URL) {
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-        headers: { "Accept": "application/json" },
-      });
-      if (!res.ok) {
-        errors.push(`${url.slice(0, 40)}… → ${res.status}`);
-        continue;
-      }
-      let data;
-      const text = await res.text();
-      try { data = JSON.parse(text); } catch (_) {
-        errors.push(`${url.slice(0, 40)}… → pas du JSON`);
-        continue;
-      }
-      // everyorigin wraps response in { contents: "..." }
-      if (unwrap && typeof data.contents === "string") {
-        try { data = JSON.parse(data.contents); } catch (_) {
-          errors.push(`${url.slice(0, 40)}… → unwrap échoué`);
-          continue;
-        }
-      }
+      console.log("[FF] Essai via Worker…");
+      const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`);
+      console.log("[FF] Succès via Worker");
       return data;
     } catch (e) {
-      errors.push(`${url.slice(0, 40)}… → ${e.name || "erreur"}`);
+      console.warn("[FF] Worker échoué:", e.message);
     }
   }
-  console.warn("[Foucauld Finance] Tous les proxies ont échoué:", errors);
+
+  // 2) Fallback sur les proxies gratuits
+  const errors = [];
+  for (let i = 0; i < FREE_PROXIES.length; i++) {
+    const { url, unwrap } = FREE_PROXIES[i](targetUrl);
+    const label = new URL(url).hostname;
+    console.log(`[FF] Essai ${i + 1}/${FREE_PROXIES.length}: ${label}`);
+    try {
+      const data = await tryFetch(url, unwrap);
+      console.log(`[FF] Succès via ${label}`);
+      return data;
+    } catch (e) {
+      const msg = `${label} → ${e.message}`;
+      console.warn("[FF]", msg);
+      errors.push(msg);
+    }
+  }
+
+  console.error("[FF] TOUS LES PROXIES ONT ÉCHOUÉ:", errors);
   throw new Error("Impossible de contacter Yahoo Finance. Réessayez dans quelques secondes.");
 }
 
 async function yfFetch(path) {
+  console.log("[FF] yfFetch:", path);
   for (const host of YF_HOSTS) {
     try {
       return await proxyFetch(`${host}${path}`);
-    } catch (_) {}
+    } catch (e) {
+      console.warn("[FF] Échec pour", host, e.message);
+    }
   }
   throw new Error("Impossible de contacter Yahoo Finance. Réessayez dans quelques secondes.");
 }
@@ -79,6 +97,7 @@ export async function fetchChartData(sym, interval, range) {
 }
 
 export async function fetchStockData(sym) {
+  console.log("[FF] fetchStockData:", sym);
   const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile";
   const json = await yfFetch(`/v10/finance/quoteSummary/${sym}?modules=${modules}`);
   if (json.quoteSummary?.error) throw new Error("Symbole introuvable — essayez : AAPL, MC.PA, TSLA…");
@@ -109,6 +128,7 @@ export async function fetchCandleData(sym, interval, range) {
 }
 
 export async function searchSymbols(query) {
+  console.log("[FF] searchSymbols:", query);
   try {
     const json = await yfFetch(`/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=6&newsCount=0`);
     return (json.quotes || []).filter(q => q.quoteType === "EQUITY").slice(0, 6);
