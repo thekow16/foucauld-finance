@@ -41,6 +41,28 @@ export async function fetchStockData(sym) {
   return result;
 }
 
+export async function fetchCandleData(sym, interval, range) {
+  const url = `${YF}/v8/finance/chart/${sym}?interval=${interval}&range=${range}`;
+  const json = await proxyFetch(url);
+  const result = json.chart?.result?.[0];
+  if (!result) return [];
+  const ts = result.timestamp || [];
+  const q = result.indicators.quote[0];
+  const op = q.open || [], hi = q.high || [], lo = q.low || [], cl = q.close || [];
+  return ts
+    .map((t, i) => {
+      if (op[i] == null || hi[i] == null || lo[i] == null || cl[i] == null) return null;
+      return {
+        time: new Date(t * 1000).toISOString().slice(0, 10),
+        open: +op[i].toFixed(2),
+        high: +hi[i].toFixed(2),
+        low: +lo[i].toFixed(2),
+        close: +cl[i].toFixed(2),
+      };
+    })
+    .filter(Boolean);
+}
+
 export async function searchSymbols(query) {
   const url = `${YF}/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=6&newsCount=0`;
   try {
