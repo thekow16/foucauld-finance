@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { createChart, ColorType, LineStyle } from "lightweight-charts";
+import { createChart, ColorType, LineStyle, CandlestickSeries, LineSeries } from "lightweight-charts";
 import { fetchCandleData } from "../utils/api";
 import { computeSMA, computeBollingerBands } from "../utils/indicators";
 
@@ -56,8 +56,8 @@ export default function CandlestickChart({ symbol, dark, currency }) {
     });
     chartRef.current = chart;
 
-    // Candlestick series
-    const candleSeries = chart.addCandlestickSeries({
+    // Candlestick series (v5 API)
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#10b981",
       downColor: "#ef4444",
       borderDownColor: "#ef4444",
@@ -69,23 +69,23 @@ export default function CandlestickChart({ symbol, dark, currency }) {
 
     // MA50
     if (ma50Data.length > 0) {
-      const s = chart.addLineSeries({ color: "#3b82f6", lineWidth: 2, title: "MA50" });
+      const s = chart.addSeries(LineSeries, { color: "#3b82f6", lineWidth: 2, title: "MA50" });
       s.setData(ma50Data);
     }
 
     // MA200
     if (ma200Data.length > 0) {
-      const s = chart.addLineSeries({ color: "#f97316", lineWidth: 2, title: "MA200" });
+      const s = chart.addSeries(LineSeries, { color: "#f97316", lineWidth: 2, title: "MA200" });
       s.setData(ma200Data);
     }
 
     // Bollinger Bands
     if (bollinger.upper.length > 0) {
-      const sU = chart.addLineSeries({ color: "#8b5cf6", lineWidth: 1, lineStyle: LineStyle.Dashed, title: "BB Sup" });
+      const sU = chart.addSeries(LineSeries, { color: "#8b5cf6", lineWidth: 1, lineStyle: LineStyle.Dashed, title: "BB Sup" });
       sU.setData(bollinger.upper);
-      const sM = chart.addLineSeries({ color: "#a78bfa", lineWidth: 1, title: "BB Moy" });
+      const sM = chart.addSeries(LineSeries, { color: "#a78bfa", lineWidth: 1, title: "BB Moy" });
       sM.setData(bollinger.middle);
-      const sL = chart.addLineSeries({ color: "#8b5cf6", lineWidth: 1, lineStyle: LineStyle.Dashed, title: "BB Inf" });
+      const sL = chart.addSeries(LineSeries, { color: "#8b5cf6", lineWidth: 1, lineStyle: LineStyle.Dashed, title: "BB Inf" });
       sL.setData(bollinger.lower);
     }
 
