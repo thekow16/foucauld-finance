@@ -1,3 +1,0 @@
-name = "foucauld-proxy"
-main = "worker/cors-proxy.js"
-compatibility_date = "2024-01-01"

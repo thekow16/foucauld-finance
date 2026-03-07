@@ -2,7 +2,7 @@
 // Cloudflare Worker URL — À REMPLIR après déploiement
 // Exemple : "https://foucauld-proxy.moncompte.workers.dev"
 // ──────────────────────────────────────────────
-const WORKER_URL = "";
+const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
 
 // Proxies CORS gratuits en fallback
 const FREE_PROXIES = [
