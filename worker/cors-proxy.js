@@ -1,12 +1,9 @@
 /**
- * Cloudflare Worker — Proxy CORS pour Yahoo Finance
+ * Cloudflare Worker — Proxy CORS pour Yahoo Finance avec gestion du crumb
  *
- * Déploiement :
- *   1. npm install -g wrangler
- *   2. wrangler login
- *   3. wrangler deploy worker/cors-proxy.js --name foucauld-proxy --compatibility-date 2024-01-01
- *   4. Copier l'URL (https://foucauld-proxy.<votre-compte>.workers.dev)
- *      dans src/utils/api.js → WORKER_URL
+ * Redéploiement :
+ *   cd worker
+ *   wrangler deploy cors-proxy.js --name foucauld-proxy --compatibility-date 2024-01-01 --no-bundle
  */
 
 const ALLOWED_HOSTS = [
@@ -14,18 +11,55 @@ const ALLOWED_HOSTS = [
   "query2.finance.yahoo.com",
 ];
 
+// Cache crumb + cookie en mémoire (persiste entre les requêtes sur le même isolate)
+let cachedCrumb = null;
+let cachedCookie = null;
+let crumbExpiry = 0;
+
+async function getCrumb() {
+  if (cachedCrumb && Date.now() < crumbExpiry) {
+    return { crumb: cachedCrumb, cookie: cachedCookie };
+  }
+
+  // 1. Récupérer un cookie Yahoo
+  const cookieResp = await fetch("https://fc.yahoo.com", {
+    redirect: "manual",
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+  });
+  const setCookie = cookieResp.headers.get("set-cookie") || "";
+  const cookie = setCookie.split(";")[0]; // ex: "A3=d=AQ..."
+
+  // 2. Récupérer le crumb avec ce cookie
+  const crumbResp = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "Cookie": cookie,
+    },
+  });
+  const crumb = await crumbResp.text();
+
+  if (!crumb || crumb.includes("Too Many") || crumb.length > 50) {
+    throw new Error("Impossible d'obtenir le crumb Yahoo");
+  }
+
+  // Cache pour 30 minutes
+  cachedCrumb = crumb;
+  cachedCookie = cookie;
+  crumbExpiry = Date.now() + 30 * 60 * 1000;
+
+  return { crumb, cookie };
+}
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 export default {
   async fetch(request) {
-    // Gérer les preflight CORS
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-          "Access-Control-Max-Age": "86400",
-        },
-      });
+      return new Response(null, { headers: { ...CORS_HEADERS, "Access-Control-Max-Age": "86400" } });
     }
 
     const url = new URL(request.url);
@@ -34,50 +68,71 @@ export default {
     if (!target) {
       return new Response(JSON.stringify({ error: "Paramètre ?url= manquant" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
-    // Vérifier que l'hôte cible est autorisé
     let targetUrl;
-    try {
-      targetUrl = new URL(target);
-    } catch {
+    try { targetUrl = new URL(target); } catch {
       return new Response(JSON.stringify({ error: "URL invalide" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
     if (!ALLOWED_HOSTS.includes(targetUrl.hostname)) {
       return new Response(JSON.stringify({ error: "Hôte non autorisé" }), {
         status: 403,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
-    // Relayer la requête vers Yahoo Finance
     try {
-      const resp = await fetch(target, {
+      // Récupérer crumb + cookie
+      const { crumb, cookie } = await getCrumb();
+
+      // Ajouter le crumb à l'URL si pas déjà présent
+      if (!targetUrl.searchParams.has("crumb")) {
+        targetUrl.searchParams.set("crumb", crumb);
+      }
+
+      const resp = await fetch(targetUrl.toString(), {
         headers: {
-          "User-Agent": "Mozilla/5.0",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           "Accept": "application/json",
+          "Cookie": cookie,
         },
       });
+
+      // Si crumb invalide, réessayer avec un nouveau crumb
+      if (resp.status === 401) {
+        cachedCrumb = null;
+        crumbExpiry = 0;
+        const fresh = await getCrumb();
+        targetUrl.searchParams.set("crumb", fresh.crumb);
+        const retry = await fetch(targetUrl.toString(), {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Cookie": fresh.cookie,
+          },
+        });
+        const body = await retry.text();
+        return new Response(body, {
+          status: retry.status,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+        });
+      }
 
       const body = await resp.text();
       return new Response(body, {
         status: resp.status,
-        headers: {
-          "Content-Type": resp.headers.get("Content-Type") || "application/json",
-          "Access-Control-Allow-Origin": "*",
-          "Cache-Control": "public, max-age=60",
-        },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
       });
     } catch (e) {
       return new Response(JSON.stringify({ error: e.message }), {
         status: 502,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
   },
