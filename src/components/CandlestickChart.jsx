@@ -90,7 +90,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
       layout: {
         background: { type: ColorType.Solid, color: dark ? "#1e293b" : "#ffffff" },
         textColor: dark ? "#94a3b8" : "#64748b",
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'Inter', sans-serif",
       },
       grid: {
         vertLines: { color: dark ? "#334155" : "#e8ecff" },
@@ -202,7 +202,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
             onClick={toggleMeasure}
             title="Outil de mesure"
           >
-            📏 Mesurer
+            Mesurer
           </button>
           {TIMEFRAMES.map(tf => (
             <button
