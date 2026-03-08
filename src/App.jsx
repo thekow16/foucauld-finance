@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
 import ScoreCard from "./components/ScoreCard";
+import CandlestickChart from "./components/CandlestickChart";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
@@ -826,6 +827,8 @@ export default function FoucauldFinance() {
 
             <MetricCards data={data} />
             <ScoreCard data={data} />
+
+            <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
               <div className="tab-bar">
