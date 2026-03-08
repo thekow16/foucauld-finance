@@ -8,7 +8,6 @@ export default function MetricCards({ data }) {
 
   const metrics = [
     { label: "Capitalisation", val: fmt(pr?.marketCap?.raw, "currency"), color: "#4f46e5", icon: "🏦" },
-    { label: "Valeur d'entreprise", val: fmt(stats?.enterpriseValue?.raw, "currency"), color: "#312e81", icon: "🏢" },
     { label: "Chiffre d'affaires", val: fmt(fin?.totalRevenue?.raw, "currency"), color: "#0891b2", icon: "💵" },
     { label: "EBITDA", val: fmt(fin?.ebitda?.raw, "currency"), color: "#7c3aed", icon: "📊" },
     { label: "Résultat net", val: fmt(fin?.netIncomeToCommon?.raw ?? (fin?.profitMargins?.raw != null && fin?.totalRevenue?.raw != null ? fin.profitMargins.raw * fin.totalRevenue.raw : null), "currency"), color: "#10b981", icon: "💰" },
@@ -20,9 +19,6 @@ export default function MetricCards({ data }) {
     { label: "Marge nette", val: fmt(fin?.profitMargins?.raw, "percent"), color: "#16a34a", icon: "📐" },
     { label: "ROE", val: fmt(fin?.returnOnEquity?.raw, "percent"), color: "#ea580c", icon: "🎯" },
     { label: "Dividende", val: summ?.dividendYield?.raw ? fmt(summ.dividendYield.raw, "percent") : "—", color: "#16a34a", icon: "🪙" },
-    { label: "Beta", val: fmt(stats?.beta?.raw, "ratio"), color: "#f59e0b", icon: "⚡" },
-    { label: "52S Haut", val: summ?.fiftyTwoWeekHigh?.raw ? summ.fiftyTwoWeekHigh.raw.toFixed(2) : "—", color: "#e11d48", icon: "📈" },
-    { label: "52S Bas", val: summ?.fiftyTwoWeekLow?.raw ? summ.fiftyTwoWeekLow.raw.toFixed(2) : "—", color: "#64748b", icon: "📉" },
   ];
 
   return (
