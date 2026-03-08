@@ -3,8 +3,6 @@ import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
 import ScoreCard from "./components/ScoreCard";
-import PriceChart from "./components/PriceChart";
-import CandlestickChart from "./components/CandlestickChart";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
@@ -12,8 +10,7 @@ import Watchlist from "./components/Watchlist";
 import WatchlistTab from "./components/WatchlistTab";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useDarkMode } from "./hooks/useDarkMode";
-import { fetchStockData, fetchChartData } from "./utils/api";
-import { PERIODS } from "./utils/format";
+import { fetchStockData } from "./utils/api";
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -44,38 +41,21 @@ const TABS = [
 export default function FoucauldFinance() {
   const [symbol, setSymbol] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [chartLoad, setChartLoad] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [chartData, setChartData] = useState([]);
-  const [period, setPeriod] = useState(PERIODS[4]);
   const [activeTab, setActiveTab] = useState("ratios");
   const [showWatchlist, setShowWatchlist] = useState(false);
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
 
-  const doFetchChart = async (sym, p) => {
-    setChartLoad(true);
-    try {
-      const cd = await fetchChartData(sym, p.interval, p.range);
-      setChartData(cd);
-    } catch (e) {
-      console.warn("chart:", e);
-    } finally {
-      setChartLoad(false);
-    }
-  };
-
   const doFetchStock = async (sym) => {
     setLoading(true);
     setError(null);
     setData(null);
-    setChartData([]);
     try {
       const result = await fetchStockData(sym);
       setData(result);
-      await doFetchChart(sym, period);
     } catch (e) {
       setError(e.message || "Erreur inconnue.");
     } finally {
@@ -88,11 +68,6 @@ export default function FoucauldFinance() {
     setActiveTab("ratios");
     setShowWatchlist(false);
     doFetchStock(sym);
-  };
-
-  const handlePeriod = (p) => {
-    setPeriod(p);
-    if (symbol) doFetchChart(symbol, p);
   };
 
   const handleToggleWatchlist = (sym, name) => {
@@ -851,17 +826,6 @@ export default function FoucauldFinance() {
 
             <MetricCards data={data} />
             <ScoreCard data={data} />
-
-            <PriceChart
-              chartData={chartData}
-              chartLoad={chartLoad}
-              period={period}
-              onPeriodChange={handlePeriod}
-              currency={data?.price?.currency}
-              dark={dark}
-            />
-
-            <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
               <div className="tab-bar">

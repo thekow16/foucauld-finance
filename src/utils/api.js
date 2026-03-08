@@ -109,7 +109,7 @@ export async function fetchStockData(sym) {
   // Essai 1 : quoteSummary via Worker (qui gère le crumb)
   if (WORKER_URL) {
     try {
-      const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile";
+      const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile,earningsTrend,recommendationTrend";
       const url = `${YF}/v10/finance/quoteSummary/${sym}?modules=${modules}`;
       const json = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
       const result = json.quoteSummary?.result?.[0];
@@ -198,22 +198,17 @@ export async function fetchStockData(sym) {
   };
 }
 
-// ── Traduction en français via MyMemory ──
+// ── Traduction en français via Google Translate (gratuit) ──
 export async function translateToFrench(text) {
   if (!text || text.length < 10) return text;
-  // Limiter à 500 caractères pour l'API gratuite
-  const truncated = text.length > 500 ? text.substring(0, 500) : text;
+  const truncated = text.length > 1000 ? text.substring(0, 1000) : text;
   try {
-    const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=en|fr`,
-      { signal: AbortSignal.timeout(8000) }
-    );
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=fr&dt=t&q=${encodeURIComponent(truncated)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     const json = await res.json();
-    if (json.responseStatus === 200 && json.responseData?.translatedText) {
-      const translated = json.responseData.translatedText;
-      // L'API retourne parfois en majuscules si elle ne traduit pas
-      if (translated === translated.toUpperCase() && translated.length > 50) return truncated;
-      return translated;
+    // Google renvoie [[["traduction","source",...], ...], ...]
+    if (Array.isArray(json) && Array.isArray(json[0])) {
+      return json[0].map(seg => seg[0]).join("");
     }
     return truncated;
   } catch {
