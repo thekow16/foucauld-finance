@@ -33,12 +33,12 @@ class ErrorBoundary extends Component {
 }
 
 const TABS = [
+  { id: "investors", label: "🏆 Investisseurs" },
   { id: "ratios", label: "Ratios" },
   { id: "bilan", label: "Bilan" },
   { id: "resultats", label: "Résultats" },
   { id: "tresorerie", label: "Trésorerie" },
   { id: "compare", label: "Comparer" },
-  { id: "investors", label: "🏆 Investisseurs" },
 ];
 
 export default function FoucauldFinance() {
