@@ -3,16 +3,15 @@ import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
 import ScoreCard from "./components/ScoreCard";
-import PriceChart from "./components/PriceChart";
 import CandlestickChart from "./components/CandlestickChart";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
 import Watchlist from "./components/Watchlist";
+import WatchlistTab from "./components/WatchlistTab";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useDarkMode } from "./hooks/useDarkMode";
-import { fetchStockData, fetchChartData } from "./utils/api";
-import { PERIODS } from "./utils/format";
+import { fetchStockData } from "./utils/api";
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -43,37 +42,21 @@ const TABS = [
 export default function FoucauldFinance() {
   const [symbol, setSymbol] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [chartLoad, setChartLoad] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [chartData, setChartData] = useState([]);
-  const [period, setPeriod] = useState(PERIODS[4]);
   const [activeTab, setActiveTab] = useState("ratios");
+  const [showWatchlist, setShowWatchlist] = useState(false);
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
-
-  const doFetchChart = async (sym, p) => {
-    setChartLoad(true);
-    try {
-      const cd = await fetchChartData(sym, p.interval, p.range);
-      setChartData(cd);
-    } catch (e) {
-      console.warn("chart:", e);
-    } finally {
-      setChartLoad(false);
-    }
-  };
 
   const doFetchStock = async (sym) => {
     setLoading(true);
     setError(null);
     setData(null);
-    setChartData([]);
     try {
       const result = await fetchStockData(sym);
       setData(result);
-      await doFetchChart(sym, period);
     } catch (e) {
       setError(e.message || "Erreur inconnue.");
     } finally {
@@ -84,12 +67,8 @@ export default function FoucauldFinance() {
   const handleSearch = (sym) => {
     setSymbol(sym);
     setActiveTab("ratios");
+    setShowWatchlist(false);
     doFetchStock(sym);
-  };
-
-  const handlePeriod = (p) => {
-    setPeriod(p);
-    if (symbol) doFetchChart(symbol, p);
   };
 
   const handleToggleWatchlist = (sym, name) => {
@@ -477,6 +456,113 @@ export default function FoucauldFinance() {
         }
         .wl-remove:hover { color: #ef4444 }
 
+        .watchlist-header-btn {
+          background: rgba(255,255,255,.15);
+          border: 1px solid rgba(255,255,255,.25);
+          border-radius: 50%;
+          width: 40px; height: 40px;
+          font-size: 20px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f59e0b;
+          transition: background .2s;
+          position: relative;
+        }
+        .watchlist-header-btn:hover { background: rgba(255,255,255,.25) }
+        .wl-count {
+          position: absolute;
+          top: -4px; right: -4px;
+          background: #ef4444;
+          color: white;
+          font-size: 10px;
+          font-weight: 800;
+          width: 18px; height: 18px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Outfit', sans-serif;
+        }
+
+        .wl-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 14px;
+        }
+        .wl-card {
+          background: var(--card);
+          border-radius: 18px;
+          box-shadow: 0 2px 14px var(--shadow);
+          position: relative;
+          transition: transform .15s, box-shadow .15s;
+          overflow: hidden;
+        }
+        .wl-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px var(--shadow) }
+        .wl-card-body {
+          display: block;
+          width: 100%;
+          padding: 20px 18px 16px;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-family: 'Outfit', sans-serif;
+          text-align: left;
+          color: var(--text);
+        }
+        .wl-card-remove {
+          position: absolute;
+          top: 8px; right: 8px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--muted);
+          font-size: 18px;
+          font-weight: 700;
+          width: 26px; height: 26px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all .15s;
+          z-index: 2;
+        }
+        .wl-card-remove:hover { color: #ef4444; background: var(--highlight-row) }
+        .wl-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 4px;
+        }
+        .wl-card-symbol { font-weight: 900; font-size: 16px; color: #4f46e5 }
+        .wl-card-name {
+          font-size: 12px;
+          color: var(--muted);
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 10px;
+        }
+        .wl-card-chart { margin-bottom: 8px }
+        .wl-card-price {
+          font-size: 20px;
+          font-weight: 900;
+          color: var(--text);
+          letter-spacing: -.5px;
+        }
+        .wl-card-change {
+          font-size: 12px;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 10px;
+        }
+        .wl-card-change.up { background: #f0fdf4; color: #16a34a }
+        .wl-card-change.down { background: #fef2f2; color: #dc2626 }
+        .dark .wl-card-change.up { background: #14532d; color: #86efac }
+        .dark .wl-card-change.down { background: #7f1d1d; color: #fca5a5 }
+
         .section-title {
           font-size: 15px;
           font-weight: 800;
@@ -522,6 +608,61 @@ export default function FoucauldFinance() {
         .period-btn:hover { background: #e0e7ff; color: #4f46e5 }
         .period-btn.active { background: #4f46e5; color: white }
         .dark .period-btn:hover { background: #312e81; color: #a5b4fc }
+
+        .measure-btn {
+          background: none;
+          border: 2px solid var(--border);
+          cursor: pointer;
+          padding: 6px 14px;
+          border-radius: 50px;
+          font-size: 13px;
+          font-weight: 700;
+          font-family: 'Outfit', sans-serif;
+          color: var(--text-secondary);
+          transition: all .2s;
+          margin-right: 8px;
+        }
+        .measure-btn:hover { border-color: #4f46e5; color: #4f46e5 }
+        .measure-btn.active {
+          background: #4f46e5;
+          border-color: #4f46e5;
+          color: white;
+        }
+        .measure-banner {
+          background: #eef2ff;
+          color: #4338ca;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 8px 16px;
+          border-radius: 10px;
+          margin-bottom: 12px;
+          text-align: center;
+        }
+        .dark .measure-banner { background: #312e81; color: #c7d2fe }
+        .measure-result {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 18px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 15px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+        .measure-result.up { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0 }
+        .measure-result.down { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca }
+        .dark .measure-result.up { background: #14532d; color: #86efac; border-color: #166534 }
+        .dark .measure-result.down { background: #7f1d1d; color: #fca5a5; border-color: #991b1b }
+        .measure-label { font-weight: 600; font-size: 14px }
+        .measure-diff { font-weight: 900; font-size: 18px }
+        .measure-pct { font-weight: 800; font-size: 16px }
+        .measure-clear {
+          background: none; border: none; cursor: pointer;
+          font-size: 20px; font-weight: 700; color: inherit;
+          opacity: .6; margin-left: auto; padding: 2px 8px; border-radius: 8px;
+        }
+        .measure-clear:hover { opacity: 1; background: rgba(0,0,0,.1) }
 
         .tab-bar {
           border-bottom: 2px solid var(--border);
@@ -666,9 +807,17 @@ export default function FoucauldFinance() {
         }
       `}</style>
 
-      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} />
+      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} />
 
       <div className="main">
+        {showWatchlist ? (
+          <WatchlistTab
+            watchlist={watchlist}
+            onSelect={handleSearch}
+            onRemove={removeFromWatchlist}
+            onBack={() => setShowWatchlist(false)}
+          />
+        ) : (<>
         <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
 
         {loading && (
@@ -734,15 +883,6 @@ export default function FoucauldFinance() {
             <MetricCards data={data} />
             <ScoreCard data={data} />
 
-            <PriceChart
-              chartData={chartData}
-              chartLoad={chartLoad}
-              period={period}
-              onPeriodChange={handlePeriod}
-              currency={data?.price?.currency}
-              dark={dark}
-            />
-
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -772,6 +912,7 @@ export default function FoucauldFinance() {
             </div>
           </ErrorBoundary>
         )}
+        </>)}
       </div>
     </div>
   );

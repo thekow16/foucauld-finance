@@ -109,7 +109,7 @@ export async function fetchStockData(sym) {
   // Essai 1 : quoteSummary via Worker (qui gère le crumb)
   if (WORKER_URL) {
     try {
-      const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile";
+      const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile,earningsTrend,recommendationTrend";
       const url = `${YF}/v10/finance/quoteSummary/${sym}?modules=${modules}`;
       const json = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
       const result = json.quoteSummary?.result?.[0];
@@ -196,6 +196,24 @@ export async function fetchStockData(sym) {
     assetProfile: { sector: "N/A", industry: "N/A", longBusinessSummary: "" },
     _fromChart: true, // flag pour indiquer que les données viennent du chart
   };
+}
+
+// ── Traduction en français via Google Translate (gratuit) ──
+export async function translateToFrench(text) {
+  if (!text || text.length < 10) return text;
+  const truncated = text.length > 1000 ? text.substring(0, 1000) : text;
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=fr&dt=t&q=${encodeURIComponent(truncated)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const json = await res.json();
+    // Google renvoie [[["traduction","source",...], ...], ...]
+    if (Array.isArray(json) && Array.isArray(json[0])) {
+      return json[0].map(seg => seg[0]).join("");
+    }
+    return truncated;
+  } catch {
+    return truncated;
+  }
 }
 
 export async function searchSymbols(query) {
