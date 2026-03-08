@@ -5,8 +5,28 @@ import { computeSMA, computeBollingerBands } from "../utils/indicators";
 
 const TIMEFRAMES = [
   { id: "monthly", label: "Mensuel", interval: "1mo", range: "max" },
-  { id: "quarterly", label: "Trimestriel", interval: "3mo", range: "max" },
+  { id: "quarterly", label: "Trimestriel", interval: "1mo", range: "max", aggregate: "quarter" },
 ];
+
+function aggregateToQuarters(data) {
+  if (!data.length) return [];
+  const quarters = {};
+  for (const c of data) {
+    const d = new Date(c.time);
+    const q = Math.floor(d.getMonth() / 3);
+    const key = `${d.getFullYear()}-Q${q}`;
+    const qStart = `${d.getFullYear()}-${String(q * 3 + 1).padStart(2, "0")}-01`;
+    if (!quarters[key]) {
+      quarters[key] = { time: qStart, open: c.open, high: c.high, low: c.low, close: c.close };
+    } else {
+      const qr = quarters[key];
+      qr.high = Math.max(qr.high, c.high);
+      qr.low = Math.min(qr.low, c.low);
+      qr.close = c.close;
+    }
+  }
+  return Object.values(quarters).sort((a, b) => a.time.localeCompare(b.time));
+}
 
 export default function CandlestickChart({ symbol, dark, currency }) {
   const chartContainerRef = useRef(null);
@@ -34,7 +54,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
     setMeasureEnd(null);
     setMeasureHover(null);
     fetchCandleData(symbol, timeframe.interval, timeframe.range)
-      .then(d => { if (!cancelled) setCandleData(d); })
+      .then(d => { if (!cancelled) setCandleData(timeframe.aggregate === "quarter" ? aggregateToQuarters(d) : d); })
       .catch(() => { if (!cancelled) setCandleData([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };

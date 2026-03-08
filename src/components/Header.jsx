@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { searchSymbols } from "../utils/api";
-import { SUGGESTIONS } from "../utils/format";
 
 export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount }) {
   const [query, setQuery] = useState("");
@@ -67,7 +66,7 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
               value={query}
               onChange={e => handleInput(e.target.value)}
               onFocus={() => suggestions.length > 0 && setShowSugg(true)}
-              placeholder="Symbole ou nom : AAPL, Apple, MC.PA, LVMH…"
+              placeholder="Rechercher une action…"
             />
             <button type="submit" className="ff-btn">Analyser</button>
           </form>
@@ -82,18 +81,6 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
               ))}
             </div>
           )}
-        </div>
-        <div style={{ color: "rgba(255,255,255,.6)", fontSize: 12, marginTop: 10, position: "relative", zIndex: 1 }}>
-          <b style={{ color: "rgba(255,255,255,.85)" }}>Paris</b> .PA ·{" "}
-          <b style={{ color: "rgba(255,255,255,.85)" }}>Londres</b> .L ·{" "}
-          <b style={{ color: "rgba(255,255,255,.85)" }}>Tokyo</b> .T ·{" "}
-          <b style={{ color: "rgba(255,255,255,.85)" }}>Francfort</b> .DE ·{" "}
-          <b style={{ color: "rgba(255,255,255,.85)" }}>Zurich</b> .SW
-        </div>
-        <div className="chips">
-          {SUGGESTIONS.map(s => (
-            <button key={s} className="chip" onClick={() => onSearch(s)}>{s}</button>
-          ))}
         </div>
       </div>
     </div>
