@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount }) {
+export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
@@ -51,6 +51,9 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
             <span className="logo-text">Foucauld Finance</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={onShowInvestors} className="watchlist-header-btn" title="Investisseurs" style={{ fontSize: 15, color: "#f59e0b" }}>
+              🏆
+            </button>
             <button onClick={onShowWatchlist} className="watchlist-header-btn" title="Ma Watchlist">
               ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
             </button>

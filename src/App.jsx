@@ -33,7 +33,6 @@ class ErrorBoundary extends Component {
 }
 
 const TABS = [
-  { id: "investors", label: "🏆 Investisseurs" },
   { id: "ratios", label: "Ratios" },
   { id: "bilan", label: "Bilan" },
   { id: "resultats", label: "Résultats" },
@@ -48,6 +47,7 @@ export default function FoucauldFinance() {
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState("ratios");
   const [showWatchlist, setShowWatchlist] = useState(false);
+  const [showInvestors, setShowInvestors] = useState(false);
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
@@ -70,6 +70,7 @@ export default function FoucauldFinance() {
     setSymbol(sym);
     setActiveTab("ratios");
     setShowWatchlist(false);
+    setShowInvestors(false);
     doFetchStock(sym);
   };
 
@@ -1019,10 +1020,17 @@ export default function FoucauldFinance() {
         }
       `}</style>
 
-      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} />
+      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} />
 
       <div className="main">
-        {showWatchlist ? (
+        {showInvestors ? (
+          <div>
+            <button onClick={() => setShowInvestors(false)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 14, marginBottom: 16, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+              ← Retour
+            </button>
+            <InvestorsTab onSymbolClick={handleSearch} />
+          </div>
+        ) : showWatchlist ? (
           <WatchlistTab
             watchlist={watchlist}
             onSelect={handleSearch}
@@ -1115,7 +1123,6 @@ export default function FoucauldFinance() {
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
                 {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
-                {activeTab === "investors" && <InvestorsTab onSymbolClick={handleSearch} />}
               </div>
             </div>
 

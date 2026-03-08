@@ -1,20 +1,24 @@
-import { fmt, getScore, getScoreColor, getScoreLabel } from "../utils/format";
+import { fmt, getScoreDetails, getScoreColor, getScoreLabel } from "../utils/format";
 
 export default function ScoreCard({ data }) {
-  const fin = data?.financialData;
-  const stats = data?.defaultKeyStatistics;
-  const score = getScore(fin, stats);
-  if (score === null) return null;
+  const result = getScoreDetails(data);
+  if (!result) return null;
 
+  const { details, score } = result;
   const color = getScoreColor(score);
   const label = getScoreLabel(score);
   const circ = 2 * Math.PI * 32;
 
+  const fmtPct = (v) => v != null ? `${(v * 100).toFixed(1)}%` : "—";
+  const fmtRatio = (v) => v != null ? v.toFixed(1) + "x" : "—";
+
   const indicators = [
-    { label: "Marge nette", val: fmt(fin?.profitMargins?.raw, "percent"), good: (fin?.profitMargins?.raw ?? 0) > 0.1 },
-    { label: "ROE", val: fmt(fin?.returnOnEquity?.raw, "percent"), good: (fin?.returnOnEquity?.raw ?? 0) > 0.1 },
-    { label: "Liquidité", val: fmt(fin?.currentRatio?.raw, "ratio"), good: (fin?.currentRatio?.raw ?? 0) > 1.5 },
-    { label: "Dette/CP", val: fin?.debtToEquity?.raw != null ? `${fin.debtToEquity.raw.toFixed(0)}%` : "—", good: (fin?.debtToEquity?.raw ?? 999) < 100 },
+    { label: "Croiss. CA", val: fmtPct(details.revenueGrowth.val), good: details.revenueGrowth.pts >= 9 },
+    { label: "Croiss. FCF", val: fmtPct(details.fcfGrowth.val), good: details.fcfGrowth.pts >= 9 },
+    { label: details.roic.fallback || "ROIC", val: fmtPct(details.roic.val), good: details.roic.pts >= 9 },
+    { label: "Dette nette/FCF", val: details.netDebtFcf.val != null ? fmtRatio(details.netDebtFcf.val) : "—", good: details.netDebtFcf.pts >= 10 },
+    { label: "Actions", val: details.sharesChange.val != null ? (details.sharesChange.val > 0 ? "↑ " : details.sharesChange.val < -0.005 ? "↓ " : "≈ ") + fmtPct(Math.abs(details.sharesChange.val)) : "—", good: details.sharesChange.pts >= 8 },
+    { label: "Marge FCF", val: fmtPct(details.fcfMargin.val), good: details.fcfMargin.pts >= 8 },
   ];
 
   return (
@@ -28,8 +32,8 @@ export default function ScoreCard({ data }) {
       </svg>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 19, fontWeight: 800, color }}>{label}</div>
-        <div className="score-desc">Score santé financière sur 100 — P/E, marges, dette, liquidité, croissance.</div>
-        <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap" }}>
+        <div className="score-desc">Score santé financière sur 100 — Croissance CA & FCF, ROIC, dette nette/FCF, dilution, marge FCF.</div>
+        <div style={{ display: "flex", gap: 14, marginTop: 14, flexWrap: "wrap" }}>
           {indicators.map(it => (
             <div key={it.label}>
               <div className="indicator-label">{it.label}</div>
