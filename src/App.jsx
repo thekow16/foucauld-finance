@@ -7,6 +7,7 @@ import CandlestickChart from "./components/CandlestickChart";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
+import InvestorsTab from "./components/InvestorsTab";
 import Watchlist from "./components/Watchlist";
 import WatchlistTab from "./components/WatchlistTab";
 import { useWatchlist } from "./hooks/useWatchlist";
@@ -37,6 +38,7 @@ const TABS = [
   { id: "resultats", label: "Résultats" },
   { id: "tresorerie", label: "Trésorerie" },
   { id: "compare", label: "Comparer" },
+  { id: "investors", label: "🏆 Investisseurs" },
 ];
 
 export default function FoucauldFinance() {
@@ -780,6 +782,189 @@ export default function FoucauldFinance() {
           min-width: 140px;
         }
 
+        /* Investors Tab */
+        .investor-card {
+          background: var(--card);
+          border-radius: 16px;
+          margin-bottom: 12px;
+          box-shadow: 0 2px 12px var(--shadow);
+          border-left: 4px solid;
+          overflow: hidden;
+          transition: box-shadow .2s;
+        }
+        .investor-card:hover { box-shadow: 0 4px 20px var(--shadow) }
+        .investor-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 18px 20px;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-family: 'Inter', sans-serif;
+          color: var(--text);
+          gap: 12px;
+        }
+        .investor-emoji {
+          font-size: 32px;
+          min-width: 42px;
+          text-align: center;
+        }
+        .investor-name {
+          font-size: 16px;
+          font-weight: 900;
+          letter-spacing: -0.3px;
+        }
+        .investor-fund {
+          font-size: 12px;
+          color: var(--muted);
+          font-weight: 600;
+        }
+        .investor-aum {
+          font-size: 16px;
+          font-weight: 900;
+          color: #4f46e5;
+        }
+        .investor-style {
+          font-size: 11px;
+          color: var(--muted);
+          font-weight: 600;
+        }
+        .investor-chevron {
+          font-size: 12px;
+          color: var(--muted);
+          font-weight: 700;
+          transition: transform .2s;
+        }
+        .investor-detail {
+          padding: 0 20px 20px;
+          border-top: 1px solid var(--border);
+        }
+        .investor-desc {
+          color: var(--text-secondary);
+          font-size: 13px;
+          font-style: italic;
+          padding: 14px 0;
+          line-height: 1.6;
+        }
+        .investor-table th { font-size: 11px !important }
+        .investor-table td { font-size: 13px; vertical-align: middle }
+        .investor-footer {
+          text-align: center;
+          color: var(--muted);
+          font-size: 11px;
+          margin-top: 14px;
+          padding-top: 12px;
+          border-top: 1px solid var(--border);
+        }
+        .activity-badge {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 10px;
+          white-space: nowrap;
+        }
+        .activity-badge.new { background: #eef2ff; color: #4f46e5 }
+        .activity-badge.increased { background: #f0fdf4; color: #16a34a }
+        .activity-badge.reduced { background: #fff7ed; color: #ea580c }
+        .dark .activity-badge.new { background: #312e81; color: #a5b4fc }
+        .dark .activity-badge.increased { background: #14532d; color: #86efac }
+        .dark .activity-badge.reduced { background: #7c2d12; color: #fed7aa }
+
+        .investor-activity {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 8px;
+          white-space: nowrap;
+        }
+        .investor-activity.new { background: #eef2ff; color: #4f46e5 }
+        .investor-activity.increased { background: #f0fdf4; color: #16a34a }
+        .investor-activity.reduced { background: #fff7ed; color: #ea580c }
+        .investor-activity.sold { background: #fef2f2; color: #dc2626 }
+        .investor-activity.held { background: var(--highlight-row); color: var(--muted) }
+        .dark .investor-activity.new { background: #312e81; color: #a5b4fc }
+        .dark .investor-activity.increased { background: #14532d; color: #86efac }
+        .dark .investor-activity.reduced { background: #7c2d12; color: #fed7aa }
+        .dark .investor-activity.sold { background: #7f1d1d; color: #fca5a5 }
+
+        .investor-filter {
+          background: none;
+          border: 2px solid var(--border);
+          padding: 5px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 700;
+          font-family: 'Inter', sans-serif;
+          cursor: pointer;
+          color: var(--muted);
+          transition: all .18s;
+          white-space: nowrap;
+        }
+        .investor-filter:hover { border-color: #4f46e5; color: #4f46e5 }
+        .investor-filter.active {
+          background: #4f46e5;
+          border-color: #4f46e5;
+          color: white;
+        }
+
+        .investor-moves-banner {
+          background: var(--card);
+          border-radius: 16px;
+          padding: 16px 18px;
+          margin-bottom: 18px;
+          box-shadow: 0 2px 12px var(--shadow);
+        }
+        .investor-moves-title {
+          font-size: 14px;
+          font-weight: 800;
+          color: var(--text);
+          margin-bottom: 12px;
+        }
+        .investor-moves-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 8px;
+        }
+        .investor-move-chip {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          padding: 10px 12px;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          background: var(--highlight-row);
+          cursor: pointer;
+          font-family: 'Inter', sans-serif;
+          transition: all .15s;
+          text-align: left;
+          color: var(--text);
+        }
+        .investor-move-chip:hover {
+          border-color: #4f46e5;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 14px var(--shadow);
+        }
+        .move-tag {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 6px;
+          display: inline-block;
+          width: fit-content;
+        }
+        .move-tag.new { background: #eef2ff; color: #4f46e5 }
+        .move-tag.increased { background: #f0fdf4; color: #16a34a }
+        .dark .move-tag.new { background: #312e81; color: #a5b4fc }
+        .dark .move-tag.increased { background: #14532d; color: #86efac }
+
+        @media (max-width: 640px) {
+          .investor-header { flex-direction: column; align-items: flex-start }
+          .investor-moves-grid { grid-template-columns: 1fr 1fr }
+          .investor-table { font-size: 12px }
+        }
+
         .spinner {
           width: 42px; height: 42px;
           border: 4px solid var(--border);
@@ -899,10 +1084,11 @@ export default function FoucauldFinance() {
               </div>
               <div style={{ padding: 24 }}>
                 {activeTab === "ratios" && <RatiosTab data={data} />}
-                {activeTab === "bilan" && <BilanTab data={data} />}
-                {activeTab === "resultats" && <ResultatsTab data={data} />}
-                {activeTab === "tresorerie" && <TresorerieTab data={data} />}
+                {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
+                {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
+                {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
                 {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
+                {activeTab === "investors" && <InvestorsTab onSymbolClick={handleSearch} />}
               </div>
             </div>
 
