@@ -85,56 +85,63 @@ export default function FoucauldFinance() {
         *{box-sizing:border-box;margin:0;padding:0}
 
         :root {
-          --bg: #F2F4FF;
+          --bg: #f8f9fb;
           --card: #ffffff;
-          --text: #0f172a;
-          --text-secondary: #334155;
-          --muted: #94a3b8;
-          --border: #e8ecff;
-          --highlight-row: #f8f9ff;
+          --text: #111827;
+          --text-secondary: #4b5563;
+          --muted: #9ca3af;
+          --border: #e5e7eb;
+          --highlight-row: #f9fafb;
           --input-bg: rgba(255,255,255,.12);
-          --shadow: rgba(79,70,229,.08);
+          --shadow: rgba(0,0,0,.04);
+          --accent: #2563eb;
+          --accent-light: #dbeafe;
+          --accent-dark: #1d4ed8;
         }
 
         .dark {
-          --bg: #0f172a;
-          --card: #1e293b;
+          --bg: #0b0f1a;
+          --card: #141b2d;
           --text: #f1f5f9;
           --text-secondary: #cbd5e1;
           --muted: #64748b;
-          --border: #334155;
-          --highlight-row: #253348;
-          --shadow: rgba(0,0,0,.3);
+          --border: #1e293b;
+          --highlight-row: #1a2332;
+          --shadow: rgba(0,0,0,.35);
+          --accent: #3b82f6;
+          --accent-light: #1e3a5f;
+          --accent-dark: #60a5fa;
         }
 
         .app {
-          font-family: 'Inter', sans-serif;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
           background: var(--bg);
           color: var(--text);
           min-height: 100vh;
           transition: background .3s, color .3s;
+          -webkit-font-smoothing: antialiased;
         }
 
         .hero {
-          background: linear-gradient(135deg, #312e81 0%, #4f46e5 45%, #7c3aed 75%, #0f766e 100%);
-          padding: 28px 20px 72px;
+          background: linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #1e3a5f 100%);
+          padding: 24px 20px 68px;
           position: relative;
           overflow: hidden;
         }
         .hero::before {
           content: '';
           position: absolute;
-          top: -80px; right: -80px;
-          width: 300px; height: 300px;
-          background: rgba(255,255,255,.06);
+          top: -120px; right: -120px;
+          width: 400px; height: 400px;
+          background: radial-gradient(circle, rgba(59,130,246,.08) 0%, transparent 70%);
           border-radius: 50%;
         }
         .hero::after {
           content: '';
           position: absolute;
-          bottom: -100px; left: -60px;
-          width: 340px; height: 340px;
-          background: rgba(255,255,255,.04);
+          bottom: -140px; left: -80px;
+          width: 380px; height: 380px;
+          background: radial-gradient(circle, rgba(59,130,246,.05) 0%, transparent 70%);
           border-radius: 50%;
         }
 
@@ -144,28 +151,28 @@ export default function FoucauldFinance() {
           gap: 10px;
         }
         .logo-icon {
-          width: 42px; height: 42px;
-          background: rgba(255,255,255,.15);
-          backdrop-filter: blur(10px);
-          border-radius: 12px;
+          width: 38px; height: 38px;
+          background: rgba(255,255,255,.08);
+          border: 1px solid rgba(255,255,255,.1);
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 22px;
+          font-size: 18px;
         }
         .logo-text {
           color: white;
-          font-size: 22px;
-          font-weight: 900;
-          letter-spacing: -.5px;
+          font-size: 18px;
+          font-weight: 800;
+          letter-spacing: -.3px;
         }
 
         .dark-toggle {
-          background: rgba(255,255,255,.15);
-          border: 1px solid rgba(255,255,255,.25);
-          border-radius: 50%;
-          width: 40px; height: 40px;
-          font-size: 18px;
+          background: rgba(255,255,255,.08);
+          border: 1px solid rgba(255,255,255,.12);
+          border-radius: 10px;
+          width: 38px; height: 38px;
+          font-size: 16px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -173,52 +180,51 @@ export default function FoucauldFinance() {
           transition: background .2s;
         }
         .dark-toggle:hover {
-          background: rgba(255,255,255,.25);
+          background: rgba(255,255,255,.15);
         }
 
         .search-wrap {
           display: flex;
           gap: 10px;
-          max-width: 700px;
+          max-width: 680px;
           position: relative;
           z-index: 1;
         }
         .ff-input {
           flex: 1;
-          padding: 14px 20px;
-          border-radius: 50px;
-          border: 2px solid rgba(255,255,255,.2);
-          background: rgba(255,255,255,.12);
-          backdrop-filter: blur(10px);
+          padding: 13px 20px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,.12);
+          background: rgba(255,255,255,.06);
+          backdrop-filter: blur(12px);
           color: white;
           font-family: 'Inter', sans-serif;
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 500;
           outline: none;
           transition: border .2s, background .2s;
         }
-        .ff-input::placeholder { color: rgba(255,255,255,.5) }
+        .ff-input::placeholder { color: rgba(255,255,255,.4) }
         .ff-input:focus {
-          border-color: rgba(255,255,255,.55);
-          background: rgba(255,255,255,.18);
+          border-color: rgba(59,130,246,.5);
+          background: rgba(255,255,255,.1);
         }
         .ff-btn {
-          padding: 14px 26px;
-          background: white;
-          color: #4f46e5;
+          padding: 13px 24px;
+          background: var(--accent, #2563eb);
+          color: white;
           border: none;
-          border-radius: 50px;
+          border-radius: 12px;
           font-family: 'Inter', sans-serif;
-          font-weight: 800;
+          font-weight: 700;
           font-size: 14px;
           cursor: pointer;
-          transition: transform .15s, box-shadow .15s;
-          box-shadow: 0 4px 20px rgba(0,0,0,.2);
+          transition: transform .15s, background .15s;
           white-space: nowrap;
         }
         .ff-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 26px rgba(0,0,0,.25);
+          transform: translateY(-1px);
+          background: var(--accent-dark, #1d4ed8);
         }
 
         .autocomplete-dropdown {
@@ -227,9 +233,10 @@ export default function FoucauldFinance() {
           left: 0;
           right: 100px;
           background: var(--card);
-          border-radius: 16px;
+          border-radius: 14px;
           margin-top: 6px;
-          box-shadow: 0 8px 32px rgba(0,0,0,.2);
+          box-shadow: 0 12px 40px rgba(0,0,0,.15);
+          border: 1px solid var(--border);
           overflow: hidden;
           z-index: 100;
         }
@@ -238,12 +245,12 @@ export default function FoucauldFinance() {
           align-items: center;
           gap: 12px;
           width: 100%;
-          padding: 12px 18px;
+          padding: 11px 16px;
           border: none;
           background: none;
           cursor: pointer;
           font-family: 'Inter', sans-serif;
-          font-size: 14px;
+          font-size: 13px;
           color: var(--text);
           transition: background .15s;
           text-align: left;
@@ -253,8 +260,9 @@ export default function FoucauldFinance() {
         }
         .ac-symbol {
           font-weight: 800;
-          color: #4f46e5;
-          min-width: 70px;
+          color: var(--accent);
+          min-width: 65px;
+          font-size: 13px;
         }
         .ac-name {
           flex: 1;
@@ -273,88 +281,93 @@ export default function FoucauldFinance() {
         .chips {
           display: flex;
           flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 16px;
+          gap: 6px;
+          margin-top: 14px;
           position: relative;
           z-index: 1;
         }
         .chip {
-          background: rgba(255,255,255,.12);
-          border: 1px solid rgba(255,255,255,.25);
-          color: rgba(255,255,255,.85);
-          padding: 5px 14px;
-          border-radius: 20px;
-          font-size: 13px;
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.12);
+          color: rgba(255,255,255,.7);
+          padding: 5px 13px;
+          border-radius: 8px;
+          font-size: 12px;
           font-weight: 600;
           font-family: 'Inter', sans-serif;
           cursor: pointer;
-          transition: background .2s;
+          transition: all .2s;
         }
-        .chip:hover { background: rgba(255,255,255,.22) }
+        .chip:hover { background: rgba(255,255,255,.12); color: white }
 
         .main {
-          max-width: 960px;
-          margin: -38px auto 0;
+          max-width: 980px;
+          margin: -34px auto 0;
           padding: 0 16px 52px;
           position: relative;
         }
 
         .card {
           background: var(--card);
-          border-radius: 22px;
+          border-radius: 16px;
           padding: 24px;
-          box-shadow: 0 4px 24px var(--shadow);
-          margin-bottom: 18px;
+          box-shadow: 0 1px 3px var(--shadow), 0 0 0 1px rgba(0,0,0,.03);
+          margin-bottom: 16px;
           transition: background .3s;
+          border: 1px solid var(--border);
         }
+        .dark .card { border-color: transparent }
 
         .grid8 {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-          gap: 14px;
-          margin-bottom: 18px;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 12px;
+          margin-bottom: 16px;
         }
         .metric-card {
           background: var(--card);
-          border-radius: 18px;
-          padding: 18px 16px;
-          box-shadow: 0 2px 14px rgba(0,0,0,.05);
+          border-radius: 14px;
+          padding: 16px 14px;
+          box-shadow: 0 1px 3px var(--shadow);
+          border: 1px solid var(--border);
           border-top: 3px solid;
-          transition: transform .15s, background .3s;
+          transition: transform .15s, box-shadow .15s;
         }
-        .metric-card:hover { transform: translateY(-2px) }
+        .dark .metric-card { border-color: transparent; border-top: 3px solid }
+        .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow) }
         .metric-value {
-          font-size: 20px;
-          font-weight: 900;
+          font-size: 18px;
+          font-weight: 800;
           color: var(--text);
-          letter-spacing: -.5px;
+          letter-spacing: -.3px;
         }
         .metric-label {
           font-size: 11px;
           color: var(--muted);
           font-weight: 600;
           margin-top: 4px;
+          letter-spacing: .01em;
         }
 
         .stock-name {
-          font-size: 23px;
-          font-weight: 900;
+          font-size: 22px;
+          font-weight: 800;
           color: var(--text);
-          letter-spacing: -.5px;
+          letter-spacing: -.3px;
         }
         .badge {
           display: inline-block;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
+          padding: 3px 10px;
+          border-radius: 6px;
+          font-size: 11px;
           font-weight: 700;
         }
-        .badge-primary { background: #e0e7ff; color: #4f46e5 }
-        .badge-green { background: #f0fdf4; color: #16a34a }
-        .badge-orange { background: #fff7ed; color: #ea580c }
-        .dark .badge-primary { background: #312e81; color: #a5b4fc }
-        .dark .badge-green { background: #14532d; color: #86efac }
-        .dark .badge-orange { background: #7c2d12; color: #fed7aa }
+        .badge-primary { background: var(--accent-light, #dbeafe); color: var(--accent) }
+        .badge-green { background: #ecfdf5; color: #059669 }
+        .badge-orange { background: #fffbeb; color: #d97706 }
+        .dark .badge-primary { background: #1e3a5f; color: #93c5fd }
+        .dark .badge-green { background: #064e3b; color: #6ee7b7 }
+        .dark .badge-orange { background: #78350f; color: #fcd34d }
 
         .stock-summary {
           color: var(--text-secondary);
@@ -368,21 +381,22 @@ export default function FoucauldFinance() {
           margin-top: 6px;
         }
         .stock-link {
-          color: #4f46e5;
+          color: var(--accent);
           font-size: 12px;
           text-decoration: none;
           font-weight: 600;
         }
         .stock-link:hover { text-decoration: underline }
         .stock-price {
-          font-size: 38px;
-          font-weight: 900;
+          font-size: 36px;
+          font-weight: 800;
           color: var(--text);
           letter-spacing: -1px;
           line-height: 1;
+          font-variant-numeric: tabular-nums;
         }
         .stock-currency {
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 600;
           color: var(--muted);
           margin-left: 6px;
@@ -390,21 +404,23 @@ export default function FoucauldFinance() {
         .price-change {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          margin-top: 6px;
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-weight: 800;
-          font-size: 14px;
+          gap: 5px;
+          margin-top: 8px;
+          padding: 5px 12px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 13px;
+          font-variant-numeric: tabular-nums;
         }
-        .price-change.up { background: #f0fdf4; color: #16a34a }
+        .price-change.up { background: #ecfdf5; color: #059669 }
         .price-change.down { background: #fef2f2; color: #dc2626 }
-        .dark .price-change.up { background: #14532d; color: #86efac }
+        .dark .price-change.up { background: #064e3b; color: #6ee7b7 }
         .dark .price-change.down { background: #7f1d1d; color: #fca5a5 }
         .stock-volume {
           font-size: 12px;
           color: var(--muted);
           margin-top: 8px;
+          font-variant-numeric: tabular-nums;
         }
         .stock-time {
           font-size: 11px;
@@ -421,14 +437,14 @@ export default function FoucauldFinance() {
           transition: transform .15s;
           line-height: 1;
         }
-        .watchlist-btn:hover { transform: scale(1.2) }
+        .watchlist-btn:hover { transform: scale(1.15) }
 
-        .watchlist-card { margin-bottom: 18px }
+        .watchlist-card { margin-bottom: 16px }
         .watchlist-item {
           display: flex;
           align-items: center;
           background: var(--highlight-row);
-          border-radius: 12px;
+          border-radius: 10px;
           overflow: hidden;
           transition: background .2s;
         }
@@ -444,7 +460,7 @@ export default function FoucauldFinance() {
           font-family: 'Inter', sans-serif;
           color: var(--text);
         }
-        .wl-symbol { font-weight: 800; color: #4f46e5; font-size: 13px }
+        .wl-symbol { font-weight: 800; color: var(--accent); font-size: 13px }
         .wl-name { font-size: 12px; color: var(--muted); font-weight: 500 }
         .wl-remove {
           padding: 8px 10px;
@@ -459,11 +475,11 @@ export default function FoucauldFinance() {
         .wl-remove:hover { color: #ef4444 }
 
         .watchlist-header-btn {
-          background: rgba(255,255,255,.15);
-          border: 1px solid rgba(255,255,255,.25);
-          border-radius: 50%;
-          width: 40px; height: 40px;
-          font-size: 20px;
+          background: rgba(255,255,255,.08);
+          border: 1px solid rgba(255,255,255,.12);
+          border-radius: 10px;
+          width: 38px; height: 38px;
+          font-size: 18px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -472,7 +488,7 @@ export default function FoucauldFinance() {
           transition: background .2s;
           position: relative;
         }
-        .watchlist-header-btn:hover { background: rgba(255,255,255,.25) }
+        .watchlist-header-btn:hover { background: rgba(255,255,255,.15) }
         .wl-count {
           position: absolute;
           top: -4px; right: -4px;
@@ -491,21 +507,22 @@ export default function FoucauldFinance() {
         .wl-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 14px;
+          gap: 12px;
         }
         .wl-card {
           background: var(--card);
-          border-radius: 18px;
-          box-shadow: 0 2px 14px var(--shadow);
+          border-radius: 14px;
+          border: 1px solid var(--border);
           position: relative;
           transition: transform .15s, box-shadow .15s;
           overflow: hidden;
         }
-        .wl-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px var(--shadow) }
+        .dark .wl-card { border-color: transparent }
+        .wl-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--shadow) }
         .wl-card-body {
           display: block;
           width: 100%;
-          padding: 20px 18px 16px;
+          padding: 18px 16px 14px;
           border: none;
           background: none;
           cursor: pointer;
@@ -520,10 +537,10 @@ export default function FoucauldFinance() {
           border: none;
           cursor: pointer;
           color: var(--muted);
-          font-size: 18px;
+          font-size: 16px;
           font-weight: 700;
-          width: 26px; height: 26px;
-          border-radius: 50%;
+          width: 24px; height: 24px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -537,7 +554,7 @@ export default function FoucauldFinance() {
           align-items: center;
           margin-bottom: 4px;
         }
-        .wl-card-symbol { font-weight: 900; font-size: 16px; color: #4f46e5 }
+        .wl-card-symbol { font-weight: 800; font-size: 15px; color: var(--accent) }
         .wl-card-name {
           font-size: 12px;
           color: var(--muted);
@@ -549,26 +566,28 @@ export default function FoucauldFinance() {
         }
         .wl-card-chart { margin-bottom: 8px }
         .wl-card-price {
-          font-size: 20px;
-          font-weight: 900;
+          font-size: 19px;
+          font-weight: 800;
           color: var(--text);
-          letter-spacing: -.5px;
+          letter-spacing: -.3px;
+          font-variant-numeric: tabular-nums;
         }
         .wl-card-change {
-          font-size: 12px;
-          font-weight: 800;
-          padding: 3px 8px;
-          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 7px;
+          border-radius: 6px;
         }
-        .wl-card-change.up { background: #f0fdf4; color: #16a34a }
+        .wl-card-change.up { background: #ecfdf5; color: #059669 }
         .wl-card-change.down { background: #fef2f2; color: #dc2626 }
-        .dark .wl-card-change.up { background: #14532d; color: #86efac }
+        .dark .wl-card-change.up { background: #064e3b; color: #6ee7b7 }
         .dark .wl-card-change.down { background: #7f1d1d; color: #fca5a5 }
 
         .section-title {
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 800;
           color: var(--text);
+          letter-spacing: -.2px;
         }
         .score-desc {
           color: var(--text-secondary);
@@ -586,106 +605,107 @@ export default function FoucauldFinance() {
         .stag {
           font-size: 11px;
           font-weight: 700;
-          padding: 3px 9px;
-          border-radius: 10px;
+          padding: 3px 8px;
+          border-radius: 6px;
           display: inline-block;
         }
-        .stag-good { background: #f0fdf4; color: #16a34a }
+        .stag-good { background: #ecfdf5; color: #059669 }
         .stag-bad { background: #fef2f2; color: #dc2626 }
-        .dark .stag-good { background: #14532d; color: #86efac }
+        .dark .stag-good { background: #064e3b; color: #6ee7b7 }
         .dark .stag-bad { background: #7f1d1d; color: #fca5a5 }
 
         .period-btn {
           background: none;
           border: none;
           cursor: pointer;
-          padding: 7px 13px;
-          border-radius: 20px;
+          padding: 6px 12px;
+          border-radius: 8px;
           font-family: 'Inter', sans-serif;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 700;
           color: var(--muted);
           transition: all .18s;
         }
-        .period-btn:hover { background: #e0e7ff; color: #4f46e5 }
-        .period-btn.active { background: #4f46e5; color: white }
-        .dark .period-btn:hover { background: #312e81; color: #a5b4fc }
+        .period-btn:hover { background: var(--accent-light, #dbeafe); color: var(--accent) }
+        .period-btn.active { background: var(--accent); color: white }
+        .dark .period-btn:hover { background: #1e3a5f; color: #93c5fd }
 
         .measure-btn {
           background: none;
-          border: 2px solid var(--border);
+          border: 1px solid var(--border);
           cursor: pointer;
           padding: 6px 14px;
-          border-radius: 50px;
-          font-size: 13px;
+          border-radius: 8px;
+          font-size: 12px;
           font-weight: 700;
           font-family: 'Inter', sans-serif;
           color: var(--text-secondary);
           transition: all .2s;
           margin-right: 8px;
         }
-        .measure-btn:hover { border-color: #4f46e5; color: #4f46e5 }
+        .measure-btn:hover { border-color: var(--accent); color: var(--accent) }
         .measure-btn.active {
-          background: #4f46e5;
-          border-color: #4f46e5;
+          background: var(--accent);
+          border-color: var(--accent);
           color: white;
         }
         .measure-banner {
-          background: #eef2ff;
-          color: #4338ca;
-          font-size: 13px;
+          background: var(--accent-light, #dbeafe);
+          color: var(--accent);
+          font-size: 12px;
           font-weight: 600;
           padding: 8px 16px;
-          border-radius: 10px;
+          border-radius: 8px;
           margin-bottom: 12px;
           text-align: center;
         }
-        .dark .measure-banner { background: #312e81; color: #c7d2fe }
+        .dark .measure-banner { background: #1e3a5f; color: #93c5fd }
         .measure-result {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 10px 18px;
-          border-radius: 12px;
+          padding: 10px 16px;
+          border-radius: 10px;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 14px;
           margin-bottom: 12px;
           flex-wrap: wrap;
         }
-        .measure-result.up { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0 }
+        .measure-result.up { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0 }
         .measure-result.down { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca }
-        .dark .measure-result.up { background: #14532d; color: #86efac; border-color: #166534 }
+        .dark .measure-result.up { background: #064e3b; color: #6ee7b7; border-color: #065f46 }
         .dark .measure-result.down { background: #7f1d1d; color: #fca5a5; border-color: #991b1b }
-        .measure-label { font-weight: 600; font-size: 14px }
-        .measure-diff { font-weight: 900; font-size: 18px }
-        .measure-pct { font-weight: 800; font-size: 16px }
+        .measure-label { font-weight: 600; font-size: 13px }
+        .measure-diff { font-weight: 800; font-size: 17px }
+        .measure-pct { font-weight: 700; font-size: 15px }
         .measure-clear {
           background: none; border: none; cursor: pointer;
-          font-size: 20px; font-weight: 700; color: inherit;
-          opacity: .6; margin-left: auto; padding: 2px 8px; border-radius: 8px;
+          font-size: 18px; font-weight: 700; color: inherit;
+          opacity: .6; margin-left: auto; padding: 2px 8px; border-radius: 6px;
         }
-        .measure-clear:hover { opacity: 1; background: rgba(0,0,0,.1) }
+        .measure-clear:hover { opacity: 1; background: rgba(0,0,0,.08) }
 
         .tab-bar {
-          border-bottom: 2px solid var(--border);
+          border-bottom: 1px solid var(--border);
           display: flex;
           overflow-x: auto;
+          background: var(--highlight-row);
         }
         .tab-btn {
           background: none;
           border: none;
-          border-bottom: 3px solid transparent;
+          border-bottom: 2px solid transparent;
           cursor: pointer;
-          padding: 14px 20px;
+          padding: 13px 18px;
           font-family: 'Inter', sans-serif;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 600;
           color: var(--muted);
           transition: all .18s;
           white-space: nowrap;
         }
-        .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5 }
-        .tab-btn:hover { color: #4f46e5 }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--card) }
+        .tab-btn:hover { color: var(--accent) }
 
         .ff-table {
           width: 100%;
@@ -695,29 +715,29 @@ export default function FoucauldFinance() {
         .ff-table th {
           background: var(--highlight-row);
           text-align: left;
-          padding: 10px 14px;
+          padding: 9px 14px;
           color: var(--muted);
           font-weight: 700;
-          font-size: 12px;
+          font-size: 11px;
           text-transform: uppercase;
           letter-spacing: .5px;
-          border-bottom: 2px solid var(--border);
+          border-bottom: 1px solid var(--border);
         }
         .ff-table th:not(:first-child) { text-align: right }
         .ff-table td {
-          padding: 12px 14px;
+          padding: 10px 14px;
           border-bottom: 1px solid var(--border);
         }
-        .ff-table td:not(:first-child) { text-align: right; font-weight: 600 }
+        .ff-table td:not(:first-child) { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums }
         .ff-table tr:hover td { background: var(--highlight-row) }
         .ff-table tr:last-child td { border-bottom: none }
 
         .ratio-cat {
           font-size: 11px;
           font-weight: 800;
-          color: #4f46e5;
+          color: var(--accent);
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: .8px;
           margin-bottom: 8px;
           margin-top: 4px;
         }
@@ -726,49 +746,51 @@ export default function FoucauldFinance() {
           grid-template-columns: 1fr auto;
           gap: 12px;
           align-items: center;
-          padding: 12px 4px;
+          padding: 10px 4px;
           border-bottom: 1px solid var(--border);
         }
         .ratio-row:last-child { border-bottom: none }
         .ratio-label { font-weight: 600; font-size: 13px; color: var(--text-secondary) }
         .ratio-hint { font-size: 11px; color: var(--muted) }
-        .ratio-value { font-size: 15px; font-weight: 800; color: #4f46e5 }
+        .ratio-value { font-size: 14px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums }
         .ratio-value.muted { color: var(--muted) }
 
         .chart-label {
-          font-size: 12px;
+          font-size: 11px;
           color: var(--muted);
           font-weight: 700;
           margin-bottom: 12px;
+          text-transform: uppercase;
+          letter-spacing: .5px;
         }
 
         .compare-input {
           flex: 1;
-          padding: 10px 18px;
-          border-radius: 50px;
-          border: 2px solid var(--border);
+          padding: 10px 16px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
           background: var(--bg);
           color: var(--text);
           font-family: 'Inter', sans-serif;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 500;
           outline: none;
           transition: border .2s;
         }
-        .compare-input:focus { border-color: #4f46e5 }
+        .compare-input:focus { border-color: var(--accent) }
         .compare-btn {
-          padding: 10px 22px;
-          background: #4f46e5;
+          padding: 10px 20px;
+          background: var(--accent);
           color: white;
           border: none;
-          border-radius: 50px;
+          border-radius: 10px;
           font-family: 'Inter', sans-serif;
           font-weight: 700;
           font-size: 13px;
           cursor: pointer;
           transition: background .2s;
         }
-        .compare-btn:hover { background: #4338ca }
+        .compare-btn:hover { background: var(--accent-dark) }
         .compare-btn:disabled { opacity: .5; cursor: default }
         .compare-error {
           color: #ef4444;
@@ -785,20 +807,22 @@ export default function FoucauldFinance() {
         /* Investors Tab */
         .investor-card {
           background: var(--card);
-          border-radius: 16px;
-          margin-bottom: 12px;
-          box-shadow: 0 2px 12px var(--shadow);
+          border-radius: 14px;
+          margin-bottom: 10px;
+          box-shadow: 0 1px 3px var(--shadow);
+          border: 1px solid var(--border);
           border-left: 4px solid;
           overflow: hidden;
           transition: box-shadow .2s;
         }
-        .investor-card:hover { box-shadow: 0 4px 20px var(--shadow) }
+        .dark .investor-card { border-color: transparent; border-left: 4px solid }
+        .investor-card:hover { box-shadow: 0 4px 16px var(--shadow) }
         .investor-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
           width: 100%;
-          padding: 18px 20px;
+          padding: 16px 18px;
           border: none;
           background: none;
           cursor: pointer;
@@ -807,14 +831,14 @@ export default function FoucauldFinance() {
           gap: 12px;
         }
         .investor-emoji {
-          font-size: 32px;
-          min-width: 42px;
+          font-size: 28px;
+          min-width: 38px;
           text-align: center;
         }
         .investor-name {
-          font-size: 16px;
-          font-weight: 900;
-          letter-spacing: -0.3px;
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: -0.2px;
         }
         .investor-fund {
           font-size: 12px;
@@ -822,9 +846,10 @@ export default function FoucauldFinance() {
           font-weight: 600;
         }
         .investor-aum {
-          font-size: 16px;
-          font-weight: 900;
-          color: #4f46e5;
+          font-size: 15px;
+          font-weight: 800;
+          color: var(--accent);
+          font-variant-numeric: tabular-nums;
         }
         .investor-style {
           font-size: 11px;
@@ -832,13 +857,13 @@ export default function FoucauldFinance() {
           font-weight: 600;
         }
         .investor-chevron {
-          font-size: 12px;
+          font-size: 11px;
           color: var(--muted);
           font-weight: 700;
           transition: transform .2s;
         }
         .investor-detail {
-          padding: 0 20px 20px;
+          padding: 0 18px 18px;
           border-top: 1px solid var(--border);
         }
         .investor-desc {
@@ -861,39 +886,39 @@ export default function FoucauldFinance() {
         .activity-badge {
           font-size: 11px;
           font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 10px;
+          padding: 2px 7px;
+          border-radius: 6px;
           white-space: nowrap;
         }
-        .activity-badge.new { background: #eef2ff; color: #4f46e5 }
-        .activity-badge.increased { background: #f0fdf4; color: #16a34a }
-        .activity-badge.reduced { background: #fff7ed; color: #ea580c }
-        .dark .activity-badge.new { background: #312e81; color: #a5b4fc }
-        .dark .activity-badge.increased { background: #14532d; color: #86efac }
-        .dark .activity-badge.reduced { background: #7c2d12; color: #fed7aa }
+        .activity-badge.new { background: var(--accent-light, #dbeafe); color: var(--accent) }
+        .activity-badge.increased { background: #ecfdf5; color: #059669 }
+        .activity-badge.reduced { background: #fffbeb; color: #d97706 }
+        .dark .activity-badge.new { background: #1e3a5f; color: #93c5fd }
+        .dark .activity-badge.increased { background: #064e3b; color: #6ee7b7 }
+        .dark .activity-badge.reduced { background: #78350f; color: #fcd34d }
 
         .investor-activity {
           font-size: 11px;
           font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 8px;
+          padding: 2px 7px;
+          border-radius: 6px;
           white-space: nowrap;
         }
-        .investor-activity.new { background: #eef2ff; color: #4f46e5 }
-        .investor-activity.increased { background: #f0fdf4; color: #16a34a }
-        .investor-activity.reduced { background: #fff7ed; color: #ea580c }
+        .investor-activity.new { background: var(--accent-light, #dbeafe); color: var(--accent) }
+        .investor-activity.increased { background: #ecfdf5; color: #059669 }
+        .investor-activity.reduced { background: #fffbeb; color: #d97706 }
         .investor-activity.sold { background: #fef2f2; color: #dc2626 }
         .investor-activity.held { background: var(--highlight-row); color: var(--muted) }
-        .dark .investor-activity.new { background: #312e81; color: #a5b4fc }
-        .dark .investor-activity.increased { background: #14532d; color: #86efac }
-        .dark .investor-activity.reduced { background: #7c2d12; color: #fed7aa }
+        .dark .investor-activity.new { background: #1e3a5f; color: #93c5fd }
+        .dark .investor-activity.increased { background: #064e3b; color: #6ee7b7 }
+        .dark .investor-activity.reduced { background: #78350f; color: #fcd34d }
         .dark .investor-activity.sold { background: #7f1d1d; color: #fca5a5 }
 
         .investor-filter {
           background: none;
-          border: 2px solid var(--border);
+          border: 1px solid var(--border);
           padding: 5px 12px;
-          border-radius: 20px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           font-family: 'Inter', sans-serif;
@@ -902,29 +927,31 @@ export default function FoucauldFinance() {
           transition: all .18s;
           white-space: nowrap;
         }
-        .investor-filter:hover { border-color: #4f46e5; color: #4f46e5 }
+        .investor-filter:hover { border-color: var(--accent); color: var(--accent) }
         .investor-filter.active {
-          background: #4f46e5;
-          border-color: #4f46e5;
+          background: var(--accent);
+          border-color: var(--accent);
           color: white;
         }
 
         .investor-moves-banner {
           background: var(--card);
-          border-radius: 16px;
+          border-radius: 14px;
           padding: 16px 18px;
-          margin-bottom: 18px;
-          box-shadow: 0 2px 12px var(--shadow);
+          margin-bottom: 16px;
+          border: 1px solid var(--border);
+          box-shadow: 0 1px 3px var(--shadow);
         }
+        .dark .investor-moves-banner { border-color: transparent }
         .investor-moves-title {
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 800;
           color: var(--text);
           margin-bottom: 12px;
         }
         .investor-moves-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
           gap: 8px;
         }
         .investor-move-chip {
@@ -933,7 +960,7 @@ export default function FoucauldFinance() {
           gap: 3px;
           padding: 10px 12px;
           border: 1px solid var(--border);
-          border-radius: 12px;
+          border-radius: 10px;
           background: var(--highlight-row);
           cursor: pointer;
           font-family: 'Inter', sans-serif;
@@ -942,22 +969,22 @@ export default function FoucauldFinance() {
           color: var(--text);
         }
         .investor-move-chip:hover {
-          border-color: #4f46e5;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 14px var(--shadow);
+          border-color: var(--accent);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px var(--shadow);
         }
         .move-tag {
           font-size: 11px;
           font-weight: 700;
           padding: 2px 6px;
-          border-radius: 6px;
+          border-radius: 5px;
           display: inline-block;
           width: fit-content;
         }
-        .move-tag.new { background: #eef2ff; color: #4f46e5 }
-        .move-tag.increased { background: #f0fdf4; color: #16a34a }
-        .dark .move-tag.new { background: #312e81; color: #a5b4fc }
-        .dark .move-tag.increased { background: #14532d; color: #86efac }
+        .move-tag.new { background: var(--accent-light, #dbeafe); color: var(--accent) }
+        .move-tag.increased { background: #ecfdf5; color: #059669 }
+        .dark .move-tag.new { background: #1e3a5f; color: #93c5fd }
+        .dark .move-tag.increased { background: #064e3b; color: #6ee7b7 }
 
         @media (max-width: 640px) {
           .investor-header { flex-direction: column; align-items: flex-start }
@@ -966,9 +993,9 @@ export default function FoucauldFinance() {
         }
 
         .spinner {
-          width: 42px; height: 42px;
-          border: 4px solid var(--border);
-          border-top-color: #4f46e5;
+          width: 36px; height: 36px;
+          border: 3px solid var(--border);
+          border-top-color: var(--accent);
           border-radius: 50%;
           animation: spin .7s linear infinite;
           margin: 0 auto 14px;
@@ -978,9 +1005,9 @@ export default function FoucauldFinance() {
         .footer {
           text-align: center;
           color: var(--muted);
-          font-size: 12px;
-          padding-top: 8px;
-          line-height: 2;
+          font-size: 11px;
+          padding: 20px 0 4px;
+          line-height: 1.8;
         }
 
         @media (max-width: 640px) {
