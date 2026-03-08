@@ -329,8 +329,7 @@ export function BilanTab({ data, symbol }) {
 
   return (
     <div>
-      {!hasKey && <FmpKeyPrompt onKeySet={() => setHasKey(true)} />}
-      {bsChart.length > 0 && (
+            {bsChart.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <div className="chart-label">EN MILLIARDS ({pr?.currency})</div>
           <ResponsiveContainer width="100%" height={200}>
@@ -523,8 +522,7 @@ export function ResultatsTab({ data, symbol }) {
 
   return (
     <div>
-      {!hasKey && <FmpKeyPrompt onKeySet={() => setHasKey(true)} />}
-      {isChart.length > 0 && (
+            {isChart.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <div className="chart-label">EN MILLIARDS ({data?.price?.currency})</div>
           <ResponsiveContainer width="100%" height={200}>
@@ -726,8 +724,7 @@ export function TresorerieTab({ data, symbol }) {
 
   return (
     <div>
-      {!hasKey && <FmpKeyPrompt onKeySet={() => setHasKey(true)} />}
-      {cfChart.length > 0 && (
+            {cfChart.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <div className="chart-label">EN MILLIARDS ({data?.price?.currency})</div>
           <ResponsiveContainer width="100%" height={200}>

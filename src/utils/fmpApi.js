@@ -5,11 +5,12 @@
 
 const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 
-// Clé stockée en localStorage pour persistance
+// Clé par défaut intégrée — peut être remplacée via localStorage
+const DEFAULT_KEY = "HeV5JAyBATbX07V8hRmxeYjSWIxaZgWl";
 const STORAGE_KEY = "fmp_api_key";
 
 export function getFmpApiKey() {
-  return localStorage.getItem(STORAGE_KEY) || "";
+  return localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
 }
 
 export function setFmpApiKey(key) {
@@ -33,27 +34,27 @@ async function fmpFetch(endpoint) {
 }
 
 // ── Compte de résultat (Income Statement) ──
-export async function fetchIncomeStatement(symbol, limit = 5) {
+export async function fetchIncomeStatement(symbol, limit = 20) {
   return fmpFetch(`/income-statement/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Bilan (Balance Sheet) ──
-export async function fetchBalanceSheet(symbol, limit = 5) {
+export async function fetchBalanceSheet(symbol, limit = 20) {
   return fmpFetch(`/balance-sheet-statement/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Flux de trésorerie (Cash Flow) ──
-export async function fetchCashFlow(symbol, limit = 5) {
+export async function fetchCashFlow(symbol, limit = 20) {
   return fmpFetch(`/cash-flow-statement/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Ratios financiers ──
-export async function fetchRatios(symbol, limit = 5) {
+export async function fetchRatios(symbol, limit = 20) {
   return fmpFetch(`/ratios/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Métriques clés ──
-export async function fetchKeyMetrics(symbol, limit = 5) {
+export async function fetchKeyMetrics(symbol, limit = 20) {
   return fmpFetch(`/key-metrics/${symbol}?period=annual&limit=${limit}`);
 }
 
@@ -65,11 +66,11 @@ export async function fetchProfile(symbol) {
 // ── Fetch toutes les données financières d'un coup ──
 export async function fetchAllFinancials(symbol) {
   const [income, balance, cashflow, ratios, keyMetrics] = await Promise.all([
-    fetchIncomeStatement(symbol, 5).catch(() => []),
-    fetchBalanceSheet(symbol, 5).catch(() => []),
-    fetchCashFlow(symbol, 5).catch(() => []),
-    fetchRatios(symbol, 5).catch(() => []),
-    fetchKeyMetrics(symbol, 5).catch(() => []),
+    fetchIncomeStatement(symbol, 20).catch(() => []),
+    fetchBalanceSheet(symbol, 20).catch(() => []),
+    fetchCashFlow(symbol, 20).catch(() => []),
+    fetchRatios(symbol, 20).catch(() => []),
+    fetchKeyMetrics(symbol, 20).catch(() => []),
   ]);
   return { income, balance, cashflow, ratios, keyMetrics };
 }
