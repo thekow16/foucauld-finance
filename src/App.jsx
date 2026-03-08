@@ -1044,7 +1044,7 @@ export default function FoucauldFinance() {
           <div className="card" style={{ textAlign: "center", padding: "52px 24px" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>!</div>
             <p style={{ color: "#ef4444", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{error}</p>
-            <p style={{ color: "var(--muted)", fontSize: 13 }}>Exemples : AAPL · MC.PA · TSLA · BNP.PA · 7203.T · NESN.SW</p>
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>Vérifiez le symbole et réessayez.</p>
           </div>
         )}
 
