@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createChart, ColorType, LineStyle, CandlestickSeries, LineSeries } from "lightweight-charts";
 import { fetchCandleData } from "../utils/api";
 import { computeSMA, computeBollingerBands } from "../utils/indicators";
@@ -11,6 +11,7 @@ const TIMEFRAMES = [
 export default function CandlestickChart({ symbol, dark, currency }) {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
+  const candleSeriesRef = useRef(null);
   const [candleData, setCandleData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[0]);
@@ -18,11 +19,20 @@ export default function CandlestickChart({ symbol, dark, currency }) {
   const [showMA200, setShowMA200] = useState(true);
   const [showBollinger, setShowBollinger] = useState(true);
 
+  // Measure tool state
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measureStart, setMeasureStart] = useState(null); // { time, price }
+  const [measureEnd, setMeasureEnd] = useState(null);
+  const [measureHover, setMeasureHover] = useState(null); // live preview while hovering
+
   // Fetch data when symbol or timeframe changes
   useEffect(() => {
     if (!symbol) return;
     let cancelled = false;
     setLoading(true);
+    setMeasureStart(null);
+    setMeasureEnd(null);
+    setMeasureHover(null);
     fetchCandleData(symbol, timeframe.interval, timeframe.range)
       .then(d => { if (!cancelled) setCandleData(d); })
       .catch(() => { if (!cancelled) setCandleData([]); })
@@ -34,6 +44,41 @@ export default function CandlestickChart({ symbol, dark, currency }) {
   const ma50Data = useMemo(() => showMA50 ? computeSMA(candleData, 50) : [], [candleData, showMA50]);
   const ma200Data = useMemo(() => showMA200 ? computeSMA(candleData, 200) : [], [candleData, showMA200]);
   const bollinger = useMemo(() => showBollinger ? computeBollingerBands(candleData) : { upper: [], middle: [], lower: [] }, [candleData, showBollinger]);
+
+  // Handle chart click for measure tool
+  const handleChartClick = useCallback((param) => {
+    if (!measureMode || !param.point || !param.time) return;
+    const chart = chartRef.current;
+    const series = candleSeriesRef.current;
+    if (!chart || !series) return;
+
+    const price = series.coordinateToPrice(param.point.y);
+    if (price == null) return;
+
+    const point = { time: param.time, price, x: param.point.x, y: param.point.y };
+
+    if (!measureStart || measureEnd) {
+      // First click or reset
+      setMeasureStart(point);
+      setMeasureEnd(null);
+      setMeasureHover(null);
+    } else {
+      // Second click
+      setMeasureEnd(point);
+      setMeasureHover(null);
+    }
+  }, [measureMode, measureStart, measureEnd]);
+
+  // Handle crosshair move for live preview
+  const handleCrosshairMove = useCallback((param) => {
+    if (!measureMode || !measureStart || measureEnd) return;
+    if (!param.point || !param.time) { setMeasureHover(null); return; }
+    const series = candleSeriesRef.current;
+    if (!series) return;
+    const price = series.coordinateToPrice(param.point.y);
+    if (price == null) return;
+    setMeasureHover({ time: param.time, price, x: param.point.x, y: param.point.y });
+  }, [measureMode, measureStart, measureEnd]);
 
   // Create/recreate chart
   useEffect(() => {
@@ -51,6 +96,9 @@ export default function CandlestickChart({ symbol, dark, currency }) {
         vertLines: { color: dark ? "#334155" : "#e8ecff" },
         horzLines: { color: dark ? "#334155" : "#e8ecff" },
       },
+      crosshair: {
+        mode: 0, // Normal mode
+      },
       timeScale: { borderColor: dark ? "#334155" : "#e8ecff" },
       rightPriceScale: { borderColor: dark ? "#334155" : "#e8ecff" },
     });
@@ -66,6 +114,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
       wickUpColor: "#10b981",
     });
     candleSeries.setData(candleData);
+    candleSeriesRef.current = candleSeries;
 
     // MA50
     if (ma50Data.length > 0) {
@@ -91,6 +140,10 @@ export default function CandlestickChart({ symbol, dark, currency }) {
 
     chart.timeScale().fitContent();
 
+    // Subscribe to events for measure tool
+    chart.subscribeClick(handleChartClick);
+    chart.subscribeCrosshairMove(handleCrosshairMove);
+
     // Resize handling
     const ro = new ResizeObserver(() => {
       if (chartContainerRef.current) {
@@ -100,10 +153,22 @@ export default function CandlestickChart({ symbol, dark, currency }) {
     ro.observe(chartContainerRef.current);
 
     return () => {
+      chart.unsubscribeClick(handleChartClick);
+      chart.unsubscribeCrosshairMove(handleCrosshairMove);
       ro.disconnect();
       chart.remove();
     };
-  }, [candleData, dark, ma50Data, ma200Data, bollinger]);
+  }, [candleData, dark, ma50Data, ma200Data, bollinger, handleChartClick, handleCrosshairMove]);
+
+  // Compute measure display
+  const measureInfo = useMemo(() => {
+    const endPoint = measureEnd || measureHover;
+    if (!measureStart || !endPoint) return null;
+    const diff = endPoint.price - measureStart.price;
+    const pct = (diff / measureStart.price) * 100;
+    const isUp = diff >= 0;
+    return { diff, pct, isUp, startPrice: measureStart.price, endPrice: endPoint.price };
+  }, [measureStart, measureEnd, measureHover]);
 
   if (!symbol) return null;
 
@@ -112,11 +177,33 @@ export default function CandlestickChart({ symbol, dark, currency }) {
     color: "var(--text-secondary)", fontWeight: 600, userSelect: "none",
   };
 
+  const clearMeasure = () => {
+    setMeasureStart(null);
+    setMeasureEnd(null);
+    setMeasureHover(null);
+  };
+
+  const toggleMeasure = () => {
+    if (measureMode) {
+      setMeasureMode(false);
+      clearMeasure();
+    } else {
+      setMeasureMode(true);
+    }
+  };
+
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
         <span className="section-title">Chandeliers Japonais</span>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <button
+            className={`measure-btn${measureMode ? " active" : ""}`}
+            onClick={toggleMeasure}
+            title="Outil de mesure"
+          >
+            📏 Mesurer
+          </button>
           {TIMEFRAMES.map(tf => (
             <button
               key={tf.id}
@@ -147,12 +234,40 @@ export default function CandlestickChart({ symbol, dark, currency }) {
         </label>
       </div>
 
+      {measureMode && (
+        <div className="measure-banner">
+          {!measureStart
+            ? "Cliquez sur le graphique pour placer le point de départ"
+            : !measureEnd
+              ? "Cliquez pour placer le point d'arrivée"
+              : "Mesure terminée — cliquez sur Mesurer pour recommencer"
+          }
+        </div>
+      )}
+
+      {measureInfo && (
+        <div className={`measure-result ${measureInfo.isUp ? "up" : "down"}`}>
+          <span className="measure-label">
+            {measureInfo.startPrice.toFixed(2)} → {measureInfo.endPrice.toFixed(2)} {currency}
+          </span>
+          <span className="measure-diff">
+            {measureInfo.isUp ? "▲" : "▼"} {Math.abs(measureInfo.diff).toFixed(2)} {currency}
+          </span>
+          <span className="measure-pct">
+            ({measureInfo.isUp ? "+" : ""}{measureInfo.pct.toFixed(2)} %)
+          </span>
+          {measureEnd && (
+            <button className="measure-clear" onClick={clearMeasure} title="Effacer">×</button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div style={{ height: 420, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div className="spinner" />
         </div>
       ) : candleData.length > 0 ? (
-        <div ref={chartContainerRef} />
+        <div ref={chartContainerRef} style={{ cursor: measureMode ? "crosshair" : "default" }} />
       ) : (
         <div style={{ height: 420, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 14 }}>
           Données chandeliers indisponibles

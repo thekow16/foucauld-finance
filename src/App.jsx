@@ -609,6 +609,61 @@ export default function FoucauldFinance() {
         .period-btn.active { background: #4f46e5; color: white }
         .dark .period-btn:hover { background: #312e81; color: #a5b4fc }
 
+        .measure-btn {
+          background: none;
+          border: 2px solid var(--border);
+          cursor: pointer;
+          padding: 6px 14px;
+          border-radius: 50px;
+          font-size: 13px;
+          font-weight: 700;
+          font-family: 'Outfit', sans-serif;
+          color: var(--text-secondary);
+          transition: all .2s;
+          margin-right: 8px;
+        }
+        .measure-btn:hover { border-color: #4f46e5; color: #4f46e5 }
+        .measure-btn.active {
+          background: #4f46e5;
+          border-color: #4f46e5;
+          color: white;
+        }
+        .measure-banner {
+          background: #eef2ff;
+          color: #4338ca;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 8px 16px;
+          border-radius: 10px;
+          margin-bottom: 12px;
+          text-align: center;
+        }
+        .dark .measure-banner { background: #312e81; color: #c7d2fe }
+        .measure-result {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 18px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 15px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+        .measure-result.up { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0 }
+        .measure-result.down { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca }
+        .dark .measure-result.up { background: #14532d; color: #86efac; border-color: #166534 }
+        .dark .measure-result.down { background: #7f1d1d; color: #fca5a5; border-color: #991b1b }
+        .measure-label { font-weight: 600; font-size: 14px }
+        .measure-diff { font-weight: 900; font-size: 18px }
+        .measure-pct { font-weight: 800; font-size: 16px }
+        .measure-clear {
+          background: none; border: none; cursor: pointer;
+          font-size: 20px; font-weight: 700; color: inherit;
+          opacity: .6; margin-left: auto; padding: 2px 8px; border-radius: 8px;
+        }
+        .measure-clear:hover { opacity: 1; background: rgba(0,0,0,.1) }
+
         .tab-bar {
           border-bottom: 2px solid var(--border);
           display: flex;
