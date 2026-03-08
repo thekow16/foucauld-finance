@@ -853,12 +853,13 @@ export default function FoucauldFinance() {
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 24, flexWrap: "wrap" }}>
               {[
-                { title: "30+ ratios", desc: "P/E, ROE, marges..." },
-                { title: "Graphiques", desc: "Cours & etats financiers" },
-                { title: "Comparer", desc: "2 actions cote a cote" },
-                { title: "Favoris", desc: "Sauvegardez vos actions" },
+                { icon: "📊", title: "30+ ratios", desc: "P/E, ROE, marges..." },
+                { icon: "📈", title: "Graphiques", desc: "Cours & états financiers" },
+                { icon: "⚖️", title: "Comparer", desc: "2 actions côte à côte" },
+                { icon: "★", title: "Favoris", desc: "Sauvegardez vos actions" },
               ].map(f => (
                 <div key={f.title} style={{ textAlign: "center", minWidth: 100 }}>
+                  <div style={{ fontSize: 28, marginBottom: 6 }}>{f.icon}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{f.title}</div>
                   <div style={{ fontSize: 11, color: "var(--muted)" }}>{f.desc}</div>
                 </div>

@@ -48,7 +48,7 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, position: "relative", zIndex: 1 }}>
           <div className="logo">
-            <div className="logo-icon">F</div>
+            <div className="logo-icon">📈</div>
             <span className="logo-text">Foucauld Finance</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -56,7 +56,7 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
               ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
             </button>
             <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
-              {dark ? "Clair" : "Sombre"}
+              {dark ? "☀️" : "🌙"}
             </button>
           </div>
         </div>
