@@ -24,7 +24,7 @@ export default function ScoreCard({ data }) {
         <circle cx="45" cy="45" r="32" fill="none" stroke={color} strokeWidth="9"
           strokeDasharray={`${(score / 100) * circ} ${circ}`} strokeLinecap="round"
           transform="rotate(-90 45 45)" style={{ transition: "stroke-dasharray .8s ease" }} />
-        <text x="45" y="50" textAnchor="middle" fontSize="20" fontWeight="800" fill="var(--text)" fontFamily="Outfit,sans-serif">{score}</text>
+        <text x="45" y="50" textAnchor="middle" fontSize="20" fontWeight="800" fill="var(--text)" fontFamily="Inter,sans-serif">{score}</text>
       </svg>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 19, fontWeight: 800, color }}>{label}</div>

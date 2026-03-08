@@ -1,20 +1,8 @@
-import { useState, useEffect } from "react";
 import { fmt } from "../utils/format";
-import { translateToFrench } from "../utils/api";
 
 export default function StockHeader({ data, symbol, isInWatchlist, onToggleWatchlist }) {
   const pr = data?.price;
   const prof = data?.assetProfile;
-  const [frenchSummary, setFrenchSummary] = useState("");
-
-  useEffect(() => {
-    setFrenchSummary("");
-    if (prof?.longBusinessSummary) {
-      translateToFrench(prof.longBusinessSummary.substring(0, 500))
-        .then(setFrenchSummary)
-        .catch(() => setFrenchSummary(prof.longBusinessSummary.substring(0, 200)));
-    }
-  }, [prof?.longBusinessSummary]);
   const curPrice = pr?.regularMarketPrice?.raw;
   const chg = pr?.regularMarketChange?.raw;
   const chgPct = pr?.regularMarketChangePercent?.raw;
@@ -34,13 +22,7 @@ export default function StockHeader({ data, symbol, isInWatchlist, onToggleWatch
               {inWl ? "★" : "☆"}
             </button>
           </div>
-          {prof?.longBusinessSummary && (
-            <p className="stock-summary">
-              {frenchSummary ? frenchSummary : prof.longBusinessSummary.substring(0, 200)}
-              {frenchSummary ? "" : "…"}
-            </p>
-          )}
-          {prof?.country && <p className="stock-meta">{prof.country} · {prof.industry}</p>}
+{prof?.country && <p className="stock-meta">{prof.country} · {prof.industry}</p>}
           {prof?.website && <a href={prof.website} target="_blank" rel="noopener noreferrer" className="stock-link">{prof.website}</a>}
         </div>
         <div style={{ textAlign: "right" }}>

@@ -79,7 +79,7 @@ export default function FoucauldFinance() {
   return (
     <div className={`app ${dark ? "dark" : "light"}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
 
         :root {
@@ -106,7 +106,7 @@ export default function FoucauldFinance() {
         }
 
         .app {
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           background: var(--bg);
           color: var(--text);
           min-height: 100vh;
@@ -189,7 +189,7 @@ export default function FoucauldFinance() {
           background: rgba(255,255,255,.12);
           backdrop-filter: blur(10px);
           color: white;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 15px;
           font-weight: 500;
           outline: none;
@@ -206,7 +206,7 @@ export default function FoucauldFinance() {
           color: #4f46e5;
           border: none;
           border-radius: 50px;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-weight: 800;
           font-size: 14px;
           cursor: pointer;
@@ -240,7 +240,7 @@ export default function FoucauldFinance() {
           border: none;
           background: none;
           cursor: pointer;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 14px;
           color: var(--text);
           transition: background .15s;
@@ -284,7 +284,7 @@ export default function FoucauldFinance() {
           border-radius: 20px;
           font-size: 13px;
           font-weight: 600;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           cursor: pointer;
           transition: background .2s;
         }
@@ -439,7 +439,7 @@ export default function FoucauldFinance() {
           border: none;
           background: none;
           cursor: pointer;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           color: var(--text);
         }
         .wl-symbol { font-weight: 800; color: #4f46e5; font-size: 13px }
@@ -483,7 +483,7 @@ export default function FoucauldFinance() {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
         }
 
         .wl-grid {
@@ -507,7 +507,7 @@ export default function FoucauldFinance() {
           border: none;
           background: none;
           cursor: pointer;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           text-align: left;
           color: var(--text);
         }
@@ -599,7 +599,7 @@ export default function FoucauldFinance() {
           cursor: pointer;
           padding: 7px 13px;
           border-radius: 20px;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 13px;
           font-weight: 700;
           color: var(--muted);
@@ -617,7 +617,7 @@ export default function FoucauldFinance() {
           border-radius: 50px;
           font-size: 13px;
           font-weight: 700;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           color: var(--text-secondary);
           transition: all .2s;
           margin-right: 8px;
@@ -675,7 +675,7 @@ export default function FoucauldFinance() {
           border-bottom: 3px solid transparent;
           cursor: pointer;
           padding: 14px 20px;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 14px;
           font-weight: 600;
           color: var(--muted);
@@ -747,7 +747,7 @@ export default function FoucauldFinance() {
           border: 2px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 14px;
           font-weight: 500;
           outline: none;
@@ -760,7 +760,7 @@ export default function FoucauldFinance() {
           color: white;
           border: none;
           border-radius: 50px;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-weight: 700;
           font-size: 13px;
           cursor: pointer;
@@ -853,13 +853,12 @@ export default function FoucauldFinance() {
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 24, flexWrap: "wrap" }}>
               {[
-                { icon: "📊", title: "30+ ratios", desc: "P/E, ROE, marges..." },
-                { icon: "📈", title: "Graphiques", desc: "Cours & états financiers" },
-                { icon: "⚖️", title: "Comparer", desc: "2 actions côte à côte" },
-                { icon: "★", title: "Favoris", desc: "Sauvegardez vos actions" },
+                { title: "30+ ratios", desc: "P/E, ROE, marges..." },
+                { title: "Graphiques", desc: "Cours & etats financiers" },
+                { title: "Comparer", desc: "2 actions cote a cote" },
+                { title: "Favoris", desc: "Sauvegardez vos actions" },
               ].map(f => (
                 <div key={f.title} style={{ textAlign: "center", minWidth: 100 }}>
-                  <div style={{ fontSize: 28, marginBottom: 6 }}>{f.icon}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{f.title}</div>
                   <div style={{ fontSize: 11, color: "var(--muted)" }}>{f.desc}</div>
                 </div>
