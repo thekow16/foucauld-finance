@@ -75,7 +75,7 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack }) 
   if (watchlist.length === 0) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
-        <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3, fontWeight: 700 }}>Watchlist</div>
+        <div style={{ fontSize: 56, marginBottom: 16, opacity: 0.3 }}>★</div>
         <h2 style={{ color: "var(--text)", fontSize: 20, fontWeight: 800, marginBottom: 10 }}>
           Votre Watchlist est vide
         </h2>
@@ -94,7 +94,7 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack }) 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5 }}>
-            Ma Watchlist
+            ★ Ma Watchlist
           </h2>
           <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>
             {watchlist.length} action{watchlist.length > 1 ? "s" : ""} suivie{watchlist.length > 1 ? "s" : ""}

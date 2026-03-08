@@ -202,7 +202,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
             onClick={toggleMeasure}
             title="Outil de mesure"
           >
-            Mesurer
+            📏 Mesurer
           </button>
           {TIMEFRAMES.map(tf => (
             <button
