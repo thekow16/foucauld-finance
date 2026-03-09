@@ -1,4 +1,4 @@
-import { useState, Component } from "react";
+import { useState, useEffect, Component } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
@@ -10,9 +10,11 @@ import CompareMode from "./components/CompareMode";
 import InvestorsTab from "./components/InvestorsTab";
 import Watchlist from "./components/Watchlist";
 import WatchlistTab from "./components/WatchlistTab";
+import AuthModal from "./components/AuthModal";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { fetchStockData } from "./utils/api";
+import { getCurrentUser, logoutUser } from "./utils/auth";
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -48,6 +50,13 @@ export default function FoucauldFinance() {
   const [activeTab, setActiveTab] = useState("ratios");
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [user, setUser] = useState(() => getCurrentUser());
+
+  const handleLogout = () => {
+    logoutUser();
+    setUser(null);
+  };
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
@@ -504,6 +513,164 @@ export default function FoucauldFinance() {
           justify-content: center;
           font-family: 'Inter', sans-serif;
         }
+
+        /* Auth header */
+        .auth-header-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-left: 4px;
+        }
+        .auth-header-name {
+          font-size: 13px;
+          font-weight: 700;
+          color: white;
+          font-family: 'Inter', sans-serif;
+        }
+        .auth-header-btn {
+          background: rgba(79, 70, 229, .85);
+          border: 1px solid rgba(255,255,255,.15);
+          border-radius: 10px;
+          padding: 7px 16px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          color: white;
+          font-family: 'Inter', sans-serif;
+          transition: background .2s;
+          white-space: nowrap;
+        }
+        .auth-header-btn:hover { background: rgba(79, 70, 229, 1) }
+        .auth-logout-btn {
+          background: rgba(239, 68, 68, .2);
+          border-color: rgba(239, 68, 68, .3);
+          color: #fca5a5;
+          font-size: 12px;
+          padding: 5px 12px;
+        }
+        .auth-logout-btn:hover { background: rgba(239, 68, 68, .4) }
+
+        /* Auth modal */
+        .auth-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,.6);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+        }
+        .auth-modal {
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 36px 32px 28px;
+          width: 100%;
+          max-width: 400px;
+          position: relative;
+          box-shadow: 0 25px 60px rgba(0,0,0,.4);
+        }
+        .auth-close {
+          position: absolute;
+          top: 14px; right: 16px;
+          background: none;
+          border: none;
+          font-size: 18px;
+          cursor: pointer;
+          color: var(--muted);
+          line-height: 1;
+        }
+        .auth-close:hover { color: var(--text) }
+        .auth-tabs {
+          display: flex;
+          gap: 0;
+          margin-bottom: 24px;
+          border-bottom: 2px solid var(--border);
+        }
+        .auth-tab {
+          flex: 1;
+          background: none;
+          border: none;
+          padding: 10px 0;
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--muted);
+          cursor: pointer;
+          font-family: 'Inter', sans-serif;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -2px;
+          transition: color .2s, border-color .2s;
+        }
+        .auth-tab.active {
+          color: var(--accent);
+          border-bottom-color: var(--accent);
+        }
+        .auth-form { display: flex; flex-direction: column; gap: 16px }
+        .auth-field label {
+          display: block;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--muted);
+          margin-bottom: 6px;
+          font-family: 'Inter', sans-serif;
+        }
+        .auth-field input {
+          width: 100%;
+          padding: 10px 14px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--highlight-row);
+          color: var(--text);
+          font-size: 14px;
+          font-family: 'Inter', sans-serif;
+          outline: none;
+          transition: border-color .2s;
+          box-sizing: border-box;
+        }
+        .auth-field input:focus { border-color: var(--accent) }
+        .auth-error {
+          background: rgba(239, 68, 68, .1);
+          border: 1px solid rgba(239, 68, 68, .3);
+          color: #ef4444;
+          padding: 10px 14px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+        }
+        .auth-submit {
+          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          padding: 12px;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+          font-family: 'Inter', sans-serif;
+          transition: opacity .2s;
+          margin-top: 4px;
+        }
+        .auth-submit:hover { opacity: .9 }
+        .auth-submit:disabled { opacity: .5; cursor: not-allowed }
+        .auth-switch {
+          text-align: center;
+          margin-top: 18px;
+          font-size: 13px;
+          color: var(--muted);
+          font-family: 'Inter', sans-serif;
+        }
+        .auth-switch button {
+          background: none;
+          border: none;
+          color: var(--accent);
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 13px;
+          font-family: 'Inter', sans-serif;
+        }
+        .auth-switch button:hover { text-decoration: underline }
 
         .wl-grid {
           display: grid;
@@ -1020,7 +1187,9 @@ export default function FoucauldFinance() {
         }
       `}</style>
 
-      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} />
+      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} />
+
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
 
       <div className="main">
         {showInvestors ? (
