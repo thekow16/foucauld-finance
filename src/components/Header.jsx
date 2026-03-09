@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors }) {
+export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
@@ -60,6 +60,18 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
             <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
               {dark ? "☀️" : "🌙"}
             </button>
+            {user ? (
+              <div className="auth-header-group">
+                <span className="auth-header-name">{user.displayName}</span>
+                <button onClick={onLogout} className="auth-header-btn auth-logout-btn" title="Déconnexion">
+                  Déconnexion
+                </button>
+              </div>
+            ) : (
+              <button onClick={onShowAuth} className="auth-header-btn" title="Se connecter">
+                Connexion
+              </button>
+            )}
           </div>
         </div>
         <div ref={wrapRef} style={{ position: "relative", zIndex: 10 }}>
