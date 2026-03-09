@@ -11,6 +11,7 @@ import InvestorsTab from "./components/InvestorsTab";
 import Watchlist from "./components/Watchlist";
 import WatchlistTab from "./components/WatchlistTab";
 import AuthModal from "./components/AuthModal";
+import { MentionsLegales, PolitiqueConfidentialite, CGU, CGV } from "./components/LegalPages";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
 import { useDarkMode } from "./hooks/useDarkMode";
@@ -53,6 +54,7 @@ export default function FoucauldFinance() {
   const [showInvestors, setShowInvestors] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
+  const [legalPage, setLegalPage] = useState(null); // "mentions" | "confidentialite" | "cgu" | "cgv"
 
   const handleLogout = () => {
     logoutUser();
@@ -1352,6 +1354,94 @@ export default function FoucauldFinance() {
           to { opacity: 1; transform: translateX(0) }
         }
 
+        /* ── Legal pages ── */
+        .legal-page {
+          max-width: 720px;
+          margin: 0 auto;
+          padding: 8px 0 40px;
+        }
+        .legal-page h1 {
+          font-size: 24px;
+          font-weight: 900;
+          color: var(--text);
+          letter-spacing: -.5px;
+          margin-bottom: 24px;
+        }
+        .legal-page h2 {
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--text);
+          margin-bottom: 10px;
+          margin-top: 0;
+        }
+        .legal-page section {
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 20px 24px;
+          margin-bottom: 12px;
+        }
+        .dark .legal-page section { border-color: transparent }
+        .legal-page p {
+          font-size: 14px;
+          color: var(--text-secondary);
+          line-height: 1.7;
+          margin-bottom: 8px;
+        }
+        .legal-page p:last-child { margin-bottom: 0 }
+        .legal-page ul {
+          padding-left: 20px;
+          margin: 8px 0;
+        }
+        .legal-page li {
+          font-size: 14px;
+          color: var(--text-secondary);
+          line-height: 1.7;
+          margin-bottom: 4px;
+        }
+        .legal-updated {
+          font-size: 12px !important;
+          color: var(--muted) !important;
+          font-style: italic;
+          margin-bottom: 20px !important;
+        }
+        .legal-back {
+          background: none;
+          border: none;
+          color: var(--accent);
+          cursor: pointer;
+          font-weight: 700;
+          font-size: 14px;
+          margin-bottom: 16px;
+          font-family: 'Inter', sans-serif;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 0;
+        }
+        .legal-back:hover { text-decoration: underline }
+
+        /* Footer links */
+        .footer-links {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 8px 20px;
+          margin-top: 8px;
+        }
+        .footer-link {
+          background: none;
+          border: none;
+          color: var(--muted);
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: 'Inter', sans-serif;
+          padding: 0;
+          transition: color .2s;
+        }
+        .footer-link:hover { color: var(--accent); text-decoration: underline }
+
         @media (max-width: 640px) {
           .grid8 { grid-template-columns: repeat(2, 1fr) }
           .search-wrap { flex-direction: column }
@@ -1359,6 +1449,7 @@ export default function FoucauldFinance() {
           .stock-price { font-size: 28px }
           .main { padding: 0 10px 40px }
           .toast-container { left: 10px; right: 10px; max-width: none }
+          .legal-page section { padding: 16px 18px }
         }
       `}</style>
 
@@ -1367,7 +1458,15 @@ export default function FoucauldFinance() {
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
 
       <div className="main">
-        {showInvestors ? (
+        {legalPage === "mentions" ? (
+          <MentionsLegales onBack={() => setLegalPage(null)} />
+        ) : legalPage === "confidentialite" ? (
+          <PolitiqueConfidentialite onBack={() => setLegalPage(null)} />
+        ) : legalPage === "cgu" ? (
+          <CGU onBack={() => setLegalPage(null)} />
+        ) : legalPage === "cgv" ? (
+          <CGV onBack={() => setLegalPage(null)} />
+        ) : showInvestors ? (
           <div>
             <button onClick={() => setShowInvestors(false)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 14, marginBottom: 16, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
               ← Retour
@@ -1479,10 +1578,28 @@ export default function FoucauldFinance() {
             <div className="footer">
               Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
               <strong style={{ color: "#4f46e5" }}>Foucauld Finance</strong>
+              <div className="footer-links">
+                <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
+                <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>
+                <button className="footer-link" onClick={() => setLegalPage("cgu")}>CGU</button>
+                <button className="footer-link" onClick={() => setLegalPage("cgv")}>CGV</button>
+              </div>
             </div>
           </ErrorBoundary>
         )}
         </>)}
+
+        {/* Footer global visible partout */}
+        {!legalPage && !showInvestors && !showWatchlist && (!data || loading) && (
+          <div className="footer" style={{ marginTop: 24 }}>
+            <div className="footer-links">
+              <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
+              <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>
+              <button className="footer-link" onClick={() => setLegalPage("cgu")}>CGU</button>
+              <button className="footer-link" onClick={() => setLegalPage("cgv")}>CGV</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Toast notifications pour alertes MA */}
