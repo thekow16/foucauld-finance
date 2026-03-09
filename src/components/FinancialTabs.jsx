@@ -109,7 +109,54 @@ function MetricGrid({ items }) {
   );
 }
 
-// ── Yahoo Finance table (fallback) ──
+// ── "No historical data" fallback using financialData ──
+function NoHistoricalData({ children, onKeySet }) {
+  return (
+    <div>
+      {children}
+      <div style={{ marginTop: 20, padding: "20px", background: "var(--highlight-row)", borderRadius: 14, textAlign: "center" }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>📋 Données historiques indisponibles</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, lineHeight: 1.6 }}>
+          Les données annuelles détaillées ne sont pas disponibles via Yahoo Finance pour cette action.<br />
+          Active une clé API <strong>Financial Modeling Prep</strong> (gratuite) pour accéder à 20 ans de données.
+        </div>
+        <FmpKeyPrompt onKeySet={onKeySet} />
+      </div>
+    </div>
+  );
+}
+
+// ── Single-value table from financialData ──
+function CurrentDataTable({ items }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table className="ff-table">
+        <thead>
+          <tr>
+            <th>Poste</th>
+            <th>Valeur actuelle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.filter(([, v]) => v != null && v !== 0).map(([label, val, hl, formatter]) => (
+            <tr key={label}>
+              <td style={{ fontWeight: hl ? 700 : 600, color: hl ? "var(--text)" : "var(--text-secondary)", background: hl ? "var(--highlight-row)" : "transparent" }}>
+                {label}
+              </td>
+              <td style={{
+                color: val < 0 ? "#dc2626" : "var(--text)",
+                background: hl ? "var(--highlight-row)" : "transparent",
+                fontWeight: hl ? 800 : 600
+              }}>
+                {formatter ? formatter(val) : fmpFmt(val)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 function YahooTable({ headers, rows, data }) {
   return (
     <div style={{ overflowX: "auto" }}>
@@ -391,6 +438,55 @@ export function BilanTab({ data, symbol }) {
   // Fallback Yahoo Finance
   const bsArr = data?.balanceSheetHistory?.balanceSheetStatements || [];
   const fin = data?.financialData;
+  const stats = data?.defaultKeyStatistics;
+  const summary = data?.summaryDetail;
+
+  // When no historical data, show current snapshot + FMP key prompt
+  if (bsArr.length === 0) {
+    const currentItems = [
+      ["📊 Capitalisation", summary?.marketCap?.raw, true],
+      ["Valeur d'entreprise", stats?.enterpriseValue?.raw, true],
+      ["Ratio de liquidité", fin?.currentRatio?.raw, false, ratioFmt],
+      ["Ratio rapide", fin?.quickRatio?.raw, false, ratioFmt],
+      ["Dette / Capitaux propres", fin?.debtToEquity?.raw, false, (v) => v != null ? `${v.toFixed(0)}%` : "—"],
+      ["Dette totale", fin?.totalDebt?.raw, false],
+      ["Trésorerie totale", fin?.totalCash?.raw, false],
+      ["Trésorerie / action", fin?.totalCashPerShare?.raw, false, ratioFmt],
+      ["Chiffre d'affaires", fin?.totalRevenue?.raw, true],
+      ["Revenue / action", fin?.revenuePerShare?.raw, false, ratioFmt],
+      ["Book value", stats?.bookValue?.raw, false, ratioFmt],
+      ["Price / Book", stats?.priceToBook?.raw, false, ratioFmt],
+      ["EV / CA", stats?.enterpriseToRevenue?.raw, false, ratioFmt],
+      ["EV / EBITDA", stats?.enterpriseToEbitda?.raw, false, ratioFmt],
+    ];
+
+    return (
+      <NoHistoricalData onKeySet={() => setHasKey(true)}>
+        {/* Ratios Yahoo */}
+        {fin && (
+          <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>📐 Données de bilan disponibles</div>
+            <MetricGrid items={[
+              { label: "Ratio de liquidité", val: fin.currentRatio?.raw, fmt: ratioFmt, color: "#4f46e5" },
+              { label: "Ratio rapide", val: fin.quickRatio?.raw, fmt: ratioFmt, color: "#7c3aed" },
+              { label: "Dette / Capitaux", val: fin.debtToEquity?.raw, fmt: (v) => v != null ? `${v.toFixed(0)}%` : "—", color: (fin.debtToEquity?.raw ?? 0) > 200 ? "#ef4444" : "#10b981" },
+              { label: "Dette totale", val: fin.totalDebt?.raw, fmt: fmpFmt, color: "#ef4444" },
+              { label: "Trésorerie totale", val: fin.totalCash?.raw, fmt: fmpFmt, color: "#10b981" },
+              { label: "Tréso / action", val: fin.totalCashPerShare?.raw, fmt: ratioFmt, color: "#0891b2" },
+              { label: "Capitalisation", val: summary?.marketCap?.raw, fmt: fmpFmt, color: "#4f46e5" },
+              { label: "Valeur d'entreprise", val: stats?.enterpriseValue?.raw, fmt: fmpFmt, color: "#7c3aed" },
+              { label: "Book value", val: stats?.bookValue?.raw, fmt: ratioFmt, color: "#10b981" },
+              { label: "Price / Book", val: stats?.priceToBook?.raw, fmt: ratioFmt, color: "#ea580c" },
+              { label: "EV / CA", val: stats?.enterpriseToRevenue?.raw, fmt: ratioFmt, color: "#0891b2" },
+              { label: "EV / EBITDA", val: stats?.enterpriseToEbitda?.raw, fmt: ratioFmt, color: "#f59e0b" },
+            ]} />
+          </div>
+        )}
+        <CurrentDataTable items={currentItems} />
+      </NoHistoricalData>
+    );
+  }
+
   const bsChart = [...bsArr].reverse().map(s => ({
     year: String(new Date((s.endDate?.raw || 0) * 1000).getFullYear()),
     Actifs: s.totalAssets?.raw ? +(s.totalAssets.raw / 1e9).toFixed(1) : 0,
@@ -671,6 +767,59 @@ export function ResultatsTab({ data, symbol }) {
   // Fallback Yahoo Finance
   const isArr = data?.incomeStatementHistory?.incomeStatementHistory || [];
   const fin2 = data?.financialData;
+  const stats2 = data?.defaultKeyStatistics;
+  const summary2 = data?.summaryDetail;
+
+  // When no historical data
+  if (isArr.length === 0) {
+    const currentItems = [
+      ["💵 Chiffre d'affaires", fin2?.totalRevenue?.raw, true],
+      ["Croissance CA", fin2?.revenueGrowth?.raw, false, pctFmt],
+      ["Marge brute", fin2?.grossMargins?.raw, false, pctFmt],
+      ["Marge opérationnelle", fin2?.operatingMargins?.raw, false, pctFmt],
+      ["Marge nette", fin2?.profitMargins?.raw, false, pctFmt],
+      ["📈 Résultat net", fin2?.profitMargins?.raw && fin2?.totalRevenue?.raw ? fin2.profitMargins.raw * fin2.totalRevenue.raw : null, true],
+      ["Croissance bénéfices", fin2?.earningsGrowth?.raw, false, pctFmt],
+      ["ROE", fin2?.returnOnEquity?.raw, false, pctFmt],
+      ["ROA", fin2?.returnOnAssets?.raw, false, pctFmt],
+      ["BPA (trailing)", summary2?.trailingPE?.raw && fin2?.currentPrice?.raw ? fin2.currentPrice.raw / summary2.trailingPE.raw : null, false, ratioFmt],
+      ["P/E Ratio", summary2?.trailingPE?.raw, false, ratioFmt],
+      ["P/E Forward", stats2?.forwardPE?.raw, false, ratioFmt],
+      ["EV / CA", stats2?.enterpriseToRevenue?.raw, false, ratioFmt],
+      ["EV / EBITDA", stats2?.enterpriseToEbitda?.raw, false, ratioFmt],
+      ["💰 Free Cash Flow", fin2?.freeCashflow?.raw, true],
+      ["Flux opérationnels", fin2?.operatingCashflow?.raw, false],
+      ["Marge FCF", fin2?.freeCashflow?.raw && fin2?.totalRevenue?.raw ? fin2.freeCashflow.raw / fin2.totalRevenue.raw : null, false, pctFmt],
+      ["Rendement dividende", summary2?.dividendYield?.raw, false, pctFmt],
+      ["Taux de distribution", summary2?.payoutRatio?.raw, false, pctFmt],
+    ];
+
+    return (
+      <NoHistoricalData onKeySet={() => setHasKey(true)}>
+        {fin2 && (
+          <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>🎯 Rentabilité & Marges</div>
+            <MetricGrid items={[
+              { label: "Croissance CA", val: fin2.revenueGrowth?.raw, fmt: pctFmt, color: "#4f46e5" },
+              { label: "Croissance bénéfices", val: fin2.earningsGrowth?.raw, fmt: pctFmt, color: "#10b981" },
+              { label: "Marge brute", val: fin2.grossMargins?.raw, fmt: pctFmt, color: "#7c3aed" },
+              { label: "Marge opérationnelle", val: fin2.operatingMargins?.raw, fmt: pctFmt, color: "#f59e0b" },
+              { label: "Marge nette", val: fin2.profitMargins?.raw, fmt: pctFmt, color: "#10b981" },
+              { label: "ROE", val: fin2.returnOnEquity?.raw, fmt: pctFmt, color: "#0891b2" },
+              { label: "ROA", val: fin2.returnOnAssets?.raw, fmt: pctFmt, color: "#ea580c" },
+              { label: "Chiffre d'affaires", val: fin2.totalRevenue?.raw, fmt: fmpFmt, color: "#4f46e5" },
+              { label: "Free Cash Flow", val: fin2.freeCashflow?.raw, fmt: fmpFmt, color: "#10b981" },
+              { label: "P/E Ratio", val: summary2?.trailingPE?.raw, fmt: ratioFmt, color: "#ea580c" },
+              { label: "P/E Forward", val: stats2?.forwardPE?.raw, fmt: ratioFmt, color: "#f59e0b" },
+              { label: "Rendement div.", val: summary2?.dividendYield?.raw, fmt: pctFmt, color: "#10b981" },
+            ]} />
+          </div>
+        )}
+        <CurrentDataTable items={currentItems} />
+      </NoHistoricalData>
+    );
+  }
+
   const yahooRows = [
     ["💵 Chiffre d'affaires", "totalRevenue", true],
     ["Coût des ventes", "costOfRevenue", false],
@@ -932,6 +1081,40 @@ export function TresorerieTab({ data, symbol }) {
   // Fallback Yahoo Finance
   const cfArr = data?.cashflowStatementHistory?.cashflowStatements || [];
   const fin3 = data?.financialData;
+
+  // When no historical data
+  if (cfArr.length === 0) {
+    const currentItems = [
+      ["🔄 Flux opérationnels", fin3?.operatingCashflow?.raw, true],
+      ["💰 Free Cash Flow", fin3?.freeCashflow?.raw, true],
+      ["Chiffre d'affaires", fin3?.totalRevenue?.raw, false],
+      ["Marge FCF", fin3?.freeCashflow?.raw && fin3?.totalRevenue?.raw ? fin3.freeCashflow.raw / fin3.totalRevenue.raw : null, false, pctFmt],
+      ["Marge opérationnelle", fin3?.operatingMargins?.raw, false, pctFmt],
+      ["Marge nette", fin3?.profitMargins?.raw, false, pctFmt],
+      ["Rendement dividende", data?.summaryDetail?.dividendYield?.raw, false, pctFmt],
+      ["Taux de distribution", data?.summaryDetail?.payoutRatio?.raw, false, pctFmt],
+    ];
+
+    return (
+      <NoHistoricalData onKeySet={() => setHasKey(true)}>
+        {fin3 && (
+          <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>💰 Données de trésorerie disponibles</div>
+            <MetricGrid items={[
+              { label: "Free Cash Flow", val: fin3.freeCashflow?.raw, fmt: fmpFmt, color: "#10b981" },
+              { label: "Flux opérationnels", val: fin3.operatingCashflow?.raw, fmt: fmpFmt, color: "#4f46e5" },
+              { label: "Chiffre d'affaires", val: fin3.totalRevenue?.raw, fmt: fmpFmt, color: "#7c3aed" },
+              { label: "Marge FCF", val: fin3.freeCashflow?.raw && fin3.totalRevenue?.raw ? fin3.freeCashflow.raw / fin3.totalRevenue.raw : null, fmt: pctFmt, color: "#0891b2" },
+              { label: "Marge nette", val: fin3.profitMargins?.raw, fmt: pctFmt, color: "#10b981" },
+              { label: "Rendement div.", val: data?.summaryDetail?.dividendYield?.raw, fmt: pctFmt, color: "#f59e0b" },
+            ]} />
+          </div>
+        )}
+        <CurrentDataTable items={currentItems} />
+      </NoHistoricalData>
+    );
+  }
+
   const yahooRows = [
     // Opérationnel
     ["🔄 Flux opérationnels", "totalCashFromOperatingActivities", true],
