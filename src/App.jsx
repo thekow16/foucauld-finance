@@ -1,4 +1,4 @@
-import { useState, useEffect, Component } from "react";
+import { useState, useEffect, useRef, Component } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
@@ -12,6 +12,7 @@ import Watchlist from "./components/Watchlist";
 import WatchlistTab from "./components/WatchlistTab";
 import AuthModal from "./components/AuthModal";
 import { useWatchlist } from "./hooks/useWatchlist";
+import { useAlerts } from "./hooks/useAlerts";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { fetchStockData } from "./utils/api";
 import { getCurrentUser, logoutUser } from "./utils/auth";
@@ -60,6 +61,30 @@ export default function FoucauldFinance() {
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
+  const { toggleAlert, getAlerts, triggered, dismissTriggered, maData, checking } = useAlerts(watchlist);
+  const [toasts, setToasts] = useState([]);
+
+  // Toast notifications quand de nouvelles alertes sont déclenchées
+  const triggeredCountRef = useRef(0);
+  useEffect(() => {
+    if (triggered.length > triggeredCountRef.current) {
+      const newOnes = triggered.slice(0, triggered.length - triggeredCountRef.current);
+      const newToasts = newOnes.map(t => ({
+        id: Date.now() + Math.random(),
+        symbol: t.symbol,
+        ma: t.ma,
+        direction: t.direction,
+        price: t.price,
+        maValue: t.maValue,
+      }));
+      setToasts(prev => [...newToasts, ...prev]);
+      // Auto-dismiss après 8s
+      newToasts.forEach(toast => {
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toast.id)), 8000);
+      });
+    }
+    triggeredCountRef.current = triggered.length;
+  }, [triggered]);
 
   const doFetchStock = async (sym) => {
     setLoading(true);
@@ -1178,12 +1203,162 @@ export default function FoucauldFinance() {
           line-height: 1.8;
         }
 
+        /* ── Alertes MA ── */
+        .wl-card-alerts {
+          display: flex;
+          gap: 6px;
+          padding: 8px 12px 10px;
+          border-top: 1px solid var(--border);
+        }
+        .alert-toggle {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 8px;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          background: var(--card);
+          color: var(--muted);
+          font-size: 11px;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all .2s;
+        }
+        .alert-toggle:hover { border-color: var(--accent); color: var(--text) }
+        .alert-toggle.active {
+          background: #fef3c7;
+          border-color: #f59e0b;
+          color: #92400e;
+        }
+        .dark .alert-toggle.active {
+          background: #451a03;
+          border-color: #d97706;
+          color: #fbbf24;
+        }
+        .alert-toggle-bell { font-size: 12px }
+        .alert-toggle-label { font-weight: 700 }
+        .alert-toggle-dist {
+          margin-left: auto;
+          font-size: 10px;
+          font-weight: 600;
+          opacity: .7;
+        }
+        .alert-toggle-dist.near {
+          color: #f59e0b;
+          opacity: 1;
+          font-weight: 800;
+        }
+
+        /* Triggered alerts banner */
+        .triggered-alerts {
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          margin-bottom: 16px;
+          overflow: hidden;
+        }
+        .triggered-header {
+          padding: 10px 16px;
+          font-weight: 800;
+          font-size: 14px;
+          color: var(--text);
+          border-bottom: 1px solid var(--border);
+          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+        .dark .triggered-header {
+          background: linear-gradient(135deg, #451a03 0%, #78350f 100%);
+        }
+        .triggered-item {
+          display: flex;
+          align-items: center;
+          border-bottom: 1px solid var(--border);
+        }
+        .triggered-item:last-child { border-bottom: none }
+        .triggered-item.above { border-left: 3px solid #10b981 }
+        .triggered-item.below { border-left: 3px solid #ef4444 }
+        .triggered-body {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-family: inherit;
+          text-align: left;
+          color: var(--text);
+        }
+        .triggered-body:hover { background: var(--highlight-row) }
+        .triggered-symbol { font-weight: 800; font-size: 14px; min-width: 60px }
+        .triggered-detail { font-size: 12px; color: var(--text-secondary); flex: 1 }
+        .triggered-arrow { font-size: 18px; font-weight: 700 }
+        .triggered-item.above .triggered-arrow { color: #10b981 }
+        .triggered-item.below .triggered-arrow { color: #ef4444 }
+        .triggered-dismiss {
+          background: none;
+          border: none;
+          color: var(--muted);
+          font-size: 18px;
+          cursor: pointer;
+          padding: 10px 14px;
+          font-family: inherit;
+        }
+        .triggered-dismiss:hover { color: var(--text) }
+
+        /* Toast notifications */
+        .toast-container {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          max-width: 380px;
+        }
+        .toast-alert {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          background: var(--card);
+          border: 1px solid var(--border);
+          box-shadow: 0 8px 24px rgba(0,0,0,.15);
+          animation: toastIn .3s ease-out;
+          font-size: 13px;
+          color: var(--text);
+        }
+        .toast-alert.above { border-left: 4px solid #10b981 }
+        .toast-alert.below { border-left: 4px solid #ef4444 }
+        .toast-icon { font-size: 20px }
+        .toast-content { flex: 1; line-height: 1.5 }
+        .toast-content strong { font-weight: 800 }
+        .toast-detail { font-size: 11px; color: var(--muted); margin-top: 2px }
+        .toast-close {
+          background: none;
+          border: none;
+          color: var(--muted);
+          font-size: 16px;
+          cursor: pointer;
+          padding: 0 2px;
+          font-family: inherit;
+        }
+        .toast-close:hover { color: var(--text) }
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(40px) }
+          to { opacity: 1; transform: translateX(0) }
+        }
+
         @media (max-width: 640px) {
           .grid8 { grid-template-columns: repeat(2, 1fr) }
           .search-wrap { flex-direction: column }
           .ff-btn { padding: 12px 20px }
           .stock-price { font-size: 28px }
           .main { padding: 0 10px 40px }
+          .toast-container { left: 10px; right: 10px; max-width: none }
         }
       `}</style>
 
@@ -1205,6 +1380,12 @@ export default function FoucauldFinance() {
             onSelect={handleSearch}
             onRemove={removeFromWatchlist}
             onBack={() => setShowWatchlist(false)}
+            alertState={getAlerts}
+            onToggleAlert={toggleAlert}
+            triggered={triggered}
+            onDismissAlert={dismissTriggered}
+            maData={maData}
+            checking={checking}
           />
         ) : (<>
         <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
@@ -1303,6 +1484,22 @@ export default function FoucauldFinance() {
         )}
         </>)}
       </div>
+
+      {/* Toast notifications pour alertes MA */}
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map(t => (
+            <div key={t.id} className={`toast-alert ${t.direction}`}>
+              <div className="toast-icon">{t.direction === "above" ? "📈" : "📉"}</div>
+              <div className="toast-content">
+                <strong>{t.symbol}</strong> a croisé {t.direction === "above" ? "au-dessus" : "en dessous"} de {t.ma}
+                <div className="toast-detail">Prix: {t.price.toFixed(2)} | {t.ma}: {t.maValue.toFixed(2)}</div>
+              </div>
+              <button className="toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

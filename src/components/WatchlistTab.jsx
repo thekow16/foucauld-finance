@@ -21,7 +21,21 @@ function MiniSparkline({ data, color }) {
   );
 }
 
-function WatchlistCard({ item, onSelect, onRemove }) {
+function AlertToggle({ label, active, onClick, dist }) {
+  return (
+    <button
+      className={`alert-toggle ${active ? "active" : ""}`}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      title={active ? `Désactiver l'alerte ${label}` : `Activer l'alerte ${label}`}
+    >
+      <span className="alert-toggle-bell">{active ? "🔔" : "🔕"}</span>
+      <span className="alert-toggle-label">{label}</span>
+      {dist != null && <span className={`alert-toggle-dist ${Math.abs(dist) < 2 ? "near" : ""}`}>{dist > 0 ? "+" : ""}{dist.toFixed(1)}%</span>}
+    </button>
+  );
+}
+
+function WatchlistCard({ item, onSelect, onRemove, alertState, onToggleAlert, maInfo }) {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,11 +81,40 @@ function WatchlistCard({ item, onSelect, onRemove }) {
           <div className="wl-card-price">{lastPrice.toFixed(2)}</div>
         )}
       </button>
+      <div className="wl-card-alerts">
+        <AlertToggle label="MA50" active={alertState.ma50} onClick={() => onToggleAlert(item.symbol, "ma50")} dist={maInfo?.dist50} />
+        <AlertToggle label="MA200" active={alertState.ma200} onClick={() => onToggleAlert(item.symbol, "ma200")} dist={maInfo?.dist200} />
+      </div>
     </div>
   );
 }
 
-export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack }) {
+function TriggeredAlerts({ triggered, onDismiss, onSelect }) {
+  if (triggered.length === 0) return null;
+  return (
+    <div className="triggered-alerts">
+      <div className="triggered-header">
+        <span>🔔 Alertes déclenchées</span>
+      </div>
+      {triggered.map((t, i) => (
+        <div key={`${t.symbol}-${t.ma}-${t.time}`} className={`triggered-item ${t.direction}`}>
+          <button className="triggered-body" onClick={() => onSelect(t.symbol)}>
+            <span className="triggered-symbol">{t.symbol}</span>
+            <span className="triggered-detail">
+              {t.direction === "above"
+                ? `Prix (${t.price.toFixed(2)}) a croisé au-dessus de ${t.ma} (${t.maValue.toFixed(2)})`
+                : `Prix (${t.price.toFixed(2)}) a croisé en dessous de ${t.ma} (${t.maValue.toFixed(2)})`}
+            </span>
+            <span className="triggered-arrow">{t.direction === "above" ? "↗" : "↘"}</span>
+          </button>
+          <button className="triggered-dismiss" onClick={() => onDismiss(i)} title="Fermer">×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, alertState, onToggleAlert, triggered, onDismissAlert, maData, checking }) {
   if (watchlist.length === 0) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
@@ -98,15 +141,27 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack }) 
           </h2>
           <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>
             {watchlist.length} action{watchlist.length > 1 ? "s" : ""} suivie{watchlist.length > 1 ? "s" : ""}
+            {checking && <span style={{ marginLeft: 8, opacity: 0.6 }}>— vérification des alertes…</span>}
           </p>
         </div>
         <button className="ff-btn" style={{ background: "#4f46e5", color: "white", padding: "10px 20px", fontSize: 13 }} onClick={onBack}>
           Retour
         </button>
       </div>
+
+      <TriggeredAlerts triggered={triggered || []} onDismiss={onDismissAlert} onSelect={onSelect} />
+
       <div className="wl-grid">
         {watchlist.map(item => (
-          <WatchlistCard key={item.symbol} item={item} onSelect={onSelect} onRemove={onRemove} />
+          <WatchlistCard
+            key={item.symbol}
+            item={item}
+            onSelect={onSelect}
+            onRemove={onRemove}
+            alertState={alertState?.(item.symbol) || { ma50: false, ma200: false }}
+            onToggleAlert={onToggleAlert}
+            maInfo={maData?.[item.symbol]}
+          />
         ))}
       </div>
     </div>
