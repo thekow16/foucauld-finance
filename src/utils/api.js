@@ -109,7 +109,7 @@ export async function fetchStockData(sym) {
   // Essai 1 : quoteSummary via Worker (qui gère le crumb)
   if (WORKER_URL) {
     try {
-      const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile,earningsTrend,recommendationTrend";
+      const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile,earningsTrend,recommendationTrend,calendarEvents";
       const url = `${YF}/v10/finance/quoteSummary/${sym}?modules=${modules}`;
       const json = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
       const result = json.quoteSummary?.result?.[0];

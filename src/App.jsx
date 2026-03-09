@@ -7,6 +7,7 @@ import CandlestickChart from "./components/CandlestickChart";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
+import EarningsTab from "./components/EarningsTab";
 import InvestorsTab from "./components/InvestorsTab";
 import Watchlist from "./components/Watchlist";
 import WatchlistTab from "./components/WatchlistTab";
@@ -41,6 +42,7 @@ const TABS = [
   { id: "bilan", label: "Bilan" },
   { id: "resultats", label: "Résultats" },
   { id: "tresorerie", label: "Trésorerie" },
+  { id: "publications", label: "Publications" },
   { id: "compare", label: "Comparer" },
 ];
 
@@ -1354,6 +1356,85 @@ export default function FoucauldFinance() {
           to { opacity: 1; transform: translateX(0) }
         }
 
+        /* ── Earnings / Publications ── */
+        .earnings-est-card {
+          background: var(--highlight-row);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 12px 14px;
+        }
+        .earnings-est-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--muted);
+          text-transform: uppercase;
+          letter-spacing: .3px;
+          margin-bottom: 4px;
+        }
+        .earnings-est-value {
+          font-size: 18px;
+          font-weight: 800;
+          color: var(--text);
+          font-variant-numeric: tabular-nums;
+        }
+        .earnings-est-range {
+          font-size: 11px;
+          color: var(--muted);
+          margin-top: 4px;
+        }
+        .press-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .press-item {
+          background: var(--highlight-row);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 12px 16px;
+          transition: border-color .2s;
+        }
+        .press-item:hover { border-color: var(--accent) }
+        .press-date {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--muted);
+          margin-bottom: 4px;
+        }
+        .press-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text);
+          line-height: 1.4;
+        }
+        .press-text {
+          font-size: 12px;
+          color: var(--text-secondary);
+          line-height: 1.5;
+          margin-top: 6px;
+        }
+        .filing-type {
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: var(--border);
+          color: var(--text-secondary);
+        }
+        .filing-type.important {
+          background: var(--accent-light);
+          color: var(--accent);
+        }
+        .filing-link {
+          font-size: 12px;
+          color: var(--accent);
+          font-weight: 600;
+          text-decoration: none;
+          margin-top: 6px;
+          display: inline-block;
+        }
+        .filing-link:hover { text-decoration: underline }
+
         /* ── Legal pages ── */
         .legal-page {
           max-width: 720px;
@@ -1571,6 +1652,7 @@ export default function FoucauldFinance() {
                 {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
+                {activeTab === "publications" && <EarningsTab data={data} symbol={symbol} />}
                 {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
               </div>
             </div>

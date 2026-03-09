@@ -63,6 +63,21 @@ export async function fetchProfile(symbol) {
   return fmpFetch(`/profile/${symbol}`);
 }
 
+// ── Résultats trimestriels (Earnings) ──
+export async function fetchEarningsHistory(symbol) {
+  return fmpFetch(`/historical/earning_calendar/${symbol}?limit=20`);
+}
+
+// ── Communiqués de presse ──
+export async function fetchPressReleases(symbol, limit = 20) {
+  return fmpFetch(`/press-releases/${symbol}?page=0&limit=${limit}`);
+}
+
+// ── SEC Filings (10-K, 10-Q, 8-K) ──
+export async function fetchSecFilings(symbol, limit = 20) {
+  return fmpFetch(`/sec_filings/${symbol}?type=&page=0&limit=${limit}`);
+}
+
 // ── Fetch toutes les données financières d'un coup ──
 export async function fetchAllFinancials(symbol) {
   const [income, balance, cashflow, ratios, keyMetrics] = await Promise.all([
