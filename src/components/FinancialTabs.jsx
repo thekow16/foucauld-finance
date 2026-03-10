@@ -501,26 +501,56 @@ export function BilanTab({ data, symbol }) {
 
   // When no historical data, show current snapshot + FMP key prompt
   if (bsArr.length === 0) {
+    const netDebtVal = fin?.totalDebt?.raw && fin?.totalCash?.raw ? fin.totalDebt.raw - fin.totalCash.raw : null;
     const currentItems = [
+      // Valorisation
       ["📊 Capitalisation", summary?.marketCap?.raw, true],
       ["Valeur d'entreprise", stats?.enterpriseValue?.raw, true],
-      ["Ratio de liquidité", fin?.currentRatio?.raw, false, ratioFmt],
-      ["Ratio rapide", fin?.quickRatio?.raw, false, ratioFmt],
-      ["Dette / Capitaux propres", fin?.debtToEquity?.raw, false, (v) => v != null ? `${v.toFixed(0)}%` : "—"],
-      ["Dette totale", fin?.totalDebt?.raw, false],
-      ["Trésorerie totale", fin?.totalCash?.raw, false],
-      ["Trésorerie / action", fin?.totalCashPerShare?.raw, false, ratioFmt],
-      ["Chiffre d'affaires", fin?.totalRevenue?.raw, true],
-      ["Revenue / action", fin?.revenuePerShare?.raw, false, ratioFmt],
-      ["Book value", stats?.bookValue?.raw, false, ratioFmt],
-      ["Price / Book", stats?.priceToBook?.raw, false, ratioFmt],
+      ["Prix / Valeur comptable", stats?.priceToBook?.raw, false, ratioFmt],
       ["EV / CA", stats?.enterpriseToRevenue?.raw, false, ratioFmt],
       ["EV / EBITDA", stats?.enterpriseToEbitda?.raw, false, ratioFmt],
+      ["P/E (trailing)", summary?.trailingPE?.raw, false, ratioFmt],
+      ["P/E Forward", stats?.forwardPE?.raw, false, ratioFmt],
+      ["PEG Ratio", stats?.pegRatio?.raw, false, ratioFmt],
+      // Bilan — Actifs
+      ["📊 Chiffre d'affaires", fin?.totalRevenue?.raw, true],
+      ["Revenue / action", fin?.revenuePerShare?.raw, false, ratioFmt],
+      ["EBITDA", fin?.ebitda?.raw, false],
+      ["Bénéfice brut", fin?.grossProfits?.raw, false],
+      // Liquidité & Solvabilité
+      ["📐 Ratio de liquidité", fin?.currentRatio?.raw, true, ratioFmt],
+      ["Ratio rapide (Quick)", fin?.quickRatio?.raw, false, ratioFmt],
+      ["Dette / Capitaux propres", fin?.debtToEquity?.raw, false, (v) => v != null ? `${v.toFixed(1)}%` : "—"],
+      // Trésorerie & Dette
+      ["💰 Trésorerie totale", fin?.totalCash?.raw, true],
+      ["Trésorerie / action", fin?.totalCashPerShare?.raw, false, ratioFmt],
+      ["Dette totale", fin?.totalDebt?.raw, false],
+      ["Dette nette", netDebtVal, false],
+      ["Dette nette / EBITDA", netDebtVal != null && fin?.ebitda?.raw ? netDebtVal / fin.ebitda.raw : null, false, ratioFmt],
+      // Cash flow
+      ["🔄 Flux opérationnels", fin?.operatingCashflow?.raw, true],
+      ["Free Cash Flow", fin?.freeCashflow?.raw, false],
+      ["Marge FCF", fin?.freeCashflow?.raw && fin?.totalRevenue?.raw ? fin.freeCashflow.raw / fin.totalRevenue.raw : null, false, pctFmt],
+      ["FCF / Dette", fin?.freeCashflow?.raw && fin?.totalDebt?.raw ? fin.freeCashflow.raw / fin.totalDebt.raw : null, false, pctFmt],
+      // Valeur comptable
+      ["💎 Valeur comptable / action", stats?.bookValue?.raw, true, ratioFmt],
+      ["Actions en circulation", stats?.sharesOutstanding?.raw, false],
+      ["Flottant", stats?.floatShares?.raw, false],
+      // Rentabilité
+      ["📈 ROE", fin?.returnOnEquity?.raw, true, pctFmt],
+      ["ROA", fin?.returnOnAssets?.raw, false, pctFmt],
+      ["Marge brute", fin?.grossMargins?.raw, false, pctFmt],
+      ["Marge opérationnelle", fin?.operatingMargins?.raw, false, pctFmt],
+      ["Marge nette", fin?.profitMargins?.raw, false, pctFmt],
+      // Dividende
+      ["🎯 Rendement dividende", summary?.dividendYield?.raw, true, pctFmt],
+      ["Dividende / action", summary?.dividendRate?.raw, false, ratioFmt],
+      ["Taux de distribution", summary?.payoutRatio?.raw, false, pctFmt],
+      ["Beta", stats?.beta?.raw, false, ratioFmt],
     ];
 
     return (
       <NoHistoricalData onKeySet={() => setHasKey(true)}>
-        {/* Ratios Yahoo */}
         {fin && (
           <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>📐 Données de bilan disponibles</div>
@@ -530,6 +560,7 @@ export function BilanTab({ data, symbol }) {
               { label: "Dette / Capitaux", val: fin.debtToEquity?.raw, fmt: (v) => v != null ? `${v.toFixed(0)}%` : "—", color: (fin.debtToEquity?.raw ?? 0) > 200 ? "#ef4444" : "#10b981" },
               { label: "Dette totale", val: fin.totalDebt?.raw, fmt: fmpFmt, color: "#ef4444" },
               { label: "Trésorerie totale", val: fin.totalCash?.raw, fmt: fmpFmt, color: "#10b981" },
+              { label: "Dette nette", val: netDebtVal, fmt: fmpFmt, color: netDebtVal && netDebtVal < 0 ? "#10b981" : "#ef4444" },
               { label: "Tréso / action", val: fin.totalCashPerShare?.raw, fmt: ratioFmt, color: "#0891b2" },
               { label: "Capitalisation", val: summary?.marketCap?.raw, fmt: fmpFmt, color: "#4f46e5" },
               { label: "Valeur d'entreprise", val: stats?.enterpriseValue?.raw, fmt: fmpFmt, color: "#7c3aed" },
@@ -537,6 +568,9 @@ export function BilanTab({ data, symbol }) {
               { label: "Price / Book", val: stats?.priceToBook?.raw, fmt: ratioFmt, color: "#ea580c" },
               { label: "EV / CA", val: stats?.enterpriseToRevenue?.raw, fmt: ratioFmt, color: "#0891b2" },
               { label: "EV / EBITDA", val: stats?.enterpriseToEbitda?.raw, fmt: ratioFmt, color: "#f59e0b" },
+              { label: "ROE", val: fin.returnOnEquity?.raw, fmt: pctFmt, color: "#4f46e5" },
+              { label: "ROA", val: fin.returnOnAssets?.raw, fmt: pctFmt, color: "#7c3aed" },
+              { label: "Beta", val: stats?.beta?.raw, fmt: ratioFmt, color: "#0891b2" },
             ]} />
           </div>
         )}
@@ -878,26 +912,68 @@ export function ResultatsTab({ data, symbol }) {
 
   // When no historical data
   if (isArr.length === 0) {
+    const rev = fin2?.totalRevenue?.raw;
+    const netIncome2 = fin2?.profitMargins?.raw && rev ? fin2.profitMargins.raw * rev : null;
+    const ebitda2 = fin2?.ebitda?.raw;
+    const grossProfit2 = fin2?.grossProfits?.raw;
+    const opIncome2 = fin2?.operatingMargins?.raw && rev ? fin2.operatingMargins.raw * rev : null;
+    const fcf2 = fin2?.freeCashflow?.raw;
+    const ocf2 = fin2?.operatingCashflow?.raw;
+    const eps2 = stats2?.trailingEps?.raw;
+    const epsForward2 = stats2?.forwardEps?.raw;
+    const mktCap2 = data?.price?.marketCap?.raw;
+
     const currentItems = [
-      ["💵 Chiffre d'affaires", fin2?.totalRevenue?.raw, true],
+      // Chiffre d'affaires
+      ["💵 Chiffre d'affaires", rev, true],
       ["Croissance CA", fin2?.revenueGrowth?.raw, false, pctFmt],
+      ["Croissance CA trim.", fin2?.earningsQuarterlyGrowth?.raw, false, pctFmt],
+      ["Revenue / action", fin2?.revenuePerShare?.raw, false, ratioFmt],
+      // Bénéfice brut
+      ["📊 Bénéfice brut", grossProfit2, true],
       ["Marge brute", fin2?.grossMargins?.raw, false, pctFmt],
+      // Résultat opérationnel
+      ["📈 Résultat opérationnel (est.)", opIncome2, true],
       ["Marge opérationnelle", fin2?.operatingMargins?.raw, false, pctFmt],
-      ["Marge nette", fin2?.profitMargins?.raw, false, pctFmt],
-      ["📈 Résultat net", fin2?.profitMargins?.raw && fin2?.totalRevenue?.raw ? fin2.profitMargins.raw * fin2.totalRevenue.raw : null, true],
+      // EBITDA
+      ["⚡ EBITDA", ebitda2, true],
+      ["Marge EBITDA", fin2?.ebitdaMargins?.raw, false, pctFmt],
+      // Résultat net
+      ["💰 Résultat net (est.)", netIncome2, true],
       ["Croissance bénéfices", fin2?.earningsGrowth?.raw, false, pctFmt],
-      ["ROE", fin2?.returnOnEquity?.raw, false, pctFmt],
+      ["Marge nette", fin2?.profitMargins?.raw, false, pctFmt],
+      // BPA
+      ["📊 BPA (trailing)", eps2, true, ratioFmt],
+      ["BPA Forward", epsForward2, false, ratioFmt],
+      ["Croissance BPA impl.", eps2 && epsForward2 ? (epsForward2 - eps2) / Math.abs(eps2) : null, false, pctFmt],
+      // Rentabilité
+      ["📈 ROE", fin2?.returnOnEquity?.raw, true, pctFmt],
       ["ROA", fin2?.returnOnAssets?.raw, false, pctFmt],
-      ["BPA (trailing)", summary2?.trailingPE?.raw && fin2?.currentPrice?.raw ? fin2.currentPrice.raw / summary2.trailingPE.raw : null, false, ratioFmt],
-      ["P/E Ratio", summary2?.trailingPE?.raw, false, ratioFmt],
+      // Cash flow
+      ["🔄 Flux opérationnels", ocf2, true],
+      ["Free Cash Flow", fcf2, false],
+      ["Marge FCF", fcf2 && rev ? fcf2 / rev : null, false, pctFmt],
+      ["Conversion FCF / RN", fcf2 && netIncome2 ? fcf2 / netIncome2 : null, false, pctFmt],
+      // Valorisation
+      ["📐 P/E (trailing)", summary2?.trailingPE?.raw, true, ratioFmt],
       ["P/E Forward", stats2?.forwardPE?.raw, false, ratioFmt],
+      ["PEG Ratio", stats2?.pegRatio?.raw, false, ratioFmt],
+      ["Prix / Ventes", stats2?.priceToSalesTrailing12Months?.raw, false, ratioFmt],
+      ["Prix / Valeur comptable", stats2?.priceToBook?.raw, false, ratioFmt],
       ["EV / CA", stats2?.enterpriseToRevenue?.raw, false, ratioFmt],
       ["EV / EBITDA", stats2?.enterpriseToEbitda?.raw, false, ratioFmt],
-      ["💰 Free Cash Flow", fin2?.freeCashflow?.raw, true],
-      ["Flux opérationnels", fin2?.operatingCashflow?.raw, false],
-      ["Marge FCF", fin2?.freeCashflow?.raw && fin2?.totalRevenue?.raw ? fin2.freeCashflow.raw / fin2.totalRevenue.raw : null, false, pctFmt],
-      ["Rendement dividende", summary2?.dividendYield?.raw, false, pctFmt],
+      ["Prix / FCF", fcf2 && mktCap2 ? mktCap2 / fcf2 : null, false, ratioFmt],
+      ["Rendement bénéficiaire", eps2 && fin2?.currentPrice?.raw ? eps2 / fin2.currentPrice.raw : null, false, pctFmt],
+      ["Rendement FCF", fcf2 && mktCap2 ? fcf2 / mktCap2 : null, false, pctFmt],
+      // Dividende
+      ["🎯 Rendement dividende", summary2?.dividendYield?.raw, true, pctFmt],
+      ["Dividende / action", summary2?.dividendRate?.raw, false, ratioFmt],
       ["Taux de distribution", summary2?.payoutRatio?.raw, false, pctFmt],
+      // Structure
+      ["📊 Capitalisation", mktCap2, true],
+      ["Valeur d'entreprise", stats2?.enterpriseValue?.raw, false],
+      ["Nb actions (dilué)", stats2?.sharesOutstanding?.raw, false],
+      ["Beta", stats2?.beta?.raw, false, ratioFmt],
     ];
 
     return (
@@ -910,11 +986,15 @@ export function ResultatsTab({ data, symbol }) {
               { label: "Croissance bénéfices", val: fin2.earningsGrowth?.raw, fmt: pctFmt, color: "#10b981" },
               { label: "Marge brute", val: fin2.grossMargins?.raw, fmt: pctFmt, color: "#7c3aed" },
               { label: "Marge opérationnelle", val: fin2.operatingMargins?.raw, fmt: pctFmt, color: "#f59e0b" },
+              { label: "Marge EBITDA", val: fin2.ebitdaMargins?.raw, fmt: pctFmt, color: "#7c3aed" },
               { label: "Marge nette", val: fin2.profitMargins?.raw, fmt: pctFmt, color: "#10b981" },
-              { label: "ROE", val: fin2.returnOnEquity?.raw, fmt: pctFmt, color: "#0891b2" },
+              { label: "Marge FCF", val: fcf2 && rev ? fcf2 / rev : null, fmt: pctFmt, color: "#0891b2" },
+              { label: "ROE", val: fin2.returnOnEquity?.raw, fmt: pctFmt, color: "#4f46e5" },
               { label: "ROA", val: fin2.returnOnAssets?.raw, fmt: pctFmt, color: "#ea580c" },
-              { label: "Chiffre d'affaires", val: fin2.totalRevenue?.raw, fmt: fmpFmt, color: "#4f46e5" },
-              { label: "Free Cash Flow", val: fin2.freeCashflow?.raw, fmt: fmpFmt, color: "#10b981" },
+              { label: "Chiffre d'affaires", val: rev, fmt: fmpFmt, color: "#4f46e5" },
+              { label: "EBITDA", val: ebitda2, fmt: fmpFmt, color: "#7c3aed" },
+              { label: "Free Cash Flow", val: fcf2, fmt: fmpFmt, color: "#10b981" },
+              { label: "BPA", val: eps2, fmt: ratioFmt, color: "#0891b2" },
               { label: "P/E Ratio", val: summary2?.trailingPE?.raw, fmt: ratioFmt, color: "#ea580c" },
               { label: "P/E Forward", val: stats2?.forwardPE?.raw, fmt: ratioFmt, color: "#f59e0b" },
               { label: "Rendement div.", val: summary2?.dividendYield?.raw, fmt: pctFmt, color: "#10b981" },
@@ -1225,15 +1305,56 @@ export function TresorerieTab({ data, symbol }) {
 
   // When no historical data
   if (cfArr.length === 0) {
+    const summ3 = data?.summaryDetail;
+    const stats3 = data?.defaultKeyStatistics;
+    const rev3 = fin3?.totalRevenue?.raw;
+    const fcf3 = fin3?.freeCashflow?.raw;
+    const ocf3 = fin3?.operatingCashflow?.raw;
+    const netIncome3 = fin3?.profitMargins?.raw && rev3 ? fin3.profitMargins.raw * rev3 : null;
+    const mktCap3 = data?.price?.marketCap?.raw;
+    const totalDebt3 = fin3?.totalDebt?.raw;
+    const totalCash3 = fin3?.totalCash?.raw;
+
     const currentItems = [
-      ["🔄 Flux opérationnels", fin3?.operatingCashflow?.raw, true],
-      ["💰 Free Cash Flow", fin3?.freeCashflow?.raw, true],
-      ["Chiffre d'affaires", fin3?.totalRevenue?.raw, false],
-      ["Marge FCF", fin3?.freeCashflow?.raw && fin3?.totalRevenue?.raw ? fin3.freeCashflow.raw / fin3.totalRevenue.raw : null, false, pctFmt],
+      // Flux opérationnels
+      ["🔄 Flux opérationnels", ocf3, true],
+      ["Marge flux op. (CF/CA)", ocf3 && rev3 ? ocf3 / rev3 : null, false, pctFmt],
+      ["Flux op. / action", ocf3 && stats3?.sharesOutstanding?.raw ? ocf3 / stats3.sharesOutstanding.raw : null, false, ratioFmt],
+      // Résultat net estimé
+      ["Résultat net (est.)", netIncome3, false],
+      ["Conversion FCF / RN", fcf3 && netIncome3 ? fcf3 / netIncome3 : null, false, pctFmt],
+      // Free Cash Flow
+      ["💰 Free Cash Flow", fcf3, true],
+      ["Marge FCF (FCF/CA)", fcf3 && rev3 ? fcf3 / rev3 : null, false, pctFmt],
+      ["FCF / action", fcf3 && stats3?.sharesOutstanding?.raw ? fcf3 / stats3.sharesOutstanding.raw : null, false, ratioFmt],
+      ["FCF Yield", fcf3 && mktCap3 ? fcf3 / mktCap3 : null, false, pctFmt],
+      ["Prix / FCF", fcf3 && mktCap3 ? mktCap3 / fcf3 : null, false, ratioFmt],
+      // Couverture de dette
+      ["📐 Flux op. / Dette", ocf3 && totalDebt3 ? ocf3 / totalDebt3 : null, true, pctFmt],
+      ["FCF / Dette", fcf3 && totalDebt3 ? fcf3 / totalDebt3 : null, false, pctFmt],
+      ["Dette totale", totalDebt3, false],
+      ["Trésorerie totale", totalCash3, false],
+      ["Dette nette", totalDebt3 && totalCash3 ? totalDebt3 - totalCash3 : null, false],
+      // Marges & rentabilité
+      ["📊 Chiffre d'affaires", rev3, true],
+      ["Marge brute", fin3?.grossMargins?.raw, false, pctFmt],
       ["Marge opérationnelle", fin3?.operatingMargins?.raw, false, pctFmt],
+      ["Marge EBITDA", fin3?.ebitdaMargins?.raw, false, pctFmt],
       ["Marge nette", fin3?.profitMargins?.raw, false, pctFmt],
-      ["Rendement dividende", data?.summaryDetail?.dividendYield?.raw, false, pctFmt],
-      ["Taux de distribution", data?.summaryDetail?.payoutRatio?.raw, false, pctFmt],
+      ["EBITDA", fin3?.ebitda?.raw, false],
+      ["ROE", fin3?.returnOnEquity?.raw, false, pctFmt],
+      ["ROA", fin3?.returnOnAssets?.raw, false, pctFmt],
+      // Dividende & retour aux actionnaires
+      ["🎯 Rendement dividende", summ3?.dividendYield?.raw, true, pctFmt],
+      ["Dividende / action", summ3?.dividendRate?.raw, false, ratioFmt],
+      ["Taux de distribution", summ3?.payoutRatio?.raw, false, pctFmt],
+      ["Date ex-dividende", summ3?.exDividendDate?.fmt || null, false, (v) => v || "—"],
+      // Valorisation
+      ["📊 Capitalisation", mktCap3, true],
+      ["Valeur d'entreprise", stats3?.enterpriseValue?.raw, false],
+      ["EV / EBITDA", stats3?.enterpriseToEbitda?.raw, false, ratioFmt],
+      ["BPA", stats3?.trailingEps?.raw, false, ratioFmt],
+      ["P/E Ratio", summ3?.trailingPE?.raw, false, ratioFmt],
     ];
 
     return (
@@ -1242,12 +1363,18 @@ export function TresorerieTab({ data, symbol }) {
           <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>💰 Données de trésorerie disponibles</div>
             <MetricGrid items={[
-              { label: "Free Cash Flow", val: fin3.freeCashflow?.raw, fmt: fmpFmt, color: "#10b981" },
-              { label: "Flux opérationnels", val: fin3.operatingCashflow?.raw, fmt: fmpFmt, color: "#4f46e5" },
-              { label: "Chiffre d'affaires", val: fin3.totalRevenue?.raw, fmt: fmpFmt, color: "#7c3aed" },
-              { label: "Marge FCF", val: fin3.freeCashflow?.raw && fin3.totalRevenue?.raw ? fin3.freeCashflow.raw / fin3.totalRevenue.raw : null, fmt: pctFmt, color: "#0891b2" },
+              { label: "Free Cash Flow", val: fcf3, fmt: fmpFmt, color: "#10b981" },
+              { label: "Flux opérationnels", val: ocf3, fmt: fmpFmt, color: "#4f46e5" },
+              { label: "Chiffre d'affaires", val: rev3, fmt: fmpFmt, color: "#7c3aed" },
+              { label: "Marge FCF", val: fcf3 && rev3 ? fcf3 / rev3 : null, fmt: pctFmt, color: "#0891b2" },
+              { label: "Marge flux op.", val: ocf3 && rev3 ? ocf3 / rev3 : null, fmt: pctFmt, color: "#4f46e5" },
+              { label: "Conversion FCF/RN", val: fcf3 && netIncome3 ? fcf3 / netIncome3 : null, fmt: pctFmt, color: "#10b981" },
+              { label: "FCF / action", val: fcf3 && stats3?.sharesOutstanding?.raw ? fcf3 / stats3.sharesOutstanding.raw : null, fmt: ratioFmt, color: "#0891b2" },
+              { label: "FCF Yield", val: fcf3 && mktCap3 ? fcf3 / mktCap3 : null, fmt: pctFmt, color: "#7c3aed" },
+              { label: "FCF / Dette", val: fcf3 && totalDebt3 ? fcf3 / totalDebt3 : null, fmt: pctFmt, color: "#ea580c" },
               { label: "Marge nette", val: fin3.profitMargins?.raw, fmt: pctFmt, color: "#10b981" },
-              { label: "Rendement div.", val: data?.summaryDetail?.dividendYield?.raw, fmt: pctFmt, color: "#f59e0b" },
+              { label: "Rendement div.", val: summ3?.dividendYield?.raw, fmt: pctFmt, color: "#f59e0b" },
+              { label: "Payout Ratio", val: summ3?.payoutRatio?.raw, fmt: pctFmt, color: "#ea580c" },
             ]} />
           </div>
         )}
