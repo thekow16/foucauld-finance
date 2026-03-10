@@ -272,6 +272,7 @@ export function BilanTab({ data, symbol }) {
   const [fmpData, setFmpData] = useState(data?._fmpData || null);
   const [loading, setLoading] = useState(false);
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
+  const [fmpError, setFmpError] = useState(null);
 
   useEffect(() => {
     // Skip fetch if we already have FMP data from fetchStockData
@@ -279,14 +280,27 @@ export function BilanTab({ data, symbol }) {
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
+    setFmpError(null);
     fetchAllFinancials(symbol)
       .then(d => { if (!cancelled) setFmpData(d); })
-      .catch(() => {})
+      .catch(e => { if (!cancelled) setFmpError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [symbol, hasKey]);
 
   const pr = data?.price;
+
+  // Debug banner - visible data source info
+  const debugInfo = {
+    fmpBalance: fmpData?.balance?.length || 0,
+    fmpIncome: fmpData?.income?.length || 0,
+    yahooBs: (data?.balanceSheetHistory?.balanceSheetStatements || []).length,
+    yahooInc: (data?.incomeStatementHistory?.incomeStatementHistory || []).length,
+    fromChart: !!data?._fromChart,
+    hasFmpData: !!data?._fmpData,
+    fmpErr: fmpError,
+  };
+  console.log("[BilanTab] data sources:", debugInfo);
 
   // FMP balance sheet data
   if (hasKey && fmpData?.balance?.length > 0) {
@@ -553,6 +567,12 @@ export function BilanTab({ data, symbol }) {
 
     return (
       <NoHistoricalData onKeySet={() => setHasKey(true)}>
+        {fmpError && (
+          <div style={{ margin: "0 0 16px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
+            <strong>FMP API :</strong> {fmpError}
+            <br /><span style={{ color: "#6b7280" }}>La clé par défaut est peut-être expirée. Entrez votre propre clé ci-dessous (gratuit sur financialmodelingprep.com).</span>
+          </div>
+        )}
         {fin && (
           <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>📐 Données de bilan disponibles</div>
@@ -671,15 +691,17 @@ export function ResultatsTab({ data, symbol }) {
   const [fmpData, setFmpData] = useState(data?._fmpData || null);
   const [loading, setLoading] = useState(false);
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
+  const [fmpError, setFmpError] = useState(null);
 
   useEffect(() => {
     if (fmpData?.income?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
+    setFmpError(null);
     fetchAllFinancials(symbol)
       .then(d => { if (!cancelled) setFmpData(d); })
-      .catch(() => {})
+      .catch(e => { if (!cancelled) setFmpError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [symbol, hasKey]);
@@ -981,6 +1003,12 @@ export function ResultatsTab({ data, symbol }) {
 
     return (
       <NoHistoricalData onKeySet={() => setHasKey(true)}>
+        {fmpError && (
+          <div style={{ margin: "0 0 16px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
+            <strong>FMP API :</strong> {fmpError}
+            <br /><span style={{ color: "#6b7280" }}>La clé par défaut est peut-être expirée. Entrez votre propre clé ci-dessous.</span>
+          </div>
+        )}
         {fin2 && (
           <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>🎯 Rentabilité & Marges</div>
@@ -1093,15 +1121,17 @@ export function TresorerieTab({ data, symbol }) {
   const [fmpData, setFmpData] = useState(data?._fmpData || null);
   const [loading, setLoading] = useState(false);
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
+  const [fmpError, setFmpError] = useState(null);
 
   useEffect(() => {
     if (fmpData?.cashflow?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
+    setFmpError(null);
     fetchAllFinancials(symbol)
       .then(d => { if (!cancelled) setFmpData(d); })
-      .catch(() => {})
+      .catch(e => { if (!cancelled) setFmpError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [symbol, hasKey]);
@@ -1363,6 +1393,12 @@ export function TresorerieTab({ data, symbol }) {
 
     return (
       <NoHistoricalData onKeySet={() => setHasKey(true)}>
+        {fmpError && (
+          <div style={{ margin: "0 0 16px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
+            <strong>FMP API :</strong> {fmpError}
+            <br /><span style={{ color: "#6b7280" }}>La clé par défaut est peut-être expirée. Entrez votre propre clé ci-dessous.</span>
+          </div>
+        )}
         {fin3 && (
           <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>💰 Données de trésorerie disponibles</div>

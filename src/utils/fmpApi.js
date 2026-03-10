@@ -30,7 +30,13 @@ async function fmpFetch(endpoint) {
     if (res.status === 401 || res.status === 403) throw new Error("Clé API FMP invalide");
     throw new Error(`FMP HTTP ${res.status}`);
   }
-  return res.json();
+  const data = await res.json();
+  // FMP returns {"Error Message": "..."} on expired/rate-limited keys with 200 OK
+  if (data && !Array.isArray(data) && data["Error Message"]) {
+    console.warn("[FMP] API error:", data["Error Message"]);
+    throw new Error(`FMP: ${data["Error Message"]}`);
+  }
+  return data;
 }
 
 // ── Compte de résultat (Income Statement) ──
@@ -81,11 +87,15 @@ export async function fetchSecFilings(symbol, limit = 20) {
 // ── Fetch toutes les données financières d'un coup ──
 export async function fetchAllFinancials(symbol) {
   const [income, balance, cashflow, ratios, keyMetrics] = await Promise.all([
-    fetchIncomeStatement(symbol, 20).catch(() => []),
-    fetchBalanceSheet(symbol, 20).catch(() => []),
-    fetchCashFlow(symbol, 20).catch(() => []),
-    fetchRatios(symbol, 20).catch(() => []),
-    fetchKeyMetrics(symbol, 20).catch(() => []),
+    fetchIncomeStatement(symbol, 20).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
+    fetchBalanceSheet(symbol, 20).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),
+    fetchCashFlow(symbol, 20).catch(e => { console.warn("[FMP] cashflow err:", e.message); return []; }),
+    fetchRatios(symbol, 20).catch(e => { console.warn("[FMP] ratios err:", e.message); return []; }),
+    fetchKeyMetrics(symbol, 20).catch(e => { console.warn("[FMP] keyMetrics err:", e.message); return []; }),
   ]);
+  console.log("[FMP] fetchAllFinancials result:", symbol,
+    "income:", income?.length || 0,
+    "balance:", balance?.length || 0,
+    "cashflow:", cashflow?.length || 0);
   return { income, balance, cashflow, ratios, keyMetrics };
 }
