@@ -5,12 +5,11 @@
 
 const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 
-// Clé par défaut intégrée — peut être remplacée via localStorage
-const DEFAULT_KEY = "HeV5JAyBATbX07V8hRmxeYjSWIxaZgWl";
+// Clé FMP — l'utilisateur doit fournir sa propre clé (gratuite sur financialmodelingprep.com)
 const STORAGE_KEY = "fmp_api_key";
 
 export function getFmpApiKey() {
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
+  return localStorage.getItem(STORAGE_KEY) || "";
 }
 
 export function setFmpApiKey(key) {
