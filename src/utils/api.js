@@ -104,6 +104,93 @@ export async function fetchCandleData(sym, interval, range) {
     .filter(Boolean);
 }
 
+// ── Convertisseurs FMP → Yahoo format ──
+function yw(v) { return v != null ? { raw: v } : undefined; }
+
+function fmpToYahooBalance(arr) {
+  if (!arr?.length) return [];
+  return arr.slice(0, 5).map(d => ({
+    endDate: { raw: d.date ? Math.floor(new Date(d.date).getTime() / 1000) : 0 },
+    totalAssets: yw(d.totalAssets),
+    totalCurrentAssets: yw(d.totalCurrentAssets),
+    cash: yw(d.cashAndCashEquivalents),
+    shortTermInvestments: yw(d.shortTermInvestments),
+    netReceivables: yw(d.netReceivables),
+    inventory: yw(d.inventory),
+    otherCurrentAssets: yw(d.otherCurrentAssets),
+    propertyPlantEquipment: yw(d.propertyPlantEquipmentNet),
+    goodWill: yw(d.goodwill),
+    intangibleAssets: yw(d.intangibleAssets),
+    longTermInvestments: yw(d.longTermInvestments),
+    otherAssets: yw(d.otherNonCurrentAssets),
+    totalLiab: yw(d.totalLiabilities),
+    totalCurrentLiabilities: yw(d.totalCurrentLiabilities),
+    accountsPayable: yw(d.accountPayables),
+    shortLongTermDebt: yw(d.shortTermDebt),
+    otherCurrentLiab: yw(d.otherCurrentLiabilities),
+    longTermDebt: yw(d.longTermDebt),
+    otherLiab: yw(d.otherNonCurrentLiabilities),
+    totalStockholderEquity: yw(d.totalStockholdersEquity),
+    commonStock: yw(d.commonStock),
+    retainedEarnings: yw(d.retainedEarnings),
+    treasuryStock: yw(d.treasuryStock),
+    capitalSurplus: yw(d.additionalPaidInCapital),
+    otherStockholderEquity: yw(d.accumulatedOtherComprehensiveIncomeLoss),
+    netTangibleAssets: yw(d.totalStockholdersEquity != null && d.goodwill != null && d.intangibleAssets != null
+      ? d.totalStockholdersEquity - d.goodwill - d.intangibleAssets : null),
+  }));
+}
+
+function fmpToYahooIncome(arr) {
+  if (!arr?.length) return [];
+  return arr.slice(0, 5).map(d => ({
+    endDate: { raw: d.date ? Math.floor(new Date(d.date).getTime() / 1000) : 0 },
+    totalRevenue: yw(d.revenue),
+    costOfRevenue: yw(d.costOfRevenue),
+    grossProfit: yw(d.grossProfit),
+    researchDevelopment: yw(d.researchAndDevelopmentExpenses),
+    sellingGeneralAdministrative: yw(d.sellingGeneralAndAdministrativeExpenses),
+    otherOperatingExpenses: yw(d.otherExpenses),
+    totalOperatingExpenses: yw(d.operatingExpenses),
+    operatingIncome: yw(d.operatingIncome),
+    ebit: yw(d.operatingIncome),
+    interestExpense: yw(d.interestExpense ? -Math.abs(d.interestExpense) : null),
+    totalOtherIncomeExpenseNet: yw(d.totalOtherIncomeExpensesNet),
+    incomeBeforeTax: yw(d.incomeBeforeTax),
+    incomeTaxExpense: yw(d.incomeTaxExpense),
+    netIncomeFromContinuingOps: yw(d.netIncome),
+    discontinuedOperations: undefined,
+    extraordinaryItems: undefined,
+    netIncome: yw(d.netIncome),
+    netIncomeApplicableToCommonShares: yw(d.netIncome),
+  }));
+}
+
+function fmpToYahooCashflow(arr) {
+  if (!arr?.length) return [];
+  return arr.slice(0, 5).map(d => ({
+    endDate: { raw: d.date ? Math.floor(new Date(d.date).getTime() / 1000) : 0 },
+    totalCashFromOperatingActivities: yw(d.operatingCashFlow),
+    depreciation: yw(d.depreciationAndAmortization),
+    changeToAccountReceivables: yw(d.accountsReceivables ? -d.accountsReceivables : null),
+    changeToInventory: yw(d.inventory ? -d.inventory : null),
+    changeToLiabilities: yw(d.accountsPayables),
+    changeToOperatingActivities: yw(d.changeInWorkingCapital),
+    otherCashflowsFromOperatingActivities: yw(d.otherNonCashItems),
+    totalCashFromInvestingActivities: yw(d.netCashUsedForInvestingActivites),
+    capitalExpenditures: yw(d.capitalExpenditure),
+    otherCashflowsFromInvestingActivities: yw(d.otherInvestingActivites),
+    totalCashFromFinancingActivities: yw(d.netCashUsedProvidedByFinancingActivities),
+    netBorrowings: yw(d.debtRepayment),
+    issuanceOfStock: yw(d.commonStockIssued),
+    repurchaseOfStock: yw(d.commonStockRepurchased),
+    dividendsPaid: yw(d.dividendsPaid),
+    otherCashflowsFromFinancingActivities: yw(d.otherFinancingActivites),
+    freeCashFlow: yw(d.freeCashFlow),
+    changeInCash: yw(d.netChangeInCash),
+  }));
+}
+
 // ── Données complètes (v10/quoteSummary via Worker, sinon fallback chart) ──
 export async function fetchStockData(sym) {
   console.log("[FF] fetchStockData:", sym);
@@ -254,9 +341,10 @@ export async function fetchStockData(sym) {
       freeCashflow: w(cf?.freeCashFlow),
       operatingCashflow: w(cf?.operatingCashFlow),
     },
-    balanceSheetHistory: { balanceSheetStatements: [] },
-    incomeStatementHistory: { incomeStatementHistory: [] },
-    cashflowStatementHistory: { cashflowStatements: [] },
+    balanceSheetHistory: { balanceSheetStatements: fmpToYahooBalance(fmpFinancials?.balance) },
+    incomeStatementHistory: { incomeStatementHistory: fmpToYahooIncome(fmpFinancials?.income) },
+    cashflowStatementHistory: { cashflowStatements: fmpToYahooCashflow(fmpFinancials?.cashflow) },
+    _fmpData: fmpFinancials,
     assetProfile: {
       sector: fp?.sector || "N/A",
       industry: fp?.industry || "N/A",
