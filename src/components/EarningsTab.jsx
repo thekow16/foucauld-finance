@@ -82,91 +82,6 @@ function NextEarnings({ data }) {
   );
 }
 
-// ── Tendance des estimations (earningsTrend) ──
-function EarningsTrend({ data }) {
-  const trend = data?.earningsTrend?.trend;
-  if (!trend || trend.length === 0) return null;
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div className="section-title" style={{ marginBottom: 12 }}>Tendance des estimations analystes</div>
-      <div style={{ overflowX: "auto" }}>
-        <table className="ff-table">
-          <thead>
-            <tr>
-              <th>Période</th>
-              <th>BPA estimé</th>
-              <th>BPA il y a 7j</th>
-              <th>BPA il y a 30j</th>
-              <th>BPA il y a 90j</th>
-              <th>Croiss.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trend.map((t, i) => (
-              <tr key={i}>
-                <td style={{ fontWeight: 700 }}>{t.period || "—"}</td>
-                <td>{t.earningsEstimate?.avg?.fmt ?? "—"}</td>
-                <td>{t.earningsEstimate?.yearAgoEps?.fmt ?? "—"}</td>
-                <td>{t.earningsEstimate?.growth?.fmt ?? "—"}</td>
-                <td>{t.revenueEstimate?.avg?.fmt ?? "—"}</td>
-                <td>
-                  {t.growth?.fmt ? (
-                    <span className={`stag ${parseFloat(t.growth.raw) >= 0 ? "stag-good" : "stag-bad"}`}>
-                      {t.growth.fmt}
-                    </span>
-                  ) : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ── Recommandations analystes ──
-function RecommendationTrend({ data }) {
-  const recs = data?.recommendationTrend?.trend;
-  if (!recs || recs.length === 0) return null;
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div className="section-title" style={{ marginBottom: 12 }}>Recommandations analystes</div>
-      <div style={{ overflowX: "auto" }}>
-        <table className="ff-table">
-          <thead>
-            <tr>
-              <th>Période</th>
-              <th style={{ color: "#059669" }}>Achat fort</th>
-              <th style={{ color: "#10b981" }}>Achat</th>
-              <th>Conserver</th>
-              <th style={{ color: "#f59e0b" }}>Vente</th>
-              <th style={{ color: "#ef4444" }}>Vente forte</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recs.map((r, i) => {
-              const total = (r.strongBuy || 0) + (r.buy || 0) + (r.hold || 0) + (r.sell || 0) + (r.strongSell || 0);
-              return (
-                <tr key={i}>
-                  <td style={{ fontWeight: 700 }}>{r.period || "—"}</td>
-                  <td><span style={{ color: "#059669", fontWeight: 700 }}>{r.strongBuy || 0}</span></td>
-                  <td><span style={{ color: "#10b981", fontWeight: 700 }}>{r.buy || 0}</span></td>
-                  <td><span style={{ fontWeight: 700 }}>{r.hold || 0}</span></td>
-                  <td><span style={{ color: "#f59e0b", fontWeight: 700 }}>{r.sell || 0}</span></td>
-                  <td><span style={{ color: "#ef4444", fontWeight: 700 }}>{r.strongSell || 0}</span></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 // ── Historique des résultats (FMP) ──
 function EarningsHistory({ symbol }) {
   const [earnings, setEarnings] = useState(null);
@@ -339,8 +254,6 @@ export default function EarningsTab({ data, symbol }) {
       {subTab === "overview" && (
         <>
           <NextEarnings data={data} />
-          <EarningsTrend data={data} />
-          <RecommendationTrend data={data} />
           {!hasFmp && (
             <div style={{ background: "var(--highlight-row)", borderRadius: 12, padding: "16px 20px", border: "1px solid var(--border)", marginTop: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 6 }}>
