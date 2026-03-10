@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, Component } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
-import MetricCards from "./components/MetricCards";
 import CandlestickChart from "./components/CandlestickChart";
+import KeyMetricsCharts from "./components/KeyMetricsCharts";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
@@ -1622,7 +1622,7 @@ export default function FoucauldFinance() {
               onToggleWatchlist={handleToggleWatchlist}
             />
 
-            <MetricCards data={data} />
+            <KeyMetricsCharts data={data} />
 
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
