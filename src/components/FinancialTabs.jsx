@@ -294,16 +294,50 @@ export function BilanTab({ data, symbol }) {
     const inc = fmpData.income || [];
 
     // Enrich with computed fields
-    const bsEnriched = bs.map((d, i) => ({
-      ...d,
-      _workingCapital: (d.totalCurrentAssets || 0) - (d.totalCurrentLiabilities || 0),
-      _netDebt: (d.totalDebt || 0) - (d.cashAndCashEquivalents || 0),
-      _netTangibleAssets: (d.totalStockholdersEquity || 0) - (d.goodwill || 0) - (d.intangibleAssets || 0),
-      _debtToAssets: d.totalAssets ? (d.totalDebt || 0) / d.totalAssets : null,
-      _equityRatio: d.totalAssets ? (d.totalStockholdersEquity || 0) / d.totalAssets : null,
-      _bookValuePerShare: inc[i]?.weightedAverageShsOutDil ? (d.totalStockholdersEquity || 0) / inc[i].weightedAverageShsOutDil : null,
-      _tangibleBVPerShare: inc[i]?.weightedAverageShsOutDil ? ((d.totalStockholdersEquity || 0) - (d.goodwill || 0) - (d.intangibleAssets || 0)) / inc[i].weightedAverageShsOutDil : null,
-    }));
+    const bsEnriched = bs.map((d, i) => {
+      const wc = (d.totalCurrentAssets || 0) - (d.totalCurrentLiabilities || 0);
+      const netDebt = (d.totalDebt || 0) - (d.cashAndCashEquivalents || 0);
+      const tangibleEquity = (d.totalStockholdersEquity || 0) - (d.goodwill || 0) - (d.intangibleAssets || 0);
+      const sharesOut = inc[i]?.weightedAverageShsOutDil;
+      const ebitda = inc[i]?.ebitda;
+      const revenue = inc[i]?.revenue;
+      const netIncome = inc[i]?.netIncome;
+      const fcf = fmpData.cashflow?.[i]?.freeCashFlow;
+      return {
+        ...d,
+        _workingCapital: wc,
+        _netDebt: netDebt,
+        _netTangibleAssets: tangibleEquity,
+        _debtToAssets: d.totalAssets ? (d.totalDebt || 0) / d.totalAssets : null,
+        _equityRatio: d.totalAssets ? (d.totalStockholdersEquity || 0) / d.totalAssets : null,
+        _bookValuePerShare: sharesOut ? (d.totalStockholdersEquity || 0) / sharesOut : null,
+        _tangibleBVPerShare: sharesOut ? tangibleEquity / sharesOut : null,
+        // Croissances actifs/passifs/capitaux
+        _growth_totalAssets: bs[i + 1]?.totalAssets ? (d.totalAssets - bs[i + 1].totalAssets) / Math.abs(bs[i + 1].totalAssets) : null,
+        _growth_totalLiabilities: bs[i + 1]?.totalLiabilities ? (d.totalLiabilities - bs[i + 1].totalLiabilities) / Math.abs(bs[i + 1].totalLiabilities) : null,
+        _growth_totalStockholdersEquity: bs[i + 1]?.totalStockholdersEquity ? (d.totalStockholdersEquity - bs[i + 1].totalStockholdersEquity) / Math.abs(bs[i + 1].totalStockholdersEquity) : null,
+        // Ratios supplémentaires
+        _currentRatio: d.totalCurrentLiabilities ? (d.totalCurrentAssets || 0) / d.totalCurrentLiabilities : null,
+        _quickRatio: d.totalCurrentLiabilities ? ((d.totalCurrentAssets || 0) - (d.inventory || 0)) / d.totalCurrentLiabilities : null,
+        _cashRatio: d.totalCurrentLiabilities ? (d.cashAndCashEquivalents || 0) / d.totalCurrentLiabilities : null,
+        _debtToEquity: d.totalStockholdersEquity ? (d.totalDebt || 0) / d.totalStockholdersEquity : null,
+        _netDebtToEbitda: ebitda ? netDebt / ebitda : null,
+        _assetTurnover: d.totalAssets && revenue ? revenue / d.totalAssets : null,
+        _roe: d.totalStockholdersEquity && netIncome ? netIncome / d.totalStockholdersEquity : null,
+        _roa: d.totalAssets && netIncome ? netIncome / d.totalAssets : null,
+        _goodwillToAssets: d.totalAssets && d.goodwill ? d.goodwill / d.totalAssets : null,
+        _intangiblesToAssets: d.totalAssets && d.intangibleAssets ? d.intangibleAssets / d.totalAssets : null,
+        _cashToAssets: d.totalAssets ? (d.cashAndShortTermInvestments || d.cashAndCashEquivalents || 0) / d.totalAssets : null,
+        _ltDebtToCapital: ((d.longTermDebt || 0) + (d.totalStockholdersEquity || 0)) ? (d.longTermDebt || 0) / ((d.longTermDebt || 0) + (d.totalStockholdersEquity || 0)) : null,
+        _retainedEarningsToAssets: d.totalAssets && d.retainedEarnings ? d.retainedEarnings / d.totalAssets : null,
+        _wcToRevenue: revenue ? wc / revenue : null,
+        _inventoryToRevenue: revenue && d.inventory ? d.inventory / revenue : null,
+        _receivablesToRevenue: revenue && d.netReceivables ? d.netReceivables / revenue : null,
+        _payablesToRevenue: revenue && d.accountPayables ? d.accountPayables / revenue : null,
+        _totalInvestments: (d.shortTermInvestments || 0) + (d.longTermInvestments || 0),
+        _netCashPerShare: sharesOut ? ((d.cashAndCashEquivalents || 0) - (d.totalDebt || 0)) / sharesOut : null,
+      };
+    });
 
     const bsChart = [...bs].reverse().map(s => ({
       year: s.calendarYear || s.date?.substring(0, 4),
@@ -322,38 +356,49 @@ export function BilanTab({ data, symbol }) {
     const rows = [
       // Actifs
       ["📊 Total Actifs", "totalAssets", true],
+      ["   ↳ Croissance", "_growth_totalAssets", false, growthFmt],
       ["Actifs courants", "totalCurrentAssets", false],
       ["Trésorerie & équivalents", "cashAndCashEquivalents", false],
       ["Placements court terme", "shortTermInvestments", false],
       ["Trésorerie totale", "cashAndShortTermInvestments", false],
       ["Créances clients", "netReceivables", false],
+      ["   ↳ Créances / CA", "_receivablesToRevenue", false, pctFmt],
       ["Stocks", "inventory", false],
+      ["   ↳ Stocks / CA", "_inventoryToRevenue", false, pctFmt],
       ["Charges payées d'avance", "otherCurrentAssets", false],
       ["Actifs non courants", "totalNonCurrentAssets", false],
       ["Immobilisations corporelles", "propertyPlantEquipmentNet", false],
       ["Goodwill", "goodwill", false],
+      ["   ↳ Goodwill / Actifs", "_goodwillToAssets", false, pctFmt],
       ["Actifs incorporels", "intangibleAssets", false],
+      ["   ↳ Incorporels / Actifs", "_intangiblesToAssets", false, pctFmt],
       ["Actifs d'impôts différés", "taxAssets", false],
       ["Investissements long terme", "longTermInvestments", false],
+      ["Total investissements", "_totalInvestments", false],
       ["Autres actifs non courants", "otherNonCurrentAssets", false],
       // Passifs
       ["📉 Total Passifs", "totalLiabilities", true],
+      ["   ↳ Croissance", "_growth_totalLiabilities", false, growthFmt],
       ["Passifs courants", "totalCurrentLiabilities", false],
       ["Dettes fournisseurs", "accountPayables", false],
+      ["   ↳ Fournisseurs / CA", "_payablesToRevenue", false, pctFmt],
       ["Dette court terme", "shortTermDebt", false],
       ["Revenus différés", "deferredRevenue", false],
       ["Charges à payer", "otherCurrentLiabilities", false],
       ["Passifs non courants", "totalNonCurrentLiabilities", false],
       ["Dette long terme", "longTermDebt", false],
+      ["   ↳ Dette LT / Capital total", "_ltDebtToCapital", false, pctFmt],
       ["Impôts différés LT", "deferredTaxLiabilitiesNonCurrent", false],
       ["Revenus différés LT", "deferredRevenueNonCurrent", false],
       ["Autres passifs LT", "otherNonCurrentLiabilities", false],
       ["Dette totale", "totalDebt", true],
       // Capitaux propres
       ["💎 Capitaux propres", "totalStockholdersEquity", true],
+      ["   ↳ Croissance", "_growth_totalStockholdersEquity", false, growthFmt],
       ["Capital social", "commonStock", false],
       ["Primes d'émission", "capitalSurplus", false],
       ["Bénéfices non distribués", "retainedEarnings", false],
+      ["   ↳ BND / Actifs", "_retainedEarningsToAssets", false, pctFmt],
       ["Actions propres (rachetées)", "treasuryStock", false],
       ["Cumul autres résultats", "accumulatedOtherComprehensiveIncomeLoss", false],
       ["Intérêts minoritaires", "minorityInterest", false],
@@ -361,12 +406,25 @@ export function BilanTab({ data, symbol }) {
       ["Total Passifs & Capitaux", "totalLiabilitiesAndStockholdersEquity", true],
       // Métriques calculées
       ["⚡ Fonds de roulement", "_workingCapital", true],
+      ["   ↳ BFR / CA", "_wcToRevenue", false, pctFmt],
       ["Dette nette", "_netDebt", false],
+      ["   ↳ Dette nette / EBITDA", "_netDebtToEbitda", false, ratioFmt],
       ["Actifs tangibles nets", "_netTangibleAssets", false],
       ["Valeur comptable / action", "_bookValuePerShare", false, ratioFmt],
       ["Valeur tangible / action", "_tangibleBVPerShare", false, ratioFmt],
+      ["Tréso nette / action", "_netCashPerShare", false, ratioFmt],
+      // Ratios de liquidité & solvabilité
+      ["📐 Ratio de liquidité", "_currentRatio", true, ratioFmt],
+      ["Ratio rapide (Quick)", "_quickRatio", false, ratioFmt],
+      ["Ratio de trésorerie", "_cashRatio", false, ratioFmt],
+      ["Dette / Capitaux propres", "_debtToEquity", false, ratioFmt],
       ["Dette / Actifs", "_debtToAssets", false, pctFmt],
       ["Capitaux / Actifs", "_equityRatio", false, pctFmt],
+      ["Tréso / Actifs", "_cashToAssets", false, pctFmt],
+      // Ratios d'efficacité
+      ["📊 Rotation des actifs", "_assetTurnover", true, ratioFmt],
+      ["ROE", "_roe", false, pctFmt],
+      ["ROA", "_roa", false, pctFmt],
     ];
 
     return (
@@ -596,12 +654,30 @@ export function ResultatsTab({ data, symbol }) {
     const cf = fmpData.cashflow || [];
 
     // Enrich with growth rates & computed fields
-    const incEnriched = enrichWithGrowth(inc, ["revenue", "grossProfit", "operatingIncome", "netIncome", "ebitda", "epsdiluted"]);
+    const incEnriched = enrichWithGrowth(inc, ["revenue", "grossProfit", "operatingIncome", "netIncome", "ebitda", "epsdiluted", "costOfRevenue", "operatingExpenses"]);
     incEnriched.forEach((d, i) => {
       d._taxRate = d.incomeBeforeTax ? d.incomeTaxExpense / d.incomeBeforeTax : null;
       d._rdToRevenue = d.revenue ? (d.researchAndDevelopmentExpenses || 0) / d.revenue : null;
       d._sgaToRevenue = d.revenue ? (d.sellingGeneralAndAdministrativeExpenses || 0) / d.revenue : null;
       d._fcfMargin = d.revenue && cf[i]?.freeCashFlow ? cf[i].freeCashFlow / d.revenue : null;
+      d._daToRevenue = d.revenue ? (d.depreciationAndAmortization || 0) / d.revenue : null;
+      d._costOfRevenueRatio = d.revenue ? (d.costOfRevenue || 0) / d.revenue : null;
+      d._opexToRevenue = d.revenue ? (d.operatingExpenses || 0) / d.revenue : null;
+      d._interestToDebt = fmpData.balance?.[i]?.totalDebt ? (d.interestExpense || 0) / fmpData.balance[i].totalDebt : null;
+      d._interestCoverage = d.interestExpense ? (d.operatingIncome || 0) / Math.abs(d.interestExpense) : null;
+      d._netIncomePerShare = inc[i]?.weightedAverageShsOutDil && d.netIncome ? d.netIncome / inc[i].weightedAverageShsOutDil : null;
+      d._revenuePerShare = inc[i]?.weightedAverageShsOutDil && d.revenue ? d.revenue / inc[i].weightedAverageShsOutDil : null;
+      d._dividendPerShare = keyMetrics[i]?.dividendPerShare ?? null;
+      d._payoutRatio = d.netIncome && keyMetrics[i]?.dividendPerShare && inc[i]?.weightedAverageShsOutDil ? (keyMetrics[i].dividendPerShare * inc[i].weightedAverageShsOutDil) / d.netIncome : null;
+      d._peRatio = ratios[i]?.priceEarningsRatio ?? null;
+      d._pbRatio = ratios[i]?.priceToBookRatio ?? null;
+      d._psRatio = ratios[i]?.priceToSalesRatio ?? null;
+      d._evToEbitda = keyMetrics[i]?.enterpriseValueOverEBITDA ?? null;
+      d._evToRevenue = keyMetrics[i]?.evToSales ?? null;
+      d._roe = ratios[i]?.returnOnEquity ?? null;
+      d._roa = ratios[i]?.returnOnAssets ?? null;
+      d._roic = ratios[i]?.returnOnCapitalEmployed ?? null;
+      d._sharesGrowth = inc[i + 1]?.weightedAverageShsOutDil && inc[i]?.weightedAverageShsOutDil ? (inc[i].weightedAverageShsOutDil - inc[i + 1].weightedAverageShsOutDil) / inc[i + 1].weightedAverageShsOutDil : null;
     });
 
     const chart = [...inc].reverse().map(s => ({
@@ -618,42 +694,72 @@ export function ResultatsTab({ data, symbol }) {
     }));
 
     const rows = [
+      // Chiffre d'affaires
       ["💵 Chiffre d'affaires", "revenue", true],
       ["   ↳ Croissance CA", "_growth_revenue", false, growthFmt],
+      ["   ↳ CA / action", "_revenuePerShare", false, ratioFmt],
       ["Coût des ventes", "costOfRevenue", false],
+      ["   ↳ Croissance", "_growth_costOfRevenue", false, growthFmt],
+      ["   ↳ Coût / CA", "_costOfRevenueRatio", false, pctFmt],
+      // Bénéfice brut
       ["📊 Bénéfice brut", "grossProfit", true],
       ["   ↳ Croissance", "_growth_grossProfit", false, growthFmt],
       ["Marge brute", "grossProfitRatio", false, pctFmt],
+      // Charges d'exploitation
       ["R&D", "researchAndDevelopmentExpenses", false],
       ["   ↳ R&D / CA", "_rdToRevenue", false, pctFmt],
       ["Frais commerciaux & admin.", "sellingGeneralAndAdministrativeExpenses", false],
       ["   ↳ SGA / CA", "_sgaToRevenue", false, pctFmt],
       ["Frais généraux", "generalAndAdministrativeExpenses", false],
       ["Dépréciations & amortissements", "depreciationAndAmortization", false],
+      ["   ↳ D&A / CA", "_daToRevenue", false, pctFmt],
       ["Autres charges d'exploitation", "otherExpenses", false],
       ["Total charges d'exploitation", "operatingExpenses", false],
+      ["   ↳ Croissance OPEX", "_growth_operatingExpenses", false, growthFmt],
+      ["   ↳ OPEX / CA", "_opexToRevenue", false, pctFmt],
+      // Résultat opérationnel
       ["📈 Résultat opérationnel", "operatingIncome", true],
       ["   ↳ Croissance", "_growth_operatingIncome", false, growthFmt],
       ["Marge opérationnelle", "operatingIncomeRatio", false, pctFmt],
+      // Éléments financiers
       ["Charges d'intérêts", "interestExpense", false],
+      ["   ↳ Coût moyen de la dette", "_interestToDebt", false, pctFmt],
+      ["   ↳ Couverture des intérêts", "_interestCoverage", false, ratioFmt],
       ["Produits d'intérêts", "interestIncome", false],
       ["Charges d'intérêts nettes", "netInterestIncome", false],
       ["Autres produits/charges", "totalOtherIncomeExpensesNet", false],
+      // Résultat avant impôts
       ["Résultat avant impôts", "incomeBeforeTax", true],
       ["Impôts", "incomeTaxExpense", false],
       ["Taux d'imposition effectif", "_taxRate", false, pctFmt],
+      // Résultat net
       ["💰 Résultat net", "netIncome", true],
       ["   ↳ Croissance", "_growth_netIncome", false, growthFmt],
       ["Marge nette", "netIncomeRatio", false, pctFmt],
       ["Marge FCF", "_fcfMargin", false, pctFmt],
-      ["BPA (basique)", "eps", false, ratioFmt],
+      // BPA & Actions
+      ["📊 BPA (basique)", "eps", true, ratioFmt],
       ["BPA (dilué)", "epsdiluted", false, ratioFmt],
       ["   ↳ Croissance BPA", "_growth_epsdiluted", false, growthFmt],
+      ["Dividende / action", "_dividendPerShare", false, ratioFmt],
+      ["   ↳ Taux de distribution", "_payoutRatio", false, pctFmt],
       ["Nb actions (basique)", "weightedAverageShsOut", false],
       ["Nb actions (dilué)", "weightedAverageShsOutDil", false],
-      ["EBITDA", "ebitda", true],
+      ["   ↳ Évolution nb actions", "_sharesGrowth", false, growthFmt],
+      // EBITDA
+      ["⚡ EBITDA", "ebitda", true],
       ["   ↳ Croissance EBITDA", "_growth_ebitda", false, growthFmt],
       ["EBITDA Ratio", "ebitdaratio", false, pctFmt],
+      // Ratios de valorisation historiques
+      ["📐 P/E Ratio", "_peRatio", true, ratioFmt],
+      ["P/B Ratio", "_pbRatio", false, ratioFmt],
+      ["P/S Ratio", "_psRatio", false, ratioFmt],
+      ["EV / EBITDA", "_evToEbitda", false, ratioFmt],
+      ["EV / CA", "_evToRevenue", false, ratioFmt],
+      // Rentabilité
+      ["📊 ROE", "_roe", true, pctFmt],
+      ["ROA", "_roa", false, pctFmt],
+      ["ROIC", "_roic", false, pctFmt],
     ];
 
     const latest = inc[0];
@@ -922,13 +1028,30 @@ export function TresorerieTab({ data, symbol }) {
     const inc2 = fmpData.income || [];
 
     // Enrich with growth & computed
-    const cfEnriched = enrichWithGrowth(cf, ["operatingCashFlow", "freeCashFlow"]);
+    const cfEnriched = enrichWithGrowth(cf, ["operatingCashFlow", "freeCashFlow", "capitalExpenditure", "dividendsPaid", "commonStockRepurchased"]);
     cfEnriched.forEach((d, i) => {
-      d._fcfMargin = inc2[i]?.revenue ? d.freeCashFlow / inc2[i].revenue : null;
-      d._capexToRevenue = inc2[i]?.revenue && d.capitalExpenditure ? Math.abs(d.capitalExpenditure) / inc2[i].revenue : null;
+      const revenue = inc2[i]?.revenue;
+      const totalDebt = fmpData.balance?.[i]?.totalDebt;
+      const totalAssets = fmpData.balance?.[i]?.totalAssets;
+      const marketCap = keyMetrics[i]?.marketCap;
+      const sharesOut = inc2[i]?.weightedAverageShsOutDil;
+      d._fcfMargin = revenue ? d.freeCashFlow / revenue : null;
+      d._capexToRevenue = revenue && d.capitalExpenditure ? Math.abs(d.capitalExpenditure) / revenue : null;
       d._fcfConversion = d.netIncome && d.netIncome !== 0 ? d.freeCashFlow / d.netIncome : null;
-      d._sbcToRevenue = inc2[i]?.revenue && d.stockBasedCompensation ? d.stockBasedCompensation / inc2[i].revenue : null;
-      d._operatingCFToDebt = fmpData.balance?.[i]?.totalDebt ? d.operatingCashFlow / fmpData.balance[i].totalDebt : null;
+      d._sbcToRevenue = revenue && d.stockBasedCompensation ? d.stockBasedCompensation / revenue : null;
+      d._operatingCFToDebt = totalDebt ? d.operatingCashFlow / totalDebt : null;
+      d._operatingCFMargin = revenue ? d.operatingCashFlow / revenue : null;
+      d._daToRevenue = revenue && d.depreciationAndAmortization ? d.depreciationAndAmortization / revenue : null;
+      d._fcfPerShare = sharesOut ? d.freeCashFlow / sharesOut : null;
+      d._operatingCFPerShare = sharesOut ? d.operatingCashFlow / sharesOut : null;
+      d._fcfYield = marketCap ? d.freeCashFlow / marketCap : null;
+      d._capexToOperatingCF = d.operatingCashFlow ? Math.abs(d.capitalExpenditure || 0) / d.operatingCashFlow : null;
+      d._totalReturnedToShareholders = Math.abs(d.dividendsPaid || 0) + Math.abs(d.commonStockRepurchased || 0);
+      d._shareholderReturnRatio = d.freeCashFlow ? (Math.abs(d.dividendsPaid || 0) + Math.abs(d.commonStockRepurchased || 0)) / d.freeCashFlow : null;
+      d._netDebtChange = (d.netDebtIssuance || 0) + (d.debtRepayment || 0);
+      d._netEquityChange = (d.commonStockIssued || 0) + (d.commonStockRepurchased || 0);
+      d._cashGenerationRatio = totalAssets ? d.operatingCashFlow / totalAssets : null;
+      d._dividendPerShare = keyMetrics[i]?.dividendPerShare ?? null;
     });
 
     const chart = [...cf].reverse().map(s => ({
@@ -950,8 +1073,11 @@ export function TresorerieTab({ data, symbol }) {
       // Operating
       ["🔄 Flux opérationnels", "operatingCashFlow", true],
       ["   ↳ Croissance", "_growth_operatingCashFlow", false, growthFmt],
+      ["   ↳ Marge flux op. (CF / CA)", "_operatingCFMargin", false, pctFmt],
+      ["   ↳ Flux op. / action", "_operatingCFPerShare", false, ratioFmt],
       ["Résultat net", "netIncome", false],
       ["D&A (Dépréciations)", "depreciationAndAmortization", false],
+      ["   ↳ D&A / CA", "_daToRevenue", false, pctFmt],
       ["Rémunération en actions (SBC)", "stockBasedCompensation", false],
       ["   ↳ SBC / CA", "_sbcToRevenue", false, pctFmt],
       ["Impôts différés", "deferredIncomeTax", false],
@@ -964,7 +1090,9 @@ export function TresorerieTab({ data, symbol }) {
       // Investing
       ["📉 Flux d'investissement", "netCashUsedForInvestingActivites", true],
       ["CAPEX", "capitalExpenditure", false],
+      ["   ↳ Croissance CAPEX", "_growth_capitalExpenditure", false, growthFmt],
       ["   ↳ CAPEX / CA", "_capexToRevenue", false, pctFmt],
+      ["   ↳ CAPEX / Flux op.", "_capexToOperatingCF", false, pctFmt],
       ["Acquisitions", "acquisitionsNet", false],
       ["Achats d'investissements", "purchasesOfInvestments", false],
       ["Ventes d'investissements", "salesMaturitiesOfInvestments", false],
@@ -973,16 +1101,29 @@ export function TresorerieTab({ data, symbol }) {
       ["🏦 Flux de financement", "netCashUsedProvidedByFinancingActivities", true],
       ["Remboursement de dette", "debtRepayment", false],
       ["Émission de dette", "netDebtIssuance", false],
+      ["   ↳ Variation nette de dette", "_netDebtChange", false],
       ["Émission d'actions", "commonStockIssued", false],
       ["Rachat d'actions", "commonStockRepurchased", false],
+      ["   ↳ Croissance rachats", "_growth_commonStockRepurchased", false, growthFmt],
+      ["   ↳ Variation nette actions", "_netEquityChange", false],
       ["Dividendes versés", "dividendsPaid", false],
+      ["   ↳ Croissance dividendes", "_growth_dividendsPaid", false, growthFmt],
+      ["   ↳ Dividende / action", "_dividendPerShare", false, ratioFmt],
       ["Autres flux de financement", "otherFinancingActivites", false],
-      // Summary
+      // Summary & ratios
       ["💰 Free Cash Flow", "freeCashFlow", true],
       ["   ↳ Croissance FCF", "_growth_freeCashFlow", false, growthFmt],
+      ["   ↳ FCF / action", "_fcfPerShare", false, ratioFmt],
+      ["   ↳ FCF Yield", "_fcfYield", false, pctFmt],
       ["Marge FCF (FCF / CA)", "_fcfMargin", false, pctFmt],
       ["Conversion FCF (FCF / RN)", "_fcfConversion", false, pctFmt],
+      // Retours aux actionnaires
+      ["📊 Total retourné aux actionnaires", "_totalReturnedToShareholders", true],
+      ["   ↳ % du FCF retourné", "_shareholderReturnRatio", false, pctFmt],
+      // Ratios de couverture
       ["Flux Op. / Dette", "_operatingCFToDebt", false, pctFmt],
+      ["Flux Op. / Actifs", "_cashGenerationRatio", false, pctFmt],
+      // Position de trésorerie
       ["Effet de change", "effectOfForexChangesOnCash", false],
       ["Variation nette de tréso", "netChangeInCash", false],
       ["Tréso début de période", "cashAtBeginningOfPeriod", false],
