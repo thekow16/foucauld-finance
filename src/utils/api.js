@@ -1,3 +1,5 @@
+import { hasFmpApiKey, fetchProfile, fetchAllFinancials } from "./fmpApi";
+
 // ──────────────────────────────────────────────
 // Cloudflare Worker URL
 // ──────────────────────────────────────────────
@@ -144,6 +146,44 @@ export async function fetchStockData(sym) {
   const high52 = highs.length ? Math.max(...highs) : currentPrice;
   const low52 = lows.length ? Math.min(...lows) : currentPrice;
 
+  // Helper: wrap raw value for Yahoo-compatible format
+  const w = (v) => v != null && v !== 0 ? { raw: v } : undefined;
+
+  // Essai 3 : enrichir avec FMP si clé disponible
+  let fmpProfile = null, fmpFinancials = null;
+  if (hasFmpApiKey()) {
+    try {
+      const [prof, fins] = await Promise.all([
+        fetchProfile(sym).catch(() => null),
+        fetchAllFinancials(sym).catch(() => null),
+      ]);
+      fmpProfile = Array.isArray(prof) ? prof[0] : prof;
+      fmpFinancials = fins;
+      console.log("[FF] FMP enrichissement OK");
+    } catch (e) {
+      console.warn("[FF] FMP enrichissement échoué:", e.message);
+    }
+  }
+
+  // Extraire les données FMP les plus récentes
+  const inc = fmpFinancials?.income?.[0];
+  const inc1 = fmpFinancials?.income?.[1]; // year-1 for growth
+  const bal = fmpFinancials?.balance?.[0];
+  const cf = fmpFinancials?.cashflow?.[0];
+  const rat = fmpFinancials?.ratios?.[0];
+  const km = fmpFinancials?.keyMetrics?.[0];
+  const fp = fmpProfile;
+
+  // Calculs dérivés
+  const mktCap = fp?.mktCap || (inc?.weightedAverageShsOutDil ? currentPrice * inc.weightedAverageShsOutDil : null);
+  const evVal = mktCap && bal ? mktCap + (bal.totalDebt || 0) - (bal.cashAndCashEquivalents || 0) : fp?.mktCap;
+  const revGrowth = inc && inc1 && inc1.revenue ? (inc.revenue - inc1.revenue) / Math.abs(inc1.revenue) : null;
+  const epsVal = inc?.epsdiluted;
+  const peRatio = epsVal && currentPrice ? currentPrice / epsVal : null;
+  const pbRatio = rat?.priceToBookRatio || (bal?.totalStockholdersEquity && inc?.weightedAverageShsOutDil ? currentPrice / (bal.totalStockholdersEquity / inc.weightedAverageShsOutDil) : null);
+  const evToEbitda = inc?.ebitda && evVal ? evVal / inc.ebitda : null;
+  const evToRevenue = inc?.revenue && evVal ? evVal / inc.revenue : null;
+
   // Retourner un objet compatible avec la structure attendue par les composants
   return {
     price: {
@@ -155,46 +195,77 @@ export async function fetchStockData(sym) {
       regularMarketOpen: { raw: (q.open || [])[closes.length - 1] || currentPrice, fmt: ((q.open || [])[closes.length - 1] || currentPrice).toFixed(2) },
       regularMarketDayHigh: { raw: (q.high || [])[closes.length - 1] || currentPrice, fmt: ((q.high || [])[closes.length - 1] || currentPrice).toFixed(2) },
       regularMarketDayLow: { raw: (q.low || [])[closes.length - 1] || currentPrice, fmt: ((q.low || [])[closes.length - 1] || currentPrice).toFixed(2) },
-      shortName: meta.shortName || sym,
-      longName: meta.longName || meta.shortName || sym,
+      shortName: fp?.companyName || meta.shortName || sym,
+      longName: fp?.companyName || meta.longName || meta.shortName || sym,
       symbol: meta.symbol || sym,
-      currency: meta.currency || "USD",
-      exchangeName: meta.exchangeName || meta.fullExchangeName || "",
+      currency: fp?.currency || meta.currency || "USD",
+      exchangeName: fp?.exchangeShortName || meta.exchangeName || meta.fullExchangeName || "",
+      marketCap: w(mktCap),
     },
     summaryDetail: {
       fiftyTwoWeekHigh: { raw: high52, fmt: high52.toFixed(2) },
       fiftyTwoWeekLow: { raw: low52, fmt: low52.toFixed(2) },
       averageVolume: { raw: avgVolume, fmt: avgVolume.toLocaleString() },
-      marketCap: { raw: 0, fmt: "N/A" },
-      dividendYield: { raw: 0, fmt: "N/A" },
-      trailingPE: { raw: 0, fmt: "N/A" },
+      marketCap: w(mktCap),
+      dividendYield: w(rat?.dividendYield || fp?.lastDiv && currentPrice ? fp.lastDiv / currentPrice : null),
+      dividendRate: w(fp?.lastDiv || km?.dividendPerShare),
+      trailingPE: w(peRatio),
+      payoutRatio: w(rat?.payoutRatio),
+      exDividendDate: undefined,
     },
     defaultKeyStatistics: {
-      enterpriseValue: { raw: 0, fmt: "N/A" },
-      forwardPE: { raw: 0, fmt: "N/A" },
-      priceToBook: { raw: 0, fmt: "N/A" },
-      enterpriseToRevenue: { raw: 0, fmt: "N/A" },
-      enterpriseToEbitda: { raw: 0, fmt: "N/A" },
-      beta: { raw: 0, fmt: "N/A" },
+      enterpriseValue: w(evVal),
+      forwardPE: undefined,
+      trailingPE: w(peRatio),
+      trailingEps: w(epsVal),
+      priceToBook: w(pbRatio),
+      priceToSalesTrailing12Months: w(inc?.revenue && mktCap ? mktCap / inc.revenue : null),
+      pegRatio: w(rat?.priceEarningsToGrowthRatio),
+      enterpriseToRevenue: w(evToRevenue),
+      enterpriseToEbitda: w(evToEbitda),
+      beta: w(fp?.beta),
+      bookValue: w(bal?.totalStockholdersEquity && inc?.weightedAverageShsOutDil ? bal.totalStockholdersEquity / inc.weightedAverageShsOutDil : null),
+      sharesOutstanding: w(inc?.weightedAverageShsOutDil || fp?.volAvg),
+      floatShares: undefined,
+      heldPercentInsiders: undefined,
+      heldPercentInstitutions: undefined,
+      shortRatio: undefined,
+      sharesShort: undefined,
     },
     financialData: {
       currentPrice: { raw: currentPrice, fmt: currentPrice.toFixed(2) },
-      totalRevenue: { raw: 0, fmt: "N/A" },
-      revenueGrowth: { raw: 0, fmt: "N/A" },
-      grossMargins: { raw: 0, fmt: "N/A" },
-      operatingMargins: { raw: 0, fmt: "N/A" },
-      profitMargins: { raw: 0, fmt: "N/A" },
-      returnOnEquity: { raw: 0, fmt: "N/A" },
-      returnOnAssets: { raw: 0, fmt: "N/A" },
-      debtToEquity: { raw: 0, fmt: "N/A" },
-      currentRatio: { raw: 0, fmt: "N/A" },
-      freeCashflow: { raw: 0, fmt: "N/A" },
+      totalRevenue: w(inc?.revenue),
+      revenueGrowth: w(revGrowth),
+      revenuePerShare: w(inc?.revenue && inc?.weightedAverageShsOutDil ? inc.revenue / inc.weightedAverageShsOutDil : null),
+      grossMargins: w(inc?.grossProfitRatio),
+      grossProfits: w(inc?.grossProfit),
+      operatingMargins: w(inc?.operatingIncomeRatio),
+      ebitdaMargins: w(inc?.ebitdaratio),
+      profitMargins: w(inc?.netIncomeRatio),
+      ebitda: w(inc?.ebitda),
+      returnOnEquity: w(rat?.returnOnEquity),
+      returnOnAssets: w(rat?.returnOnAssets),
+      debtToEquity: w(rat?.debtEquityRatio ? rat.debtEquityRatio * 100 : null),
+      currentRatio: w(rat?.currentRatio),
+      quickRatio: w(rat?.quickRatio),
+      totalCash: w(bal?.cashAndCashEquivalents),
+      totalCashPerShare: w(bal?.cashAndCashEquivalents && inc?.weightedAverageShsOutDil ? bal.cashAndCashEquivalents / inc.weightedAverageShsOutDil : null),
+      totalDebt: w(bal?.totalDebt),
+      freeCashflow: w(cf?.freeCashFlow),
+      operatingCashflow: w(cf?.operatingCashFlow),
     },
     balanceSheetHistory: { balanceSheetStatements: [] },
     incomeStatementHistory: { incomeStatementHistory: [] },
     cashflowStatementHistory: { cashflowStatements: [] },
-    assetProfile: { sector: "N/A", industry: "N/A", longBusinessSummary: "" },
-    _fromChart: true, // flag pour indiquer que les données viennent du chart
+    assetProfile: {
+      sector: fp?.sector || "N/A",
+      industry: fp?.industry || "N/A",
+      longBusinessSummary: fp?.description || "",
+      country: fp?.country || "",
+      website: fp?.website || "",
+      fullTimeEmployees: fp?.fullTimeEmployees || null,
+    },
+    _fromChart: true,
   };
 }
 
