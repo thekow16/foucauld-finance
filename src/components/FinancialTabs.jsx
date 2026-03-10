@@ -290,17 +290,19 @@ export function BilanTab({ data, symbol }) {
 
   const pr = data?.price;
 
-  // Debug banner - visible data source info
-  const debugInfo = {
-    fmpBalance: fmpData?.balance?.length || 0,
-    fmpIncome: fmpData?.income?.length || 0,
-    yahooBs: (data?.balanceSheetHistory?.balanceSheetStatements || []).length,
-    yahooInc: (data?.incomeStatementHistory?.incomeStatementHistory || []).length,
+  // Debug: log data sources
+  const _bsArr = data?.balanceSheetHistory?.balanceSheetStatements || [];
+  const _isArr = data?.incomeStatementHistory?.incomeStatementHistory || [];
+  console.log("[BilanTab] sources:", {
+    fmpBal: fmpData?.balance?.length || 0,
+    yahooBs: _bsArr.length,
+    yahooInc: _isArr.length,
     fromChart: !!data?._fromChart,
     hasFmpData: !!data?._fmpData,
     fmpErr: fmpError,
-  };
-  console.log("[BilanTab] data sources:", debugInfo);
+    yahooBs0Keys: _bsArr[0] ? Object.keys(_bsArr[0]).slice(0, 10) : "none",
+    yahooBs0Sample: _bsArr[0] ? { totalAssets: _bsArr[0].totalAssets, cash: _bsArr[0].cash, endDate: _bsArr[0].endDate } : "none",
+  });
 
   // FMP balance sheet data
   if (hasKey && fmpData?.balance?.length > 0) {
