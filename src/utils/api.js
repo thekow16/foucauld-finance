@@ -104,6 +104,147 @@ export async function fetchCandleData(sym, interval, range) {
     .filter(Boolean);
 }
 
+// ── Yahoo Timeseries API — retourne les données financières détaillées ──
+// L'API quoteSummary ne retourne plus les valeurs financières (seulement endDate),
+// donc on utilise fundamentals-timeseries comme source alternative.
+async function fetchYahooTimeseries(sym) {
+  const now = Math.floor(Date.now() / 1000);
+  const fiveYearsAgo = now - 5 * 365 * 86400;
+
+  // Balance sheet fields
+  const bsFields = [
+    "annualTotalAssets", "annualTotalCurrentAssets", "annualCashAndCashEquivalents",
+    "annualShortTermInvestments", "annualNetReceivables", "annualInventory",
+    "annualOtherCurrentAssets", "annualNetPPE", "annualGoodwillAndOtherIntangibleAssets",
+    "annualTotalNonCurrentAssets", "annualTotalLiabilitiesNetMinorityInterest",
+    "annualCurrentLiabilities", "annualCurrentDebt", "annualAccountsPayable",
+    "annualNonCurrentLiabilitiesTotal", "annualLongTermDebt", "annualTotalDebt",
+    "annualStockholdersEquity", "annualRetainedEarnings", "annualCommonStock",
+    "annualMinorityInterest",
+  ];
+  // Income statement fields
+  const isFields = [
+    "annualTotalRevenue", "annualCostOfRevenue", "annualGrossProfit",
+    "annualResearchAndDevelopment", "annualSellingGeneralAndAdministration",
+    "annualOperatingExpense", "annualOperatingIncome", "annualInterestExpense",
+    "annualPretaxIncome", "annualTaxProvision", "annualNetIncome",
+    "annualEBITDA", "annualDilutedEPS", "annualBasicEPS",
+    "annualDilutedAverageShares",
+  ];
+  // Cash flow fields
+  const cfFields = [
+    "annualOperatingCashFlow", "annualCapitalExpenditure", "annualFreeCashFlow",
+    "annualInvestingCashFlow", "annualFinancingCashFlow",
+    "annualRepurchaseOfCapitalStock", "annualCashDividendsPaid",
+    "annualChangeInCashSupplementalAsReported",
+  ];
+
+  const allFields = [...bsFields, ...isFields, ...cfFields];
+  const url = `${YF}/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}?period1=${fiveYearsAgo}&period2=${now}&type=${allFields.join(",")}&merge=false&padTimeSeries=false`;
+
+  try {
+    const json = await proxyFetch(url);
+    const series = json.timeseries?.result || [];
+    console.log("[FF] timeseries fetched, series count:", series.length);
+
+    // Organize data by date
+    const dateMap = {};
+    for (const s of series) {
+      const fieldName = s.meta?.type?.[0];
+      if (!fieldName) continue;
+      const entries = s[fieldName] || [];
+      for (const entry of entries) {
+        const date = entry.asOfDate;
+        if (!date) continue;
+        if (!dateMap[date]) dateMap[date] = {};
+        dateMap[date][fieldName] = entry.reportedValue?.raw;
+      }
+    }
+
+    const dates = Object.keys(dateMap).sort().reverse().slice(0, 5);
+    if (dates.length === 0) return null;
+
+    const w = (v) => v != null ? { raw: v } : undefined;
+
+    // Build balance sheet statements
+    const balanceSheetStatements = dates.map(date => {
+      const d = dateMap[date];
+      return {
+        endDate: { raw: Math.floor(new Date(date).getTime() / 1000), fmt: date },
+        totalAssets: w(d.annualTotalAssets),
+        totalCurrentAssets: w(d.annualTotalCurrentAssets),
+        cash: w(d.annualCashAndCashEquivalents),
+        shortTermInvestments: w(d.annualShortTermInvestments),
+        netReceivables: w(d.annualNetReceivables),
+        inventory: w(d.annualInventory),
+        otherCurrentAssets: w(d.annualOtherCurrentAssets),
+        propertyPlantEquipment: w(d.annualNetPPE),
+        goodWill: w(d.annualGoodwillAndOtherIntangibleAssets),
+        totalNonCurrentAssets: w(d.annualTotalNonCurrentAssets),
+        totalLiab: w(d.annualTotalLiabilitiesNetMinorityInterest),
+        totalCurrentLiabilities: w(d.annualCurrentLiabilities),
+        shortLongTermDebt: w(d.annualCurrentDebt),
+        accountsPayable: w(d.annualAccountsPayable),
+        longTermDebt: w(d.annualLongTermDebt),
+        totalDebt: w(d.annualTotalDebt),
+        totalStockholderEquity: w(d.annualStockholdersEquity),
+        retainedEarnings: w(d.annualRetainedEarnings),
+        commonStock: w(d.annualCommonStock),
+        minorityInterest: w(d.annualMinorityInterest),
+        nonCurrentLiabilities: w(d.annualNonCurrentLiabilitiesTotal),
+      };
+    });
+
+    // Build income statements
+    const incomeStatements = dates.map(date => {
+      const d = dateMap[date];
+      return {
+        endDate: { raw: Math.floor(new Date(date).getTime() / 1000), fmt: date },
+        totalRevenue: w(d.annualTotalRevenue),
+        costOfRevenue: w(d.annualCostOfRevenue),
+        grossProfit: w(d.annualGrossProfit),
+        researchDevelopment: w(d.annualResearchAndDevelopment),
+        sellingGeneralAdministrative: w(d.annualSellingGeneralAndAdministration),
+        totalOperatingExpenses: w(d.annualOperatingExpense),
+        operatingIncome: w(d.annualOperatingIncome),
+        interestExpense: w(d.annualInterestExpense),
+        incomeBeforeTax: w(d.annualPretaxIncome),
+        incomeTaxExpense: w(d.annualTaxProvision),
+        netIncome: w(d.annualNetIncome),
+        ebitda: w(d.annualEBITDA),
+        dilutedEPS: w(d.annualDilutedEPS),
+        basicEPS: w(d.annualBasicEPS),
+        dilutedAverageShares: w(d.annualDilutedAverageShares),
+      };
+    });
+
+    // Build cashflow statements
+    const cashflowStatements = dates.map(date => {
+      const d = dateMap[date];
+      return {
+        endDate: { raw: Math.floor(new Date(date).getTime() / 1000), fmt: date },
+        totalCashFromOperatingActivities: w(d.annualOperatingCashFlow),
+        capitalExpenditures: w(d.annualCapitalExpenditure),
+        freeCashFlow: w(d.annualFreeCashFlow),
+        totalCashflowsFromInvestingActivities: w(d.annualInvestingCashFlow),
+        totalCashFromFinancingActivities: w(d.annualFinancingCashFlow),
+        repurchaseOfStock: w(d.annualRepurchaseOfCapitalStock),
+        dividendsPaid: w(d.annualCashDividendsPaid),
+        changeInCash: w(d.annualChangeInCashSupplementalAsReported),
+      };
+    });
+
+    console.log("[FF] timeseries parsed:", dates.length, "years,",
+      "bs sample:", balanceSheetStatements[0]?.totalAssets?.raw,
+      "is sample:", incomeStatements[0]?.totalRevenue?.raw);
+
+    return { balanceSheetStatements, incomeStatements, cashflowStatements };
+  } catch (e) {
+    console.warn("[FF] timeseries fetch failed:", e.message);
+    return null;
+  }
+}
+
 // ── Convertisseurs FMP → Yahoo format ──
 function yw(v) { return v != null ? { raw: v } : undefined; }
 
@@ -210,57 +351,68 @@ export async function fetchStockData(sym) {
         console.log("[FF] quoteSummary OK via Worker — modules:", Object.keys(yahooResult).join(","),
           "bs:", bsCount, "is:", isCount, "cf:", cfCount);
 
-        // Try FMP enrichment only if Yahoo has gaps AND FMP key is available
-        if ((bsCount === 0 || isCount === 0) && hasFmpApiKey()) {
-          console.log("[FF] Yahoo incomplet, tentative enrichissement FMP…");
-          try {
-            const [prof, fins] = await Promise.all([
-              fetchProfile(sym).catch(() => null),
-              fetchAllFinancials(sym).catch(() => null),
-            ]);
-            const fp = Array.isArray(prof) ? prof[0] : prof;
-            if (fins?.balance?.length > 0) {
-              yahooResult.balanceSheetHistory = { balanceSheetStatements: fmpToYahooBalance(fins.balance) };
+        // Check if quoteSummary has real data (not just endDate shells)
+        const bsHasData = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s =>
+          s.totalAssets?.raw != null
+        );
+        const isHasData = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).some(s =>
+          s.totalRevenue?.raw != null
+        );
+
+        // If quoteSummary returned shells without data, use timeseries API
+        if (!bsHasData || !isHasData) {
+          console.log("[FF] quoteSummary données vides, tentative timeseries…");
+          const ts = await fetchYahooTimeseries(sym);
+          if (ts) {
+            if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements[0].totalAssets?.raw != null) {
+              yahooResult.balanceSheetHistory = { balanceSheetStatements: ts.balanceSheetStatements };
             }
-            if (fins?.income?.length > 0) {
-              yahooResult.incomeStatementHistory = { incomeStatementHistory: fmpToYahooIncome(fins.income) };
+            if (ts.incomeStatements?.length > 0 && ts.incomeStatements[0].totalRevenue?.raw != null) {
+              yahooResult.incomeStatementHistory = { incomeStatementHistory: ts.incomeStatements };
             }
-            if (fins?.cashflow?.length > 0) {
-              yahooResult.cashflowStatementHistory = { cashflowStatements: fmpToYahooCashflow(fins.cashflow) };
+            if (ts.cashflowStatements?.length > 0) {
+              yahooResult.cashflowStatementHistory = { cashflowStatements: ts.cashflowStatements };
             }
-            if (fins?.balance?.length > 0 || fins?.income?.length > 0) {
-              yahooResult._fmpData = fins;
-              // Enrich ratios from FMP
-              const fd = yahooResult.financialData || {};
-              const sd = yahooResult.summaryDetail || {};
-              const ks = yahooResult.defaultKeyStatistics || {};
-              const inc0 = fins?.income?.[0];
-              const bal0 = fins?.balance?.[0];
-              const cf0 = fins?.cashflow?.[0];
-              const rat0 = fins?.ratios?.[0];
-              if (!fd.totalRevenue?.raw && inc0?.revenue) fd.totalRevenue = { raw: inc0.revenue };
-              if (!fd.grossMargins?.raw && inc0?.grossProfitRatio) fd.grossMargins = { raw: inc0.grossProfitRatio };
-              if (!fd.operatingMargins?.raw && inc0?.operatingIncomeRatio) fd.operatingMargins = { raw: inc0.operatingIncomeRatio };
-              if (!fd.profitMargins?.raw && inc0?.netIncomeRatio) fd.profitMargins = { raw: inc0.netIncomeRatio };
-              if (!fd.ebitda?.raw && inc0?.ebitda) fd.ebitda = { raw: inc0.ebitda };
-              if (!fd.returnOnEquity?.raw && rat0?.returnOnEquity) fd.returnOnEquity = { raw: rat0.returnOnEquity };
-              if (!fd.returnOnAssets?.raw && rat0?.returnOnAssets) fd.returnOnAssets = { raw: rat0.returnOnAssets };
-              if (!fd.debtToEquity?.raw && rat0?.debtEquityRatio) fd.debtToEquity = { raw: rat0.debtEquityRatio * 100 };
-              if (!fd.currentRatio?.raw && rat0?.currentRatio) fd.currentRatio = { raw: rat0.currentRatio };
-              if (!fd.freeCashflow?.raw && cf0?.freeCashFlow) fd.freeCashflow = { raw: cf0.freeCashFlow };
-              if (!fd.operatingCashflow?.raw && cf0?.operatingCashFlow) fd.operatingCashflow = { raw: cf0.operatingCashFlow };
-              if (!fd.totalCash?.raw && bal0?.cashAndCashEquivalents) fd.totalCash = { raw: bal0.cashAndCashEquivalents };
-              if (!fd.totalDebt?.raw && bal0?.totalDebt) fd.totalDebt = { raw: bal0.totalDebt };
-              if (!ks.beta?.raw && fp?.beta) ks.beta = { raw: fp.beta };
-              if (!ks.priceToBook?.raw && rat0?.priceToBookRatio) ks.priceToBook = { raw: rat0.priceToBookRatio };
-              const ap = yahooResult.assetProfile || {};
-              if ((!ap.sector || ap.sector === "N/A") && fp?.sector) ap.sector = fp.sector;
-              if ((!ap.industry || ap.industry === "N/A") && fp?.industry) ap.industry = fp.industry;
-              if (!ap.longBusinessSummary && fp?.description) ap.longBusinessSummary = fp.description;
-              console.log("[FF] Yahoo enrichi avec FMP OK");
+            // Enrich financialData from timeseries if needed
+            const fd = yahooResult.financialData || {};
+            const is0 = ts.incomeStatements?.[0];
+            const bs0 = ts.balanceSheetStatements?.[0];
+            const cf0 = ts.cashflowStatements?.[0];
+            if (!fd.totalRevenue?.raw && is0?.totalRevenue?.raw) fd.totalRevenue = is0.totalRevenue;
+            if (!fd.ebitda?.raw && is0?.ebitda?.raw) fd.ebitda = is0.ebitda;
+            if (!fd.totalCash?.raw && bs0?.cash?.raw) fd.totalCash = bs0.cash;
+            if (!fd.totalDebt?.raw && bs0?.totalDebt?.raw) fd.totalDebt = bs0.totalDebt;
+            if (!fd.freeCashflow?.raw && cf0?.freeCashFlow?.raw) fd.freeCashflow = cf0.freeCashFlow;
+            if (!fd.operatingCashflow?.raw && cf0?.totalCashFromOperatingActivities?.raw) fd.operatingCashflow = cf0.totalCashFromOperatingActivities;
+            console.log("[FF] timeseries enrichissement OK");
+          }
+
+          // Try FMP as last resort if timeseries also failed AND FMP key available
+          const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
+          if (stillNoBs && hasFmpApiKey()) {
+            console.log("[FF] timeseries insuffisant, tentative FMP…");
+            try {
+              const [prof, fins] = await Promise.all([
+                fetchProfile(sym).catch(() => null),
+                fetchAllFinancials(sym).catch(() => null),
+              ]);
+              const fp = Array.isArray(prof) ? prof[0] : prof;
+              if (fins?.balance?.length > 0) {
+                yahooResult.balanceSheetHistory = { balanceSheetStatements: fmpToYahooBalance(fins.balance) };
+              }
+              if (fins?.income?.length > 0) {
+                yahooResult.incomeStatementHistory = { incomeStatementHistory: fmpToYahooIncome(fins.income) };
+              }
+              if (fins?.cashflow?.length > 0) {
+                yahooResult.cashflowStatementHistory = { cashflowStatements: fmpToYahooCashflow(fins.cashflow) };
+              }
+              if (fins?.balance?.length > 0 || fins?.income?.length > 0) {
+                yahooResult._fmpData = fins;
+                console.log("[FF] FMP enrichissement OK");
+              }
+            } catch (e) {
+              console.warn("[FF] FMP échoué:", e.message);
             }
-          } catch (e) {
-            console.warn("[FF] Enrichissement FMP échoué:", e.message);
           }
         }
         // Always return Yahoo result (enriched or not)
