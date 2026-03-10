@@ -269,11 +269,13 @@ function MarginBar({ label, value, color }) {
 // BILAN
 // ════════════════════════════════════════════════
 export function BilanTab({ data, symbol }) {
-  const [fmpData, setFmpData] = useState(null);
+  const [fmpData, setFmpData] = useState(data?._fmpData || null);
   const [loading, setLoading] = useState(false);
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
 
   useEffect(() => {
+    // Skip fetch if we already have FMP data from fetchStockData
+    if (fmpData?.balance?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -666,11 +668,12 @@ export function BilanTab({ data, symbol }) {
 // RÉSULTATS
 // ════════════════════════════════════════════════
 export function ResultatsTab({ data, symbol }) {
-  const [fmpData, setFmpData] = useState(null);
+  const [fmpData, setFmpData] = useState(data?._fmpData || null);
   const [loading, setLoading] = useState(false);
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
 
   useEffect(() => {
+    if (fmpData?.income?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -1087,11 +1090,12 @@ export function ResultatsTab({ data, symbol }) {
 // TRÉSORERIE
 // ════════════════════════════════════════════════
 export function TresorerieTab({ data, symbol }) {
-  const [fmpData, setFmpData] = useState(null);
+  const [fmpData, setFmpData] = useState(data?._fmpData || null);
   const [loading, setLoading] = useState(false);
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
 
   useEffect(() => {
+    if (fmpData?.cashflow?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
