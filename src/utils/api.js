@@ -196,20 +196,101 @@ export async function fetchStockData(sym) {
   console.log("[FF] fetchStockData:", sym);
 
   // Essai 1 : quoteSummary via Worker (qui gère le crumb)
+  let yahooResult = null;
   if (WORKER_URL) {
     try {
       const modules = "price,financialData,defaultKeyStatistics,balanceSheetHistory,incomeStatementHistory,cashflowStatementHistory,summaryDetail,assetProfile,earningsTrend,recommendationTrend,calendarEvents";
       const url = `${YF}/v10/finance/quoteSummary/${sym}?modules=${modules}`;
       const json = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
-      const result = json.quoteSummary?.result?.[0];
-      if (result) {
+      yahooResult = json.quoteSummary?.result?.[0];
+      if (yahooResult) {
         console.log("[FF] quoteSummary OK via Worker");
-        return result;
+        // Check if Yahoo has actual financial statement data
+        const hasBs = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s =>
+          s.totalAssets?.raw != null && s.totalAssets.raw !== 0
+        );
+        const hasInc = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).some(s =>
+          s.totalRevenue?.raw != null && s.totalRevenue.raw !== 0
+        );
+        if (hasBs && hasInc) {
+          // Yahoo has complete data, return it directly
+          return yahooResult;
+        }
+        // Yahoo data incomplete — will try FMP enrichment below
+        console.log("[FF] quoteSummary incomplet, enrichissement FMP…");
       }
     } catch (e) {
       console.warn("[FF] quoteSummary via Worker échoué:", e.message);
     }
   }
+
+  // Essai 1b : enrichir Yahoo avec FMP si données financières vides
+  if (yahooResult && hasFmpApiKey()) {
+    try {
+      const [prof, fins] = await Promise.all([
+        fetchProfile(sym).catch(() => null),
+        fetchAllFinancials(sym).catch(() => null),
+      ]);
+      const fp = Array.isArray(prof) ? prof[0] : prof;
+      if (fins?.balance?.length > 0) {
+        yahooResult.balanceSheetHistory = { balanceSheetStatements: fmpToYahooBalance(fins.balance) };
+      }
+      if (fins?.income?.length > 0) {
+        yahooResult.incomeStatementHistory = { incomeStatementHistory: fmpToYahooIncome(fins.income) };
+      }
+      if (fins?.cashflow?.length > 0) {
+        yahooResult.cashflowStatementHistory = { cashflowStatements: fmpToYahooCashflow(fins.cashflow) };
+      }
+      yahooResult._fmpData = fins;
+      // Enrich financial ratios from FMP if Yahoo has N/A values
+      const fd = yahooResult.financialData || {};
+      const sd = yahooResult.summaryDetail || {};
+      const ks = yahooResult.defaultKeyStatistics || {};
+      const inc0 = fins?.income?.[0];
+      const bal0 = fins?.balance?.[0];
+      const cf0 = fins?.cashflow?.[0];
+      const rat0 = fins?.ratios?.[0];
+      const km0 = fins?.keyMetrics?.[0];
+      // Fill missing financial data from FMP
+      if (!fd.totalRevenue?.raw && inc0?.revenue) fd.totalRevenue = { raw: inc0.revenue };
+      if (!fd.grossMargins?.raw && inc0?.grossProfitRatio) fd.grossMargins = { raw: inc0.grossProfitRatio };
+      if (!fd.operatingMargins?.raw && inc0?.operatingIncomeRatio) fd.operatingMargins = { raw: inc0.operatingIncomeRatio };
+      if (!fd.profitMargins?.raw && inc0?.netIncomeRatio) fd.profitMargins = { raw: inc0.netIncomeRatio };
+      if (!fd.ebitda?.raw && inc0?.ebitda) fd.ebitda = { raw: inc0.ebitda };
+      if (!fd.returnOnEquity?.raw && rat0?.returnOnEquity) fd.returnOnEquity = { raw: rat0.returnOnEquity };
+      if (!fd.returnOnAssets?.raw && rat0?.returnOnAssets) fd.returnOnAssets = { raw: rat0.returnOnAssets };
+      if (!fd.debtToEquity?.raw && rat0?.debtEquityRatio) fd.debtToEquity = { raw: rat0.debtEquityRatio * 100 };
+      if (!fd.currentRatio?.raw && rat0?.currentRatio) fd.currentRatio = { raw: rat0.currentRatio };
+      if (!fd.freeCashflow?.raw && cf0?.freeCashFlow) fd.freeCashflow = { raw: cf0.freeCashFlow };
+      if (!fd.operatingCashflow?.raw && cf0?.operatingCashFlow) fd.operatingCashflow = { raw: cf0.operatingCashFlow };
+      if (!fd.totalCash?.raw && bal0?.cashAndCashEquivalents) fd.totalCash = { raw: bal0.cashAndCashEquivalents };
+      if (!fd.totalDebt?.raw && bal0?.totalDebt) fd.totalDebt = { raw: bal0.totalDebt };
+      if (!ks.beta?.raw && fp?.beta) ks.beta = { raw: fp.beta };
+      if (!ks.priceToBook?.raw && rat0?.priceToBookRatio) ks.priceToBook = { raw: rat0.priceToBookRatio };
+      if (!ks.enterpriseToEbitda?.raw && inc0?.ebitda && fp?.mktCap) {
+        const ev = fp.mktCap + (bal0?.totalDebt || 0) - (bal0?.cashAndCashEquivalents || 0);
+        ks.enterpriseToEbitda = { raw: ev / inc0.ebitda };
+        ks.enterpriseValue = { raw: ev };
+        if (inc0.revenue) ks.enterpriseToRevenue = { raw: ev / inc0.revenue };
+      }
+      if (!sd.trailingPE?.raw && inc0?.epsdiluted) {
+        const price = yahooResult.price?.regularMarketPrice?.raw;
+        if (price) sd.trailingPE = { raw: price / inc0.epsdiluted };
+      }
+      // Enrich profile if missing
+      const ap = yahooResult.assetProfile || {};
+      if ((!ap.sector || ap.sector === "N/A") && fp?.sector) ap.sector = fp.sector;
+      if ((!ap.industry || ap.industry === "N/A") && fp?.industry) ap.industry = fp.industry;
+      if (!ap.longBusinessSummary && fp?.description) ap.longBusinessSummary = fp.description;
+      console.log("[FF] Yahoo enrichi avec FMP");
+      return yahooResult;
+    } catch (e) {
+      console.warn("[FF] Enrichissement FMP échoué:", e.message);
+      return yahooResult; // Return Yahoo data even if FMP fails
+    }
+  }
+
+  if (yahooResult) return yahooResult;
 
   // Essai 2 : construire les données depuis /v8/finance/chart (pas besoin de crumb)
   console.log("[FF] Fallback: extraction depuis chart data");
