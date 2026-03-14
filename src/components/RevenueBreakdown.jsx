@@ -57,34 +57,61 @@ function parseFmpSegments(raw) {
 
 const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
 
-const SEC_PROXIES = [
-  // corsproxy.io: supports JSON, works with SEC EDGAR
-  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  // Cloudflare Worker (needs redeploy to support SEC)
-  url => `${WORKER_URL}?url=${encodeURIComponent(url)}`,
-  // allorigins
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-];
-
 async function secFetch(url) {
-  for (let i = 0; i < SEC_PROXIES.length; i++) {
-    const proxyUrl = SEC_PROXIES[i](url);
-    const label = new URL(proxyUrl).hostname;
-    try {
-      const res = await fetch(proxyUrl, {
-        signal: AbortSignal.timeout(15000),
-        headers: { Accept: "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        console.log(`[SEC] OK via ${label}`);
+  // Strategy 1: allorigins /get (wraps response in JSON — most reliable for SEC)
+  try {
+    const aoUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    console.log("[SEC] Trying allorigins /get …");
+    const res = await fetch(aoUrl, { signal: AbortSignal.timeout(30000) });
+    if (res.ok) {
+      const wrapper = await res.json();
+      if (wrapper?.contents) {
+        const data = JSON.parse(wrapper.contents);
+        console.log("[SEC] OK via allorigins /get");
         return data;
       }
-      console.warn(`[SEC] ${label} → HTTP ${res.status}`);
-    } catch (e) {
-      console.warn(`[SEC] ${label} → ${e.message}`);
     }
+    console.warn("[SEC] allorigins /get → HTTP", res.status);
+  } catch (e) {
+    console.warn("[SEC] allorigins /get →", e.message);
   }
+
+  // Strategy 2: Cloudflare Worker
+  try {
+    const wUrl = `${WORKER_URL}?url=${encodeURIComponent(url)}`;
+    console.log("[SEC] Trying worker …");
+    const res = await fetch(wUrl, {
+      signal: AbortSignal.timeout(20000),
+      headers: { Accept: "application/json" },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log("[SEC] OK via worker");
+      return data;
+    }
+    console.warn("[SEC] worker → HTTP", res.status);
+  } catch (e) {
+    console.warn("[SEC] worker →", e.message);
+  }
+
+  // Strategy 3: corsproxy.io
+  try {
+    const cpUrl = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+    console.log("[SEC] Trying corsproxy.io …");
+    const res = await fetch(cpUrl, {
+      signal: AbortSignal.timeout(20000),
+      headers: { Accept: "application/json" },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log("[SEC] OK via corsproxy.io");
+      return data;
+    }
+    console.warn("[SEC] corsproxy.io → HTTP", res.status);
+  } catch (e) {
+    console.warn("[SEC] corsproxy.io →", e.message);
+  }
+
   return null;
 }
 
@@ -175,6 +202,8 @@ async function fetchSecSegments(symbol) {
       "Revenues",
       "RevenueFromContractWithCustomerIncludingAssessedTax",
       "SalesRevenueNet",
+      "SalesRevenueGoodsNet",
+      "NetRevenues",
     ];
 
     let revenueData = null;
@@ -182,9 +211,14 @@ async function fetchSecSegments(symbol) {
       const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${concept}.json`;
       const data = await secFetch(url);
       if (data?.units?.USD?.length > 0) {
-        revenueData = data.units.USD;
-        console.log(`[SEC] Found revenue data via ${concept}: ${revenueData.length} entries`);
-        break;
+        // Only use this concept if it has segmented entries (otherwise keep looking)
+        const segmented = data.units.USD.filter(e => e.segment);
+        if (segmented.length > 0) {
+          revenueData = data.units.USD;
+          console.log(`[SEC] Found revenue data via ${concept}: ${revenueData.length} entries (${segmented.length} segmented)`);
+          break;
+        }
+        console.log(`[SEC] ${concept}: ${data.units.USD.length} entries but 0 segmented — trying next`);
       }
     }
 
