@@ -39,27 +39,27 @@ async function fmpFetch(endpoint) {
 }
 
 // ── Compte de résultat (Income Statement) ──
-export async function fetchIncomeStatement(symbol, limit = 20) {
+export async function fetchIncomeStatement(symbol, limit = 40) {
   return fmpFetch(`/income-statement/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Bilan (Balance Sheet) ──
-export async function fetchBalanceSheet(symbol, limit = 20) {
+export async function fetchBalanceSheet(symbol, limit = 40) {
   return fmpFetch(`/balance-sheet-statement/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Flux de trésorerie (Cash Flow) ──
-export async function fetchCashFlow(symbol, limit = 20) {
+export async function fetchCashFlow(symbol, limit = 40) {
   return fmpFetch(`/cash-flow-statement/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Ratios financiers ──
-export async function fetchRatios(symbol, limit = 20) {
+export async function fetchRatios(symbol, limit = 40) {
   return fmpFetch(`/ratios/${symbol}?period=annual&limit=${limit}`);
 }
 
 // ── Métriques clés ──
-export async function fetchKeyMetrics(symbol, limit = 20) {
+export async function fetchKeyMetrics(symbol, limit = 40) {
   return fmpFetch(`/key-metrics/${symbol}?period=annual&limit=${limit}`);
 }
 
@@ -74,23 +74,23 @@ export async function fetchEarningsHistory(symbol) {
 }
 
 // ── Communiqués de presse ──
-export async function fetchPressReleases(symbol, limit = 20) {
+export async function fetchPressReleases(symbol, limit = 40) {
   return fmpFetch(`/press-releases/${symbol}?page=0&limit=${limit}`);
 }
 
 // ── SEC Filings (10-K, 10-Q, 8-K) ──
-export async function fetchSecFilings(symbol, limit = 20) {
+export async function fetchSecFilings(symbol, limit = 40) {
   return fmpFetch(`/sec_filings/${symbol}?type=&page=0&limit=${limit}`);
 }
 
 // ── Fetch toutes les données financières d'un coup ──
 export async function fetchAllFinancials(symbol) {
   const [income, balance, cashflow, ratios, keyMetrics] = await Promise.all([
-    fetchIncomeStatement(symbol, 20).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
-    fetchBalanceSheet(symbol, 20).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),
-    fetchCashFlow(symbol, 20).catch(e => { console.warn("[FMP] cashflow err:", e.message); return []; }),
-    fetchRatios(symbol, 20).catch(e => { console.warn("[FMP] ratios err:", e.message); return []; }),
-    fetchKeyMetrics(symbol, 20).catch(e => { console.warn("[FMP] keyMetrics err:", e.message); return []; }),
+    fetchIncomeStatement(symbol, 40).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
+    fetchBalanceSheet(symbol, 40).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),
+    fetchCashFlow(symbol, 40).catch(e => { console.warn("[FMP] cashflow err:", e.message); return []; }),
+    fetchRatios(symbol, 40).catch(e => { console.warn("[FMP] ratios err:", e.message); return []; }),
+    fetchKeyMetrics(symbol, 40).catch(e => { console.warn("[FMP] keyMetrics err:", e.message); return []; }),
   ]);
   console.log("[FMP] fetchAllFinancials result:", symbol,
     "income:", income?.length || 0,
