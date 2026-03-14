@@ -7,6 +7,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { proxyFetch } from "../utils/api";
 import { hasFmpApiKey, fetchRevenueProductSegmentation, fetchRevenueGeoSegmentation } from "../utils/fmpApi";
 
 const COLORS = [
@@ -25,7 +26,8 @@ function compact(v) {
   return `${sign}${abs.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}`;
 }
 
-function parseSegments(raw) {
+/* ── Parse FMP segment response ── */
+function parseFmpSegments(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return null;
   const latest = raw[0];
   if (!latest || typeof latest !== "object") return null;
@@ -38,7 +40,7 @@ function parseSegments(raw) {
       entries.push({ name, value });
     }
   }
-  if (entries.length === 0) return null;
+  if (entries.length < 2) return null;
   entries.sort((a, b) => b.value - a.value);
   const total = entries.reduce((s, e) => s + e.value, 0);
   return {
@@ -52,105 +54,172 @@ function parseSegments(raw) {
   };
 }
 
-/* ── Helpers to extract a value from FMP or Yahoo ── */
-function val(fmpVal, yahooObj) {
-  if (fmpVal != null && fmpVal !== 0) return fmpVal;
-  if (yahooObj?.raw != null) return yahooObj.raw;
-  return null;
-}
+/* ── SEC EDGAR: fetch segment data (free, no API key) ── */
 
-/* ── Build "Structure du CA" pie from whatever data we have ── */
-function buildRevenueStructure(data) {
-  const fmp = data?._fmpData?.income?.[0];
-  const yInc = data?.incomeStatementHistory?.incomeStatementHistory?.[0];
+// Cache ticker → CIK mapping
+let tickerToCik = null;
 
-  const revenue = val(fmp?.revenue, yInc?.totalRevenue);
-  if (!revenue || revenue <= 0) return null;
-
-  const cogs = val(fmp?.costOfRevenue, yInc?.costOfRevenue);
-  const rd = val(fmp?.researchAndDevelopmentExpenses, yInc?.researchDevelopment);
-  const sga = val(fmp?.sellingGeneralAndAdministrativeExpenses, yInc?.sellingGeneralAdministrative);
-  const opIncome = val(fmp?.operatingIncome, yInc?.operatingIncome);
-  const grossProfit = val(fmp?.grossProfit, yInc?.grossProfit);
-
-  const items = [];
-
-  if (cogs > 0) items.push({ name: "Coût des ventes", value: cogs });
-  if (rd > 0) items.push({ name: "R&D", value: rd });
-  if (sga > 0) items.push({ name: "Frais généraux (SGA)", value: sga });
-
-  // If we have detailed costs, add operating income as remainder
-  if (items.length >= 1 && opIncome > 0) {
-    const knownCosts = items.reduce((s, e) => s + e.value, 0);
-    const otherCosts = revenue - knownCosts - opIncome;
-    if (otherCosts > 0) items.push({ name: "Autres charges", value: otherCosts });
-    items.push({ name: "Résultat opérationnel", value: opIncome });
-  } else if (grossProfit > 0 && cogs > 0) {
-    // Minimal: just COGS vs Gross Profit
-    // Remove cogs if already added, rebuild
-    items.length = 0;
-    items.push({ name: "Coût des ventes", value: cogs });
-    if (opIncome > 0) {
-      const opex = grossProfit - opIncome;
-      if (opex > 0) items.push({ name: "Charges opérationnelles", value: opex });
-      items.push({ name: "Résultat opérationnel", value: opIncome });
-    } else {
-      items.push({ name: "Marge brute", value: grossProfit });
+async function getTickerCikMap() {
+  if (tickerToCik) return tickerToCik;
+  try {
+    const data = await proxyFetch("https://www.sec.gov/files/company_tickers.json");
+    tickerToCik = {};
+    for (const entry of Object.values(data)) {
+      tickerToCik[entry.ticker?.toUpperCase()] = String(entry.cik_str).padStart(10, "0");
     }
+    return tickerToCik;
+  } catch (e) {
+    console.warn("[SEC] Failed to fetch ticker→CIK map:", e.message);
+    return {};
   }
-
-  if (items.length < 2) return null;
-
-  const total = items.reduce((s, e) => s + e.value, 0);
-  const year = fmp?.calendarYear || fmp?.date?.slice(0, 4) ||
-    (yInc?.endDate?.raw ? new Date(yInc.endDate.raw * 1000).getFullYear() : null);
-
-  return {
-    date: year,
-    total: revenue,
-    items: items.map((e, i) => ({
-      ...e,
-      pct: ((e.value / revenue) * 100).toFixed(1),
-      color: COLORS[i % COLORS.length],
-    })),
-  };
 }
 
-/* ── Build "Cascade de rentabilité" ── */
-function buildProfitCascade(data) {
-  const fmp = data?._fmpData?.income?.[0];
-  const yCf = data?._fmpData?.cashflow?.[0];
-  const yInc = data?.incomeStatementHistory?.incomeStatementHistory?.[0];
-  const yCash = data?.cashflowStatementHistory?.cashflowStatements?.[0];
-
-  const revenue = val(fmp?.revenue, yInc?.totalRevenue);
-  if (!revenue || revenue <= 0) return null;
-
-  const grossProfit = val(fmp?.grossProfit, yInc?.grossProfit);
-  const opIncome = val(fmp?.operatingIncome, yInc?.operatingIncome);
-  const netIncome = val(fmp?.netIncome, yInc?.netIncome);
-  const fcf = val(yCf?.freeCashFlow, yCash?.freeCashFlow);
-
-  const items = [];
-  if (grossProfit > 0) items.push({ name: "Marge brute", value: grossProfit });
-  if (opIncome > 0) items.push({ name: "Résultat opérationnel", value: opIncome });
-  if (netIncome > 0) items.push({ name: "Résultat net", value: netIncome });
-  if (fcf > 0) items.push({ name: "Free Cash Flow", value: fcf });
-
-  if (items.length < 2) return null;
-
-  const year = fmp?.calendarYear || fmp?.date?.slice(0, 4) ||
-    (yInc?.endDate?.raw ? new Date(yInc.endDate.raw * 1000).getFullYear() : null);
-
-  return {
-    date: year,
-    total: revenue,
-    items: items.map((e, i) => ({
-      ...e,
-      pct: ((e.value / revenue) * 100).toFixed(1),
-      color: ["#4f46e5", "#f59e0b", "#10b981", "#0891b2"][i] || COLORS[i],
-    })),
+function cleanSegmentName(raw) {
+  // Convert XBRL segment labels to readable names
+  // e.g. "aapl:IPhoneMember" → "iPhone", "us-gaap:Americas" → "Americas"
+  let name = raw;
+  // Remove namespace prefix
+  name = name.replace(/^[a-z]+:/i, "");
+  // Remove "Member", "Segment", "Region" suffixes
+  name = name.replace(/Member$/i, "").replace(/Segment$/i, "").replace(/Region$/i, "");
+  // CamelCase to spaces
+  name = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+  // Special known mappings
+  const MAP = {
+    "I Phone": "iPhone",
+    "I Pad": "iPad",
+    "I Cloud": "iCloud",
+    "Mac": "Mac",
+    "Wearables Home And Accessories": "Wearables & Accessories",
+    "Greater China": "Chine",
+    "Americas": "Amériques",
+    "Europe": "Europe",
+    "Japan": "Japon",
+    "Rest Of Asia Pacific": "Reste Asie-Pacifique",
+    "Asia Pacific": "Asie-Pacifique",
+    "United States": "États-Unis",
+    "United States And Canada": "États-Unis & Canada",
+    "North America": "Amérique du Nord",
+    "Latin America": "Amérique latine",
+    "EMEA": "EMEA",
+    "Middle East And Africa": "Moyen-Orient & Afrique",
   };
+  return MAP[name] || name;
+}
+
+async function fetchSecSegments(symbol) {
+  try {
+    const cikMap = await getTickerCikMap();
+    // Handle exchange suffixes like MC.PA → MC
+    const baseTicker = symbol.split(".")[0].toUpperCase();
+    const cik = cikMap[symbol.toUpperCase()] || cikMap[baseTicker];
+    if (!cik) {
+      console.log("[SEC] No CIK found for", symbol);
+      return { product: null, geo: null };
+    }
+
+    const url = `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`;
+    const data = await proxyFetch(url);
+    const facts = data?.facts?.["us-gaap"] || {};
+
+    // Look for revenue concepts
+    const revenueConcepts = [
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "Revenues",
+      "RevenueFromContractWithCustomerIncludingAssessedTax",
+      "SalesRevenueNet",
+      "Revenue",
+    ];
+
+    let revenueData = null;
+    for (const concept of revenueConcepts) {
+      if (facts[concept]?.units?.USD?.length > 0) {
+        revenueData = facts[concept].units.USD;
+        break;
+      }
+    }
+
+    if (!revenueData) {
+      console.log("[SEC] No revenue data found for", symbol);
+      return { product: null, geo: null };
+    }
+
+    // Filter for annual (10-K) filings only, most recent fiscal year
+    const annualEntries = revenueData.filter(e =>
+      e.form === "10-K" && e.fp === "FY" && e.val > 0
+    );
+
+    if (annualEntries.length === 0) {
+      return { product: null, geo: null };
+    }
+
+    // Find the most recent fiscal year
+    const maxFy = Math.max(...annualEntries.map(e => e.fy));
+
+    // Separate entries with and without segments for latest year
+    const latestEntries = annualEntries.filter(e => e.fy === maxFy);
+
+    // Entries with segment info (product or geo breakdowns)
+    const segmented = latestEntries.filter(e => e.segment);
+    // Total revenue (no segment = company total)
+    const totalEntry = latestEntries.find(e => !e.segment && !e.frame?.includes("I"));
+
+    if (segmented.length < 2) {
+      return { product: null, geo: null };
+    }
+
+    // Classify segments as product vs geo
+    const geoKeywords = /geograph|region|country|americas|europe|china|japan|asia|pacific|emea|africa|middle.east|united.states|north.america|latin|international|domestic/i;
+    const productEntries = [];
+    const geoEntries = [];
+
+    for (const entry of segmented) {
+      const seg = entry.segment || "";
+      if (geoKeywords.test(seg)) {
+        geoEntries.push(entry);
+      } else {
+        productEntries.push(entry);
+      }
+    }
+
+    const buildPieData = (entries, year) => {
+      if (entries.length < 2) return null;
+
+      // Deduplicate: keep the entry with the largest val for each segment name
+      const byName = new Map();
+      for (const e of entries) {
+        const name = cleanSegmentName(e.segment.split("=").pop() || e.segment);
+        const existing = byName.get(name);
+        if (!existing || e.val > existing.val) {
+          byName.set(name, { name, value: e.val });
+        }
+      }
+
+      const items = [...byName.values()].filter(e => e.value > 0);
+      if (items.length < 2) return null;
+
+      items.sort((a, b) => b.value - a.value);
+      const total = items.reduce((s, e) => s + e.value, 0);
+
+      return {
+        date: String(year),
+        total,
+        items: items.map((e, i) => ({
+          ...e,
+          pct: ((e.value / total) * 100).toFixed(1),
+          color: COLORS[i % COLORS.length],
+        })),
+      };
+    };
+
+    return {
+      product: buildPieData(productEntries, maxFy),
+      geo: buildPieData(geoEntries, maxFy),
+    };
+  } catch (e) {
+    console.warn("[SEC] Failed to fetch segment data:", e.message);
+    return { product: null, geo: null };
+  }
 }
 
 /* ── Tooltip ── */
@@ -207,7 +276,7 @@ function PieCard({ title, subtitle, accentColor, data }) {
           {title}
         </div>
         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontWeight: 500 }}>
-          {subtitle} {data.total ? `· CA total: ${compact(data.total)}` : ""}
+          {subtitle} {data.total ? `· Total: ${compact(data.total)}` : ""}
         </div>
       </div>
       <div style={{ width: "100%", height: 280 }}>
@@ -236,7 +305,7 @@ function PieCard({ title, subtitle, accentColor, data }) {
       </div>
       {data.date && (
         <div style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", marginTop: 4 }}>
-          Données {data.date}
+          Année fiscale {data.date}
         </div>
       )}
     </div>
@@ -247,37 +316,74 @@ function PieCard({ title, subtitle, accentColor, data }) {
 export default function RevenueBreakdown({ data, symbol }) {
   const [productData, setProductData] = useState(null);
   const [geoData, setGeoData] = useState(null);
-  const [loaded, setLoaded] = useState(false);
-
-  const revenueStructure = buildRevenueStructure(data);
-  const profitCascade = buildProfitCascade(data);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fmp = data?._fmpData;
-    if (fmp?.productSegments?.length || fmp?.geoSegments?.length) {
-      setProductData(parseSegments(fmp.productSegments));
-      setGeoData(parseSegments(fmp.geoSegments));
-      setLoaded(true);
-      return;
-    }
+    if (!symbol) return;
 
-    if (!hasFmpApiKey() || !symbol) {
-      setLoaded(true);
-      return;
-    }
+    setProductData(null);
+    setGeoData(null);
+    setLoading(true);
 
-    Promise.all([
-      fetchRevenueProductSegmentation(symbol).catch(() => []),
-      fetchRevenueGeoSegmentation(symbol).catch(() => []),
-    ]).then(([prod, geo]) => {
-      setProductData(parseSegments(prod));
-      setGeoData(parseSegments(geo));
-      setLoaded(true);
-    });
+    (async () => {
+      // 1) Try FMP first (if key available)
+      if (hasFmpApiKey()) {
+        try {
+          const fmp = data?._fmpData;
+          const [prod, geo] = fmp?.productSegments?.length || fmp?.geoSegments?.length
+            ? [fmp.productSegments, fmp.geoSegments]
+            : await Promise.all([
+                fetchRevenueProductSegmentation(symbol).catch(() => []),
+                fetchRevenueGeoSegmentation(symbol).catch(() => []),
+              ]);
+
+          const p = parseFmpSegments(prod);
+          const g = parseFmpSegments(geo);
+          if (p || g) {
+            setProductData(p);
+            setGeoData(g);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn("[Segments] FMP failed:", e.message);
+        }
+      }
+
+      // 2) Fallback: SEC EDGAR (free, no key needed, US companies only)
+      try {
+        const { product, geo } = await fetchSecSegments(symbol);
+        setProductData(product);
+        setGeoData(geo);
+      } catch (e) {
+        console.warn("[Segments] SEC EDGAR failed:", e.message);
+      }
+
+      setLoading(false);
+    })();
   }, [symbol, data]);
 
-  const hasAnything = productData || geoData || revenueStructure || profitCascade;
-  if (!hasAnything) return null;
+  if (loading) {
+    return (
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
+        gap: 16, marginBottom: 16,
+      }}>
+        {[0, 1].map(i => (
+          <div key={i} style={{
+            background: "var(--card)", borderRadius: 16, padding: 40,
+            boxShadow: "0 1px 4px var(--shadow)", border: "1px solid var(--border)",
+            textAlign: "center", color: "var(--muted)", fontSize: 13,
+          }}>
+            Chargement des segments...
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!productData && !geoData) return null;
 
   return (
     <div style={{
@@ -286,21 +392,15 @@ export default function RevenueBreakdown({ data, symbol }) {
       gap: 16, marginBottom: 16,
     }}>
       {productData && (
-        <PieCard title="Répartition du CA par segment"
+        <PieCard title="Répartition du CA par produit"
           subtitle="Comment l'entreprise gagne son argent"
           accentColor="#4f46e5" data={productData} />
       )}
       {geoData && (
         <PieCard title="Répartition géographique du CA"
-          subtitle="Dans quels pays / régions"
+          subtitle="Où se vendent les produits"
           accentColor="#0891b2" data={geoData} />
       )}
-      <PieCard title="Structure du chiffre d'affaires"
-        subtitle="Répartition coûts & résultat"
-        accentColor="#10b981" data={revenueStructure} />
-      <PieCard title="Cascade de rentabilité"
-        subtitle="Du CA au Free Cash Flow"
-        accentColor="#7c3aed" data={profitCascade} />
     </div>
   );
 }
