@@ -9,6 +9,9 @@
 const ALLOWED_HOSTS = [
   "query1.finance.yahoo.com",
   "query2.finance.yahoo.com",
+  "data.sec.gov",
+  "www.sec.gov",
+  "efts.sec.gov",
 ];
 
 // Cache crumb + cookie en mémoire (persiste entre les requêtes sur le même isolate)
@@ -88,42 +91,71 @@ export default {
     }
 
     try {
-      // Récupérer crumb + cookie
-      const { crumb, cookie } = await getCrumb();
+      const isYahoo = targetUrl.hostname.endsWith("yahoo.com");
+      const isSec = targetUrl.hostname.endsWith("sec.gov");
 
-      // Ajouter le crumb à l'URL si pas déjà présent
-      if (!targetUrl.searchParams.has("crumb")) {
-        targetUrl.searchParams.set("crumb", crumb);
-      }
+      if (isYahoo) {
+        // ── Yahoo Finance : crumb + cookie ──
+        const { crumb, cookie } = await getCrumb();
 
-      const resp = await fetch(targetUrl.toString(), {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "application/json",
-          "Cookie": cookie,
-        },
-      });
+        if (!targetUrl.searchParams.has("crumb")) {
+          targetUrl.searchParams.set("crumb", crumb);
+        }
 
-      // Si crumb invalide, réessayer avec un nouveau crumb
-      if (resp.status === 401) {
-        cachedCrumb = null;
-        crumbExpiry = 0;
-        const fresh = await getCrumb();
-        targetUrl.searchParams.set("crumb", fresh.crumb);
-        const retry = await fetch(targetUrl.toString(), {
+        const resp = await fetch(targetUrl.toString(), {
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept": "application/json",
-            "Cookie": fresh.cookie,
+            "Cookie": cookie,
           },
         });
-        const body = await retry.text();
+
+        // Si crumb invalide, réessayer avec un nouveau crumb
+        if (resp.status === 401) {
+          cachedCrumb = null;
+          crumbExpiry = 0;
+          const fresh = await getCrumb();
+          targetUrl.searchParams.set("crumb", fresh.crumb);
+          const retry = await fetch(targetUrl.toString(), {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              "Accept": "application/json",
+              "Cookie": fresh.cookie,
+            },
+          });
+          const body = await retry.text();
+          return new Response(body, {
+            status: retry.status,
+            headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+          });
+        }
+
+        const body = await resp.text();
         return new Response(body, {
-          status: retry.status,
+          status: resp.status,
           headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
         });
       }
 
+      if (isSec) {
+        // ── SEC EDGAR : User-Agent obligatoire ──
+        const resp = await fetch(targetUrl.toString(), {
+          headers: {
+            "User-Agent": "FoucauldFinance admin@foucauld.finance",
+            "Accept": "application/json",
+          },
+        });
+        const body = await resp.text();
+        return new Response(body, {
+          status: resp.status,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=300" },
+        });
+      }
+
+      // ── Autre hôte autorisé : proxy simple ──
+      const resp = await fetch(targetUrl.toString(), {
+        headers: { "Accept": "application/json" },
+      });
       const body = await resp.text();
       return new Response(body, {
         status: resp.status,
