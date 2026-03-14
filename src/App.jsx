@@ -4,7 +4,6 @@ import StockHeader from "./components/StockHeader";
 import CandlestickChart from "./components/CandlestickChart";
 import KeyMetricsCharts from "./components/KeyMetricsCharts";
 import RevenueBreakdown from "./components/RevenueBreakdown";
-import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
 import EarningsTab from "./components/EarningsTab";
@@ -38,7 +37,6 @@ class ErrorBoundary extends Component {
 }
 
 const TABS = [
-  { id: "ratios", label: "Ratios" },
   { id: "bilan", label: "Bilan" },
   { id: "resultats", label: "Résultats" },
   { id: "tresorerie", label: "Trésorerie" },
@@ -51,7 +49,7 @@ export default function FoucauldFinance() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [activeTab, setActiveTab] = useState("ratios");
+  const [activeTab, setActiveTab] = useState("bilan");
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -106,7 +104,7 @@ export default function FoucauldFinance() {
 
   const handleSearch = (sym) => {
     setSymbol(sym);
-    setActiveTab("ratios");
+    setActiveTab("bilan");
     setShowWatchlist(false);
     setShowInvestors(false);
     doFetchStock(sym);
@@ -1642,7 +1640,6 @@ export default function FoucauldFinance() {
                 ))}
               </div>
               <div style={{ padding: 24 }}>
-                {activeTab === "ratios" && <RatiosTab data={data} />}
                 {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}

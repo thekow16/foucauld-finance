@@ -30,12 +30,9 @@ function compact(v) {
 /* ── Parse FMP segment response ── */
 function parseSegments(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return null;
-  // FMP returns array of objects: [{ "date": "2024-...", "iPhone": 123, "Mac": 456, ... }]
-  // Take most recent entry
   const latest = raw[0];
   if (!latest || typeof latest !== "object") return null;
 
-  // The object has a date key and then segment keys with numeric values
   const entries = [];
   const date = latest.date;
   const segments = { ...latest };
@@ -48,11 +45,8 @@ function parseSegments(raw) {
   }
 
   if (entries.length === 0) return null;
-
-  // Sort by value descending
   entries.sort((a, b) => b.value - a.value);
 
-  // Calculate percentages
   const total = entries.reduce((s, e) => s + e.value, 0);
   return {
     date,
@@ -60,6 +54,128 @@ function parseSegments(raw) {
     items: entries.map((e, i) => ({
       ...e,
       pct: ((e.value / total) * 100).toFixed(1),
+      color: COLORS[i % COLORS.length],
+    })),
+  };
+}
+
+/* ── Build breakdown from income statement (fallback) ── */
+function buildRevenueStructure(data) {
+  const fmp = data?._fmpData;
+  const inc = fmp?.income?.[0];
+
+  if (inc?.revenue) {
+    // Use FMP income statement
+    const items = [];
+    if (inc.costOfRevenue > 0) items.push({ name: "Coût des ventes", value: inc.costOfRevenue });
+    if (inc.researchAndDevelopmentExpenses > 0) items.push({ name: "R&D", value: inc.researchAndDevelopmentExpenses });
+    if (inc.sellingGeneralAndAdministrativeExpenses > 0) items.push({ name: "Frais généraux (SGA)", value: inc.sellingGeneralAndAdministrativeExpenses });
+    const knownCosts = items.reduce((s, e) => s + e.value, 0);
+    const opIncome = inc.operatingIncome;
+    if (opIncome > 0) {
+      items.push({ name: "Résultat opérationnel", value: opIncome });
+    } else {
+      const other = inc.revenue - knownCosts;
+      if (other > 0) items.push({ name: "Autres", value: other });
+      if (opIncome != null && opIncome <= 0) items.push({ name: "Pertes opérationnelles", value: Math.abs(opIncome) });
+    }
+
+    if (items.length < 2) return null;
+    const total = inc.revenue;
+    return {
+      date: inc.calendarYear || inc.date?.slice(0, 4),
+      total,
+      items: items.map((e, i) => ({
+        ...e,
+        pct: ((e.value / total) * 100).toFixed(1),
+        color: COLORS[i % COLORS.length],
+      })),
+    };
+  }
+
+  // Yahoo fallback
+  const incArr = data?.incomeStatementHistory?.incomeStatementHistory;
+  const latest = incArr?.[0];
+  if (!latest?.totalRevenue?.raw) return null;
+
+  const revenue = latest.totalRevenue.raw;
+  const items = [];
+  if (latest.costOfRevenue?.raw > 0) items.push({ name: "Coût des ventes", value: latest.costOfRevenue.raw });
+  if (latest.researchDevelopment?.raw > 0) items.push({ name: "R&D", value: latest.researchDevelopment.raw });
+  if (latest.sellingGeneralAdministrative?.raw > 0) items.push({ name: "Frais généraux (SGA)", value: latest.sellingGeneralAdministrative.raw });
+  const knownCosts = items.reduce((s, e) => s + e.value, 0);
+  const opIncome = latest.operatingIncome?.raw;
+  if (opIncome > 0) {
+    items.push({ name: "Résultat opérationnel", value: opIncome });
+  } else {
+    const other = revenue - knownCosts;
+    if (other > 0) items.push({ name: "Autres", value: other });
+  }
+
+  if (items.length < 2) return null;
+  return {
+    date: latest.endDate?.raw ? new Date(latest.endDate.raw * 1000).getFullYear() : null,
+    total: revenue,
+    items: items.map((e, i) => ({
+      ...e,
+      pct: ((e.value / revenue) * 100).toFixed(1),
+      color: COLORS[i % COLORS.length],
+    })),
+  };
+}
+
+function buildProfitabilityBreakdown(data) {
+  const fmp = data?._fmpData;
+  const inc = fmp?.income?.[0];
+
+  if (inc?.revenue && inc?.grossProfit) {
+    const items = [];
+    if (inc.grossProfit > 0) items.push({ name: "Marge brute", value: inc.grossProfit });
+    if (inc.operatingIncome > 0) items.push({ name: "Résultat opérationnel", value: inc.operatingIncome });
+    if (inc.netIncome > 0) items.push({ name: "Résultat net", value: inc.netIncome });
+
+    // Add what's "lost" between levels
+    const grossToOp = inc.grossProfit - (inc.operatingIncome || 0);
+    if (grossToOp > 0) items.push({ name: "Charges opérationnelles", value: grossToOp });
+    const cogsVal = inc.costOfRevenue;
+    if (cogsVal > 0) items.push({ name: "Coût des ventes", value: cogsVal });
+
+    if (items.length < 2) return null;
+    items.sort((a, b) => b.value - a.value);
+    const total = inc.revenue;
+    return {
+      date: inc.calendarYear || inc.date?.slice(0, 4),
+      total,
+      items: items.map((e, i) => ({
+        ...e,
+        pct: ((e.value / total) * 100).toFixed(1),
+        color: COLORS[i % COLORS.length],
+      })),
+    };
+  }
+
+  // Yahoo fallback
+  const incArr = data?.incomeStatementHistory?.incomeStatementHistory;
+  const latest = incArr?.[0];
+  if (!latest?.totalRevenue?.raw || !latest?.grossProfit?.raw) return null;
+
+  const revenue = latest.totalRevenue.raw;
+  const items = [];
+  if (latest.grossProfit?.raw > 0) items.push({ name: "Marge brute", value: latest.grossProfit.raw });
+  if (latest.operatingIncome?.raw > 0) items.push({ name: "Résultat opérationnel", value: latest.operatingIncome.raw });
+  if (latest.netIncome?.raw > 0) items.push({ name: "Résultat net", value: latest.netIncome.raw });
+  if (latest.costOfRevenue?.raw > 0) items.push({ name: "Coût des ventes", value: latest.costOfRevenue.raw });
+  const grossToOp = (latest.grossProfit?.raw || 0) - (latest.operatingIncome?.raw || 0);
+  if (grossToOp > 0) items.push({ name: "Charges opérationnelles", value: grossToOp });
+
+  if (items.length < 2) return null;
+  items.sort((a, b) => b.value - a.value);
+  return {
+    date: latest.endDate?.raw ? new Date(latest.endDate.raw * 1000).getFullYear() : null,
+    total: revenue,
+    items: items.map((e, i) => ({
+      ...e,
+      pct: ((e.value / revenue) * 100).toFixed(1),
       color: COLORS[i % COLORS.length],
     })),
   };
@@ -91,7 +207,7 @@ function SegmentTooltip({ active, payload }) {
 }
 
 /* ── Custom label on pie ── */
-function renderLabel({ cx, cy, midAngle, innerRadius, outerRadius, pct, name }) {
+function renderLabel({ cx, cy, midAngle, innerRadius, outerRadius, pct }) {
   if (parseFloat(pct) < 5) return null;
   const RADIAN = Math.PI / 180;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -112,7 +228,7 @@ function renderLabel({ cx, cy, midAngle, innerRadius, outerRadius, pct, name }) 
 
 /* ── Pie Card ── */
 function PieCard({ title, subtitle, accentColor, data }) {
-  if (!data) return null;
+  if (!data || !data.items?.length) return null;
 
   return (
     <div
@@ -143,7 +259,7 @@ function PieCard({ title, subtitle, accentColor, data }) {
         </div>
         {subtitle && (
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontWeight: 500 }}>
-            {subtitle}
+            {subtitle} {data.total ? `· Total: ${compact(data.total)}` : ""}
           </div>
         )}
       </div>
@@ -165,7 +281,7 @@ function PieCard({ title, subtitle, accentColor, data }) {
               stroke="var(--card)"
               strokeWidth={2}
             >
-              {data.items.map((entry, i) => (
+              {data.items.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
               ))}
             </Pie>
@@ -189,7 +305,7 @@ function PieCard({ title, subtitle, accentColor, data }) {
 
       {data.date && (
         <div style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", marginTop: 4 }}>
-          Données au {data.date}
+          Données {data.date}
         </div>
       )}
     </div>
@@ -202,8 +318,12 @@ export default function RevenueBreakdown({ data, symbol }) {
   const [geoData, setGeoData] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
+  // Fallback data from income statement (always available)
+  const revenueStructure = buildRevenueStructure(data);
+  const profitBreakdown = buildProfitabilityBreakdown(data);
+
   useEffect(() => {
-    // First try from _fmpData if already fetched
+    // Try FMP segment data
     const fmp = data?._fmpData;
     if (fmp?.productSegments?.length || fmp?.geoSegments?.length) {
       setProductData(parseSegments(fmp.productSegments));
@@ -212,7 +332,6 @@ export default function RevenueBreakdown({ data, symbol }) {
       return;
     }
 
-    // Otherwise fetch directly if FMP key available
     if (!hasFmpApiKey() || !symbol) {
       setLoaded(true);
       return;
@@ -228,8 +347,10 @@ export default function RevenueBreakdown({ data, symbol }) {
     });
   }, [symbol, data]);
 
-  if (!loaded) return null;
-  if (!productData && !geoData) return null;
+  const hasSegments = productData || geoData;
+  const hasFallback = revenueStructure || profitBreakdown;
+
+  if (!hasSegments && !hasFallback) return null;
 
   return (
     <div
@@ -240,6 +361,7 @@ export default function RevenueBreakdown({ data, symbol }) {
         marginBottom: 16,
       }}
     >
+      {/* FMP segment data (if available) */}
       {productData && (
         <PieCard
           title="Répartition du CA par segment"
@@ -254,6 +376,24 @@ export default function RevenueBreakdown({ data, symbol }) {
           subtitle="Dans quels pays / régions"
           accentColor="#0891b2"
           data={geoData}
+        />
+      )}
+
+      {/* Fallback: income statement breakdown (always available) */}
+      {revenueStructure && (
+        <PieCard
+          title="Structure du chiffre d'affaires"
+          subtitle="Répartition des coûts et du résultat"
+          accentColor="#10b981"
+          data={revenueStructure}
+        />
+      )}
+      {profitBreakdown && (
+        <PieCard
+          title="Cascade de rentabilité"
+          subtitle="Du CA au résultat net"
+          accentColor="#7c3aed"
+          data={profitBreakdown}
         />
       )}
     </div>
