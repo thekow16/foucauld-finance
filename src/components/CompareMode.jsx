@@ -29,7 +29,6 @@ export default function CompareMode({ currentSymbol, currentData }) {
     const fin = data?.financialData;
     const stats = data?.defaultKeyStatistics;
     const summ = data?.summaryDetail;
-
     return {
       symbol,
       name: pr?.shortName || symbol,
@@ -54,7 +53,7 @@ export default function CompareMode({ currentSymbol, currentData }) {
   const rows = [
     { label: "Prix", key: "price", format: (v, m) => v != null ? `${v.toFixed(2)} ${m.currency}` : "—" },
     { label: "Capitalisation", key: "marketCap", format: v => fmt(v, "currency") },
-{ label: "P/E Ratio", key: "pe", format: v => fmt(v, "ratio"), better: "lower" },
+    { label: "P/E Ratio", key: "pe", format: v => fmt(v, "ratio"), better: "lower" },
     { label: "P/B Ratio", key: "pb", format: v => fmt(v, "ratio"), better: "lower" },
     { label: "Dividende", key: "divYield", format: v => fmt(v, "percent"), better: "higher" },
     { label: "Marge brute", key: "grossMargin", format: v => fmt(v, "percent"), better: "higher" },
