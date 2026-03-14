@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fetchStockData } from "../utils/api";
-import { fmt, getScore, getScoreColor, getScoreLabel } from "../utils/format";
+import { fmt } from "../utils/format";
 
 export default function CompareMode({ currentSymbol, currentData }) {
   const [compareSymbol, setCompareSymbol] = useState("");
@@ -29,7 +29,6 @@ export default function CompareMode({ currentSymbol, currentData }) {
     const fin = data?.financialData;
     const stats = data?.defaultKeyStatistics;
     const summ = data?.summaryDetail;
-    const score = getScore(fin, stats);
 
     return {
       symbol,
@@ -49,15 +48,13 @@ export default function CompareMode({ currentSymbol, currentData }) {
       currentRatio: fin?.currentRatio?.raw,
       revenueGrowth: fin?.revenueGrowth?.raw,
       earningsGrowth: fin?.earningsGrowth?.raw,
-      score,
     };
   };
 
   const rows = [
     { label: "Prix", key: "price", format: (v, m) => v != null ? `${v.toFixed(2)} ${m.currency}` : "—" },
     { label: "Capitalisation", key: "marketCap", format: v => fmt(v, "currency") },
-    { label: "Score santé", key: "score", format: v => v != null ? `${v}/100` : "—", color: v => v != null ? getScoreColor(v) : null },
-    { label: "P/E Ratio", key: "pe", format: v => fmt(v, "ratio"), better: "lower" },
+{ label: "P/E Ratio", key: "pe", format: v => fmt(v, "ratio"), better: "lower" },
     { label: "P/B Ratio", key: "pb", format: v => fmt(v, "ratio"), better: "lower" },
     { label: "Dividende", key: "divYield", format: v => fmt(v, "percent"), better: "higher" },
     { label: "Marge brute", key: "grossMargin", format: v => fmt(v, "percent"), better: "higher" },

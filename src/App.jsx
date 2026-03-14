@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Component } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import MetricCards from "./components/MetricCards";
-import ScoreCard from "./components/ScoreCard";
+
 import CandlestickChart from "./components/CandlestickChart";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
@@ -785,19 +785,6 @@ export default function FoucauldFinance() {
           font-weight: 800;
           color: var(--text);
           letter-spacing: -.2px;
-        }
-        .score-desc {
-          color: var(--text-secondary);
-          font-size: 13px;
-          margin-top: 6px;
-          line-height: 1.6;
-          max-width: 420px;
-        }
-        .indicator-label {
-          font-size: 11px;
-          color: var(--muted);
-          font-weight: 600;
-          margin-bottom: 3px;
         }
         .stag {
           font-size: 11px;
@@ -1631,7 +1618,7 @@ export default function FoucauldFinance() {
             />
 
             <MetricCards data={data} />
-            <ScoreCard data={data} />
+
 
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
