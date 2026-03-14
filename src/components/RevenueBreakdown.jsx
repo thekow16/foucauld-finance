@@ -53,56 +53,38 @@ function parseFmpSegments(raw) {
   };
 }
 
-/* ── SEC EDGAR: multiple fetch strategies ── */
+/* ── SEC EDGAR: fetch via CORS proxies ── */
 
 const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
-const SEC_UA = "FoucauldFinance admin@foucauld.finance";
+
+const SEC_PROXIES = [
+  // corsproxy.io: supports JSON, works with SEC EDGAR
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  // Cloudflare Worker (needs redeploy to support SEC)
+  url => `${WORKER_URL}?url=${encodeURIComponent(url)}`,
+  // allorigins
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
 
 async function secFetch(url) {
-  // Strategy 1: Direct fetch (SEC EDGAR has CORS headers for data.sec.gov)
-  try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      console.log("[SEC] Direct fetch OK for", url);
-      return data;
+  for (let i = 0; i < SEC_PROXIES.length; i++) {
+    const proxyUrl = SEC_PROXIES[i](url);
+    const label = new URL(proxyUrl).hostname;
+    try {
+      const res = await fetch(proxyUrl, {
+        signal: AbortSignal.timeout(15000),
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`[SEC] OK via ${label}`);
+        return data;
+      }
+      console.warn(`[SEC] ${label} → HTTP ${res.status}`);
+    } catch (e) {
+      console.warn(`[SEC] ${label} → ${e.message}`);
     }
-  } catch (e) {
-    console.warn("[SEC] Direct fetch failed:", e.message);
   }
-
-  // Strategy 2: Via Cloudflare Worker
-  try {
-    const res = await fetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`, {
-      signal: AbortSignal.timeout(12000),
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      console.log("[SEC] Worker fetch OK for", url);
-      return data;
-    }
-  } catch (e) {
-    console.warn("[SEC] Worker fetch failed:", e.message);
-  }
-
-  // Strategy 3: Via allorigins CORS proxy
-  try {
-    const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, {
-      signal: AbortSignal.timeout(12000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      console.log("[SEC] Allorigins fetch OK for", url);
-      return data;
-    }
-  } catch (e) {
-    console.warn("[SEC] Allorigins fetch failed:", e.message);
-  }
-
   return null;
 }
 
@@ -187,24 +169,21 @@ async function fetchSecSegments(symbol) {
       return { product: null, geo: null };
     }
 
-    const url = `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`;
-    const data = await secFetch(url);
-    if (!data) return { product: null, geo: null };
-
-    const facts = data?.facts?.["us-gaap"] || {};
-
+    // Try each revenue concept via companyconcept endpoint (much lighter than companyfacts)
     const revenueConcepts = [
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "Revenues",
       "RevenueFromContractWithCustomerIncludingAssessedTax",
       "SalesRevenueNet",
-      "Revenue",
     ];
 
     let revenueData = null;
     for (const concept of revenueConcepts) {
-      if (facts[concept]?.units?.USD?.length > 0) {
-        revenueData = facts[concept].units.USD;
+      const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${concept}.json`;
+      const data = await secFetch(url);
+      if (data?.units?.USD?.length > 0) {
+        revenueData = data.units.USD;
+        console.log(`[SEC] Found revenue data via ${concept}: ${revenueData.length} entries`);
         break;
       }
     }
@@ -219,10 +198,12 @@ async function fetchSecSegments(symbol) {
       e.form === "10-K" && e.fp === "FY" && e.val > 0 && e.segment
     );
 
+    console.log(`[SEC] ${annualEntries.length} segmented annual entries found`);
     if (annualEntries.length < 2) return { product: null, geo: null };
 
     const maxFy = Math.max(...annualEntries.map(e => e.fy));
     const latestEntries = annualEntries.filter(e => e.fy === maxFy);
+    console.log(`[SEC] FY${maxFy}: ${latestEntries.length} segments`);
 
     // Classify segments
     const geoKeywords = /geograph|region|country|americas|europe|china|japan|asia|pacific|emea|africa|middle.east|united.states|north.america|latin|international|domestic/i;
