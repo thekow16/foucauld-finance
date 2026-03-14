@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import CandlestickChart from "./components/CandlestickChart";
 import KeyMetricsCharts from "./components/KeyMetricsCharts";
+import RevenueBreakdown from "./components/RevenueBreakdown";
 import RatiosTab from "./components/RatiosTab";
 import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
 import CompareMode from "./components/CompareMode";
@@ -1623,6 +1624,8 @@ export default function FoucauldFinance() {
             />
 
             <KeyMetricsCharts data={data} />
+
+            <RevenueBreakdown data={data} symbol={symbol} />
 
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
