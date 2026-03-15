@@ -472,18 +472,35 @@ export async function fetchStockData(sym) {
         });
         if (ts) {
           // Merge timeseries (old history) with quoteSummary (recent years)
-          // instead of replacing — timeseries may stop at 2022 while quoteSummary has 2023-2025
+          // Deep merge: keep non-null values from both sources
           const mergeByDate = (tsArr, qsArr) => {
             const dateMap = new Map();
-            // Add timeseries entries first (older data)
-            for (const s of (tsArr || [])) {
-              const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
-              if (key) dateMap.set(key, s);
-            }
-            // quoteSummary entries override/add recent years
+            const getKey = (s) => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
+
+            // Add quoteSummary entries first (may have empty values but correct endDate)
             for (const s of (qsArr || [])) {
-              const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
-              if (key) dateMap.set(key, s);
+              const key = getKey(s);
+              if (key) dateMap.set(key, { ...s });
+            }
+            // Deep-merge timeseries: fill in missing values (timeseries has the actual financial data)
+            for (const s of (tsArr || [])) {
+              const key = getKey(s);
+              if (!key) continue;
+              const existing = dateMap.get(key);
+              if (!existing) {
+                dateMap.set(key, { ...s });
+              } else {
+                // Merge field by field: prefer non-null values
+                for (const [k, v] of Object.entries(s)) {
+                  if (k === "endDate") continue;
+                  if (v != null && (v.raw != null || typeof v !== "object")) {
+                    // Only override if existing value is null/undefined
+                    if (existing[k] == null || existing[k].raw == null) {
+                      existing[k] = v;
+                    }
+                  }
+                }
+              }
             }
             return [...dateMap.values()].sort((a, b) => (b.endDate?.raw || 0) - (a.endDate?.raw || 0));
           };
