@@ -8,6 +8,7 @@ import {
   Legend,
 } from "recharts";
 import { hasFmpApiKey, fetchRevenueProductSegmentation, fetchRevenueGeoSegmentation } from "../utils/fmpApi";
+import SEGMENTS_DB from "../data/segmentsData";
 
 const COLORS = [
   "#4f46e5", "#0891b2", "#10b981", "#f59e0b", "#ef4444",
@@ -53,191 +54,20 @@ function parseFmpSegments(raw) {
   };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Hardcoded segment data from public 10-K filings (FY2024)
-   Instant fallback — no API call needed
-   ══════════════════════════════════════════════════════════════ */
-
-function buildSegData(date, items) {
-  const total = items.reduce((s, e) => s + e.value, 0);
-  return {
-    date,
-    total,
-    items: items.map((e, i) => ({
-      ...e,
-      pct: ((e.value / total) * 100).toFixed(1),
-      color: COLORS[i % COLORS.length],
-    })),
-  };
+/* ── Resolve ticker → segments DB entry ── */
+function lookupSegments(symbol) {
+  const upper = symbol.toUpperCase();
+  // Try exact match first (e.g. "RMS.PA")
+  if (SEGMENTS_DB[upper]) return SEGMENTS_DB[upper];
+  // Try base ticker without suffix (e.g. "RMS" from "RMS.PA")
+  const base = upper.split(".")[0];
+  if (SEGMENTS_DB[base]) return SEGMENTS_DB[base];
+  // Try with common suffixes
+  for (const suffix of [".PA", ".DE", ".AS", ".SW", ".L", ".MI", ".CO"]) {
+    if (SEGMENTS_DB[base + suffix]) return SEGMENTS_DB[base + suffix];
+  }
+  return null;
 }
-
-const SEGMENTS_DB = {
-  AAPL: {
-    product: buildSegData("2024", [
-      { name: "iPhone", value: 201183e6 },
-      { name: "Services", value: 96169e6 },
-      { name: "Wearables & Accessoires", value: 37005e6 },
-      { name: "Mac", value: 29984e6 },
-      { name: "iPad", value: 26694e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "Amériques", value: 167045e6 },
-      { name: "Europe", value: 101325e6 },
-      { name: "Chine élargie", value: 66955e6 },
-      { name: "Reste Asie-Pacifique", value: 30697e6 },
-      { name: "Japon", value: 25013e6 },
-    ]),
-  },
-  MSFT: {
-    product: buildSegData("2024", [
-      { name: "Intelligent Cloud", value: 96832e6 },
-      { name: "Productivity & Business", value: 77215e6 },
-      { name: "More Personal Computing", value: 62475e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis", value: 137474e6 },
-      { name: "Autres pays", value: 99048e6 },
-    ]),
-  },
-  GOOGL: {
-    product: buildSegData("2024", [
-      { name: "Google Search", value: 198117e6 },
-      { name: "Google Cloud", value: 43232e6 },
-      { name: "YouTube Ads", value: 36147e6 },
-      { name: "Abonnements & Devices", value: 34688e6 },
-      { name: "Google Network", value: 30432e6 },
-      { name: "Other Bets", value: 1615e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis", value: 178564e6 },
-      { name: "EMEA", value: 82487e6 },
-      { name: "Asie-Pacifique", value: 51514e6 },
-      { name: "Autres Amériques", value: 16434e6 },
-    ]),
-  },
-  AMZN: {
-    product: buildSegData("2024", [
-      { name: "Online Stores", value: 246979e6 },
-      { name: "Services tiers", value: 155612e6 },
-      { name: "AWS", value: 105222e6 },
-      { name: "Publicité", value: 56215e6 },
-      { name: "Abonnements", value: 43661e6 },
-      { name: "Magasins physiques", value: 21317e6 },
-      { name: "Autres", value: 5349e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis", value: 387699e6 },
-      { name: "International", value: 142656e6 },
-    ]),
-  },
-  META: {
-    product: buildSegData("2024", [
-      { name: "Family of Apps", value: 156225e6 },
-      { name: "Reality Labs", value: 2156e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis & Canada", value: 64941e6 },
-      { name: "Europe", value: 39504e6 },
-      { name: "Asie-Pacifique", value: 33033e6 },
-      { name: "Reste du monde", value: 20903e6 },
-    ]),
-  },
-  TSLA: {
-    product: buildSegData("2024", [
-      { name: "Ventes automobiles", value: 71462e6 },
-      { name: "Énergie & Stockage", value: 10382e6 },
-      { name: "Services & Autres", value: 10247e6 },
-      { name: "Leasing automobile", value: 2497e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis", value: 45211e6 },
-      { name: "Chine", value: 21714e6 },
-      { name: "Autres marchés", value: 27663e6 },
-    ]),
-  },
-  NVDA: {
-    product: buildSegData("2025", [
-      { name: "Data Center", value: 115199e6 },
-      { name: "Gaming", value: 11359e6 },
-      { name: "Visualisation Pro", value: 1946e6 },
-      { name: "Automobile", value: 1692e6 },
-      { name: "OEM & Autres", value: 668e6 },
-    ]),
-    geo: buildSegData("2025", [
-      { name: "États-Unis", value: 44346e6 },
-      { name: "Taïwan", value: 27212e6 },
-      { name: "Singapour", value: 22465e6 },
-      { name: "Chine (incl. HK)", value: 17105e6 },
-      { name: "Autres pays", value: 19736e6 },
-    ]),
-  },
-  NFLX: {
-    product: buildSegData("2024", [
-      { name: "Abonnements", value: 33634e6 },
-      { name: "Publicité", value: 1827e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis & Canada", value: 16240e6 },
-      { name: "EMEA", value: 11866e6 },
-      { name: "Amérique latine", value: 4808e6 },
-      { name: "Asie-Pacifique", value: 4547e6 },
-    ]),
-  },
-  JPM: {
-    product: buildSegData("2024", [
-      { name: "Consumer & Community Banking", value: 72825e6 },
-      { name: "Corporate & Investment Bank", value: 56458e6 },
-      { name: "Asset & Wealth Management", value: 22139e6 },
-      { name: "Commercial Banking", value: 12046e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "États-Unis", value: 126684e6 },
-      { name: "EMEA", value: 21987e6 },
-      { name: "Asie-Pacifique", value: 11432e6 },
-      { name: "Autres", value: 3365e6 },
-    ]),
-  },
-  V: {
-    product: buildSegData("2024", [
-      { name: "Data processing revenues", value: 17701e6 },
-      { name: "Service revenues", value: 16139e6 },
-      { name: "International transactions", value: 13228e6 },
-      { name: "Other revenues", value: 2818e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "International", value: 19425e6 },
-      { name: "États-Unis", value: 16362e6 },
-    ]),
-  },
-  DIS: {
-    product: buildSegData("2024", [
-      { name: "Entertainment", value: 41184e6 },
-      { name: "Experiences", value: 34149e6 },
-      { name: "Sports (ESPN)", value: 16998e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "Amérique du Nord", value: 64735e6 },
-      { name: "International", value: 27596e6 },
-    ]),
-  },
-  KO: {
-    product: buildSegData("2024", [
-      { name: "Sparkling Flavors", value: 14149e6 },
-      { name: "Coca-Cola", value: 11346e6 },
-      { name: "Nutrition, Juice & Dairy", value: 5361e6 },
-      { name: "Water & Sports", value: 4917e6 },
-      { name: "Thé & Café", value: 2316e6 },
-    ]),
-    geo: buildSegData("2024", [
-      { name: "Amérique du Nord", value: 16280e6 },
-      { name: "Bottling Investments", value: 10675e6 },
-      { name: "EMEA", value: 8034e6 },
-      { name: "Asie-Pacifique", value: 5680e6 },
-      { name: "Amérique latine", value: 5420e6 },
-    ]),
-  },
-};
-SEGMENTS_DB["GOOG"] = SEGMENTS_DB["GOOGL"];
 
 /* ══════════════════════════════════════════════════════════════
    SEC EDGAR dynamic fetch via CORS proxies
@@ -565,8 +395,6 @@ export default function RevenueBreakdown({ data, symbol }) {
     setSource(null);
 
     (async () => {
-      const base = symbol.split(".")[0].toUpperCase();
-
       // 1) Try FMP v4 (premium feature)
       if (hasFmpApiKey()) {
         try {
@@ -592,17 +420,18 @@ export default function RevenueBreakdown({ data, symbol }) {
         }
       }
 
-      // 2) Hardcoded cache → show immediately, then try live SEC in background
-      const hardcoded = SEGMENTS_DB[base];
+      // 2) Hardcoded database (instant — covers 70+ tickers incl. CAC 40, major EU, S&P 500)
+      const hardcoded = lookupSegments(symbol);
       if (hardcoded && !cancelled) {
+        console.log(`[Segments] Using hardcoded data for ${symbol}`);
         setProductData(hardcoded.product);
         setGeoData(hardcoded.geo);
         setSource("10-K");
         setLoading(false);
-        // Don't return — still try SEC in background for fresh data
+        return;
       }
 
-      // 3) SEC EDGAR dynamic fetch (works for ANY US company)
+      // 3) SEC EDGAR dynamic fetch (works for ANY US company via CORS proxies)
       try {
         const { product, geo } = await fetchSecSegments(symbol);
         if ((product || geo) && !cancelled) {
