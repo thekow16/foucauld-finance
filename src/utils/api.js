@@ -1,4 +1,5 @@
 import { hasFmpApiKey, fetchProfile, fetchAllFinancials } from "./fmpApi";
+import { fetchEdgarFinancials } from "./secEdgarApi";
 
 // ──────────────────────────────────────────────
 // Cloudflare Worker URL
@@ -494,6 +495,33 @@ export async function fetchStockData(sym) {
           const isN = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
           console.log(`[FF] timeseries enrichissement OK — ${bsN} ans bilan, ${isN} ans résultats`);
 
+          // Enrichir avec SEC EDGAR (15+ ans, gratuit, sans clé)
+          try {
+            const edgar = await fetchEdgarFinancials(sym).catch(e => {
+              console.warn("[FF][EDGAR] échoué:", e.message);
+              return null;
+            });
+            if (edgar) {
+              if (edgar.balanceSheetStatements?.length > 0) {
+                const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
+                yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeByDate(edgar.balanceSheetStatements, existing) };
+              }
+              if (edgar.incomeStatements?.length > 0) {
+                const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
+                yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeByDate(edgar.incomeStatements, existing) };
+              }
+              if (edgar.cashflowStatements?.length > 0) {
+                const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
+                yahooResult.cashflowStatementHistory = { cashflowStatements: mergeByDate(edgar.cashflowStatements, existing) };
+              }
+              const bsEdgar = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
+              const isEdgar = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
+              console.log(`[FF][EDGAR] enrichissement OK — ${bsEdgar} ans bilan, ${isEdgar} ans résultats`);
+            }
+          } catch (e) {
+            console.warn("[FF][EDGAR] enrichissement échoué:", e.message);
+          }
+
           // Also fetch FMP for 20-year charts if key available
           if (hasFmpApiKey()) {
             try {
@@ -508,7 +536,41 @@ export async function fetchStockData(sym) {
           }
         } else {
 
-          // Try FMP as last resort if timeseries also failed AND FMP key available
+          // Try SEC EDGAR as fallback when timeseries failed
+          try {
+            const edgar = await fetchEdgarFinancials(sym).catch(() => null);
+            if (edgar) {
+              const mergeSimple = (edgarArr, existingArr) => {
+                const dateMap = new Map();
+                for (const s of (edgarArr || [])) {
+                  const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
+                  if (key) dateMap.set(key, s);
+                }
+                for (const s of (existingArr || [])) {
+                  const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
+                  if (key) dateMap.set(key, s);
+                }
+                return [...dateMap.values()].sort((a, b) => (b.endDate?.raw || 0) - (a.endDate?.raw || 0));
+              };
+              if (edgar.balanceSheetStatements?.length > 0) {
+                const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
+                yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeSimple(edgar.balanceSheetStatements, existing) };
+              }
+              if (edgar.incomeStatements?.length > 0) {
+                const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
+                yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeSimple(edgar.incomeStatements, existing) };
+              }
+              if (edgar.cashflowStatements?.length > 0) {
+                const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
+                yahooResult.cashflowStatementHistory = { cashflowStatements: mergeSimple(edgar.cashflowStatements, existing) };
+              }
+              console.log("[FF][EDGAR] fallback enrichissement OK");
+            }
+          } catch (e) {
+            console.warn("[FF][EDGAR] fallback échoué:", e.message);
+          }
+
+          // Try FMP as last resort if still no data AND FMP key available
           const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
           if (stillNoBs && hasFmpApiKey()) {
             console.log("[FF] timeseries insuffisant, tentative FMP…");
