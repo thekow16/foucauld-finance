@@ -1,6 +1,15 @@
+import { useState, useEffect } from "react";
 import { fmt } from "../utils/format";
 
-export default function StockHeader({ data, symbol, isInWatchlist, onToggleWatchlist }) {
+function formatElapsed(ms) {
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return "à l'instant";
+  const min = Math.floor(sec / 60);
+  if (min === 1) return "il y a 1 min";
+  return `il y a ${min} min`;
+}
+
+export default function StockHeader({ data, symbol, fetchedAt, isInWatchlist, onToggleWatchlist }) {
   const pr = data?.price;
   const prof = data?.assetProfile;
   const curPrice = pr?.regularMarketPrice?.raw;
@@ -8,6 +17,15 @@ export default function StockHeader({ data, symbol, isInWatchlist, onToggleWatch
   const chgPct = pr?.regularMarketChangePercent?.raw;
   const isUp = (chg ?? 0) >= 0;
   const inWl = isInWatchlist(symbol);
+
+  const [elapsed, setElapsed] = useState(() => fetchedAt ? Date.now() - fetchedAt : 0);
+
+  useEffect(() => {
+    if (!fetchedAt) return;
+    setElapsed(Date.now() - fetchedAt);
+    const id = setInterval(() => setElapsed(Date.now() - fetchedAt), 30_000);
+    return () => clearInterval(id);
+  }, [fetchedAt]);
 
   return (
     <div className="card stock-header-card">
@@ -43,6 +61,11 @@ export default function StockHeader({ data, symbol, isInWatchlist, onToggleWatch
               {new Date(pr.regularMarketTime * 1000).toLocaleString("fr-FR", {
                 day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
               })}
+            </div>
+          )}
+          {fetchedAt && (
+            <div className="stock-fetched-at">
+              {formatElapsed(elapsed)}
             </div>
           )}
         </div>

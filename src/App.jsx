@@ -56,6 +56,7 @@ export default function FoucauldFinance() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [fetchedAt, setFetchedAt] = useState(null);
   const [activeTab, setActiveTab] = useState("bilan");
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
@@ -99,9 +100,11 @@ export default function FoucauldFinance() {
     setLoading(true);
     setError(null);
     setData(null);
+    setFetchedAt(null);
     try {
       const result = await fetchStockData(sym);
-      setData(result);
+      setData(result.data);
+      setFetchedAt(result.fetchedAt);
     } catch (e) {
       setError(classifyError(e));
     } finally {
@@ -470,6 +473,13 @@ export default function FoucauldFinance() {
           font-size: 11px;
           color: var(--muted);
           margin-top: 4px;
+        }
+        .stock-fetched-at {
+          font-size: 10px;
+          color: var(--muted);
+          margin-top: 4px;
+          opacity: 0.75;
+          font-style: italic;
         }
 
         .watchlist-btn {
@@ -1639,6 +1649,7 @@ export default function FoucauldFinance() {
             <StockHeader
               data={data}
               symbol={symbol}
+              fetchedAt={fetchedAt}
               isInWatchlist={isInWatchlist}
               onToggleWatchlist={handleToggleWatchlist}
             />

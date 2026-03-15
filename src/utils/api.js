@@ -346,7 +346,7 @@ function getCachedData(sym) {
       return null;
     }
     console.log(`[FF] Cache hit for ${sym} (${Math.round((Date.now() - ts) / 1000)}s ago)`);
-    return data;
+    return { data, fetchedAt: ts };
   } catch {
     return null;
   }
@@ -494,7 +494,7 @@ export async function fetchStockData(sym) {
         }
         // Always return Yahoo result (enriched or not)
         setCachedData(sym, yahooResult);
-        return yahooResult;
+        return { data: yahooResult, fetchedAt: Date.now() };
       }
     } catch (e) {
       console.warn("[FF] quoteSummary via Worker échoué:", e.message);
@@ -646,7 +646,7 @@ export async function fetchStockData(sym) {
     _fromChart: true,
   };
   setCachedData(sym, chartResult);
-  return chartResult;
+  return { data: chartResult, fetchedAt: Date.now() };
 }
 
 // ── Traduction en français via Google Translate (gratuit) ──
