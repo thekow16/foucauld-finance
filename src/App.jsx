@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
-import KeyMetricsCharts from "./components/KeyMetricsCharts";
-import RevenueBreakdown from "./components/RevenueBreakdown";
 import AuthModal from "./components/AuthModal";
+const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
+const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
@@ -101,19 +101,23 @@ export default function FoucauldFinance() {
     triggeredCountRef.current = triggered.length;
   }, [triggered]);
 
-  const doFetchStock = async (sym) => {
-    setLoading(true);
-    setError(null);
-    setData(null);
-    setFetchedAt(null);
+  const doFetchStock = async (sym, { silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+      setData(null);
+      setFetchedAt(null);
+    }
     try {
       const result = await fetchStockData(sym);
       setData(result.data);
       setFetchedAt(result.fetchedAt);
+      if (silent) setError(null);
     } catch (e) {
-      setError(classifyError(e));
+      if (!silent) setError(classifyError(e));
+      // Silent refresh: keep existing data, ignore error
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -151,7 +155,7 @@ export default function FoucauldFinance() {
     let id;
     const schedule = () => {
       id = setInterval(() => {
-        if (document.visibilityState === "visible") doFetchStock(symbol);
+        if (document.visibilityState === "visible") doFetchStock(symbol, { silent: true });
       }, REFRESH_INTERVAL);
     };
     schedule();
