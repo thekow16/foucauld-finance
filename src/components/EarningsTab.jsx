@@ -58,7 +58,7 @@ function NextEarnings({ data }) {
           </div>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
         {epsEst != null && (
           <div className="earnings-est-card">
             <div className="earnings-est-label">BPA estimé</div>

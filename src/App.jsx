@@ -1670,14 +1670,82 @@ export default function FoucauldFinance() {
         }
         .footer-link:hover { color: var(--accent); text-decoration: underline }
 
+        /* ── Header bar ── */
+        .header-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 28px;
+          position: relative;
+          z-index: 1;
+        }
+        .header-nav-desktop {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .hamburger-btn {
+          display: none;
+          flex-direction: column;
+          gap: 5px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 6px;
+          z-index: 20;
+        }
+        .hamburger-line {
+          display: block;
+          width: 22px;
+          height: 2px;
+          background: #fff;
+          border-radius: 2px;
+          transition: transform .2s, opacity .2s;
+        }
+        .hamburger-line.open:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger-line.open:nth-child(2) { opacity: 0; }
+        .hamburger-line.open:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+        .mobile-nav {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          padding: 12px 0 16px;
+          border-top: 1px solid rgba(255,255,255,.1);
+          margin-bottom: 12px;
+        }
+
+        /* ── Tablet ≤ 768px ── */
+        @media (max-width: 768px) {
+          .hero { padding: 18px 16px 48px; }
+          .hero::before { width: 250px; height: 250px; top: -80px; right: -80px; }
+          .hero::after { width: 240px; height: 240px; bottom: -100px; left: -60px; }
+          .header-nav-desktop { display: none; }
+          .hamburger-btn { display: flex; }
+          .stock-header-card > div { flex-direction: column; }
+          .stock-header-card > div > div:last-child { text-align: left; }
+        }
+
+        /* ── Mobile ≤ 640px ── */
         @media (max-width: 640px) {
-          .grid8 { grid-template-columns: repeat(2, 1fr) }
-          .search-wrap { flex-direction: column }
-          .ff-btn { padding: 12px 20px }
-          .stock-price { font-size: 28px }
-          .main { padding: 0 10px 40px }
-          .toast-container { left: 10px; right: 10px; max-width: none }
-          .legal-page section { padding: 16px 18px }
+          .grid8 { grid-template-columns: repeat(2, 1fr); }
+          .search-wrap { flex-direction: column; }
+          .ff-btn { padding: 12px 20px; }
+          .stock-price { font-size: 28px; }
+          .main { padding: 0 10px 40px; }
+          .toast-container { left: 10px; right: 10px; max-width: none; }
+          .legal-page section { padding: 16px 18px; }
+          .modal-content { margin: 10px; max-width: none; }
+        }
+
+        /* ── Small phones ≤ 480px ── */
+        @media (max-width: 480px) {
+          .hero { padding: 14px 12px 36px; }
+          .header-bar { margin-bottom: 16px; }
+          .logo-text { font-size: 16px; }
+          .grid8 { grid-template-columns: 1fr; }
+          .stock-price { font-size: 24px; }
+          .card { padding: 14px; }
         }
       `}</style>
 
