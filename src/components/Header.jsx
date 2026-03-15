@@ -1,13 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout, searchHistory = [] }) {
+export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout, searchHistory = [] }, ref) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const debounceRef = useRef(null);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    focusSearch() { inputRef.current?.focus(); },
+  }));
 
   useEffect(() => {
     const handler = (e) => {
@@ -92,11 +97,12 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
         <div ref={wrapRef} style={{ position: "relative", zIndex: 10 }}>
           <form onSubmit={handleSubmit} className="search-wrap">
             <input
+              ref={inputRef}
               className="ff-input"
               value={query}
               onChange={e => handleInput(e.target.value)}
               onFocus={handleFocus}
-              placeholder="Rechercher une action…"
+              placeholder="Rechercher une action… ( / )"
             />
             <button type="submit" className="ff-btn">Analyser</button>
           </form>
@@ -125,4 +131,4 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
       </div>
     </div>
   );
-}
+});
