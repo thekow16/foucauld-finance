@@ -450,14 +450,34 @@ export async function fetchStockData(sym) {
           return null;
         });
         if (ts) {
+          // Merge timeseries (old history) with quoteSummary (recent years)
+          // instead of replacing — timeseries may stop at 2022 while quoteSummary has 2023-2025
+          const mergeByDate = (tsArr, qsArr) => {
+            const dateMap = new Map();
+            // Add timeseries entries first (older data)
+            for (const s of (tsArr || [])) {
+              const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
+              if (key) dateMap.set(key, s);
+            }
+            // quoteSummary entries override/add recent years
+            for (const s of (qsArr || [])) {
+              const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
+              if (key) dateMap.set(key, s);
+            }
+            return [...dateMap.values()].sort((a, b) => (b.endDate?.raw || 0) - (a.endDate?.raw || 0));
+          };
+
           if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements[0].totalAssets?.raw != null) {
-            yahooResult.balanceSheetHistory = { balanceSheetStatements: ts.balanceSheetStatements };
+            const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
+            yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeByDate(ts.balanceSheetStatements, existing) };
           }
           if (ts.incomeStatements?.length > 0 && ts.incomeStatements[0].totalRevenue?.raw != null) {
-            yahooResult.incomeStatementHistory = { incomeStatementHistory: ts.incomeStatements };
+            const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
+            yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeByDate(ts.incomeStatements, existing) };
           }
           if (ts.cashflowStatements?.length > 0) {
-            yahooResult.cashflowStatementHistory = { cashflowStatements: ts.cashflowStatements };
+            const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
+            yahooResult.cashflowStatementHistory = { cashflowStatements: mergeByDate(ts.cashflowStatements, existing) };
           }
           // Enrich financialData from timeseries if needed
           const fd = yahooResult.financialData || {};
