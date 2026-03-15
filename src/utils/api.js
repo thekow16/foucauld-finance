@@ -280,6 +280,110 @@ function fmpToYahooCashflow(arr) {
   }));
 }
 
+// ── Convertisseurs Yahoo → FMP format (pour exploiter les données EDGAR dans la vue enrichie) ──
+function yahooToFmpBalance(arr) {
+  if (!arr?.length) return [];
+  return arr.map(s => {
+    const yr = s.endDate?.fmt?.slice(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
+    return {
+      date: s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null),
+      calendarYear: yr,
+      totalAssets: s.totalAssets?.raw,
+      totalCurrentAssets: s.totalCurrentAssets?.raw,
+      cashAndCashEquivalents: s.cash?.raw,
+      shortTermInvestments: s.shortTermInvestments?.raw,
+      cashAndShortTermInvestments: (s.cash?.raw || 0) + (s.shortTermInvestments?.raw || 0) || null,
+      netReceivables: s.netReceivables?.raw,
+      inventory: s.inventory?.raw,
+      otherCurrentAssets: s.otherCurrentAssets?.raw,
+      propertyPlantEquipmentNet: s.propertyPlantEquipment?.raw,
+      goodwill: s.goodWill?.raw,
+      intangibleAssets: s.intangibleAssets?.raw,
+      longTermInvestments: s.longTermInvestments?.raw,
+      otherNonCurrentAssets: s.otherAssets?.raw,
+      totalNonCurrentAssets: s.totalNonCurrentAssets?.raw
+        || (s.totalAssets?.raw && s.totalCurrentAssets?.raw ? s.totalAssets.raw - s.totalCurrentAssets.raw : null),
+      totalLiabilities: s.totalLiab?.raw,
+      totalCurrentLiabilities: s.totalCurrentLiabilities?.raw,
+      accountPayables: s.accountsPayable?.raw,
+      shortTermDebt: s.shortLongTermDebt?.raw,
+      otherCurrentLiabilities: s.otherCurrentLiab?.raw,
+      longTermDebt: s.longTermDebt?.raw,
+      otherNonCurrentLiabilities: s.otherLiab?.raw,
+      totalDebt: s.totalDebt?.raw || ((s.shortLongTermDebt?.raw || 0) + (s.longTermDebt?.raw || 0)) || null,
+      totalStockholdersEquity: s.totalStockholderEquity?.raw,
+      retainedEarnings: s.retainedEarnings?.raw,
+      commonStock: s.commonStock?.raw,
+      treasuryStock: s.treasuryStock?.raw,
+      additionalPaidInCapital: s.capitalSurplus?.raw,
+      minorityInterest: s.minorityInterest?.raw,
+    };
+  });
+}
+
+function yahooToFmpIncome(arr) {
+  if (!arr?.length) return [];
+  return arr.map(s => {
+    const yr = s.endDate?.fmt?.slice(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
+    return {
+      date: s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null),
+      calendarYear: yr,
+      revenue: s.totalRevenue?.raw,
+      costOfRevenue: s.costOfRevenue?.raw,
+      grossProfit: s.grossProfit?.raw,
+      researchAndDevelopmentExpenses: s.researchDevelopment?.raw,
+      sellingGeneralAndAdministrativeExpenses: s.sellingGeneralAdministrative?.raw,
+      operatingExpenses: s.totalOperatingExpenses?.raw,
+      operatingIncome: s.operatingIncome?.raw,
+      interestExpense: s.interestExpense?.raw ? Math.abs(s.interestExpense.raw) : null,
+      incomeBeforeTax: s.incomeBeforeTax?.raw,
+      incomeTaxExpense: s.incomeTaxExpense?.raw,
+      netIncome: s.netIncome?.raw,
+      ebitda: s.ebitda?.raw,
+      epsdiluted: s.dilutedEPS?.raw,
+      weightedAverageShsOutDil: s.dilutedAverageShares?.raw,
+    };
+  });
+}
+
+function yahooToFmpCashflow(arr) {
+  if (!arr?.length) return [];
+  return arr.map(s => {
+    const yr = s.endDate?.fmt?.slice(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
+    return {
+      date: s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null),
+      calendarYear: yr,
+      operatingCashFlow: s.totalCashFromOperatingActivities?.raw,
+      depreciationAndAmortization: s.depreciation?.raw,
+      capitalExpenditure: s.capitalExpenditures?.raw,
+      freeCashFlow: s.freeCashFlow?.raw,
+      netCashUsedForInvestingActivites: s.totalCashflowsFromInvestingActivities?.raw || s.totalCashFromInvestingActivities?.raw,
+      netCashUsedProvidedByFinancingActivities: s.totalCashFromFinancingActivities?.raw,
+      dividendsPaid: s.dividendsPaid?.raw,
+      commonStockRepurchased: s.repurchaseOfStock?.raw,
+      stockBasedCompensation: s.stockBasedCompensation?.raw,
+      netChangeInCash: s.changeInCash?.raw,
+    };
+  });
+}
+
+// Build FMP-compatible _fmpData from Yahoo-format arrays (enriched by EDGAR)
+function buildFmpDataFromYahoo(data) {
+  const bs = data?.balanceSheetHistory?.balanceSheetStatements || [];
+  const is = data?.incomeStatementHistory?.incomeStatementHistory || [];
+  const cf = data?.cashflowStatementHistory?.cashflowStatements || [];
+  if (bs.length === 0 && is.length === 0) return null;
+  return {
+    income: yahooToFmpIncome(is),
+    balance: yahooToFmpBalance(bs),
+    cashflow: yahooToFmpCashflow(cf),
+    ratios: [],
+    keyMetrics: [],
+    productSegments: [],
+    geoSegments: [],
+  };
+}
+
 // ── Cache sessionStorage (15 min TTL) ──
 const CACHE_TTL = 15 * 60 * 1000;
 
@@ -533,6 +637,15 @@ export async function fetchStockData(sym) {
             }
           }
         }
+        // Build FMP-compatible data from Yahoo/EDGAR if no real FMP data
+        if (!yahooResult._fmpData) {
+          const synthFmp = buildFmpDataFromYahoo(yahooResult);
+          if (synthFmp && (synthFmp.balance.length > 0 || synthFmp.income.length > 0)) {
+            yahooResult._fmpData = synthFmp;
+            console.log("[FF] _fmpData synthétisé depuis Yahoo/EDGAR:", synthFmp.balance.length, "ans balance,", synthFmp.income.length, "ans income");
+          }
+        }
+
         // Always return Yahoo result (enriched or not)
         setCachedData(sym, yahooResult);
         return { data: yahooResult, fetchedAt: Date.now() };
