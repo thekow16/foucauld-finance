@@ -81,6 +81,7 @@ export default function FoucauldFinance() {
   const [toasts, setToasts] = useState([]);
 
   // Toast notifications quand de nouvelles alertes sont déclenchées
+  const headerRef = useRef(null);
   const triggeredCountRef = useRef(0);
   useEffect(() => {
     if (triggered.length > triggeredCountRef.current) {
@@ -185,6 +186,30 @@ export default function FoucauldFinance() {
     check();
     const id = setInterval(check, 3 * 60 * 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // ── Keyboard shortcuts: / → focus search, Esc → close modals ──
+  useEffect(() => {
+    const onKey = (e) => {
+      // Ignore when typing in an input/textarea
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        if (e.key === "Escape") e.target.blur();
+        return;
+      }
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        headerRef.current?.focusSearch();
+      }
+      if (e.key === "Escape") {
+        setShowWatchlist(false);
+        setShowInvestors(false);
+        setShowAuth(false);
+        setLegalPage(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
 
   // ── Search history (localStorage, last 10) ──
@@ -1656,7 +1681,7 @@ export default function FoucauldFinance() {
         }
       `}</style>
 
-      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
+      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
 
       {workerDown && (
         <div className="worker-banner">
