@@ -1,9 +1,73 @@
 import { hasFmpApiKey, fetchProfile, fetchAllFinancials } from "./fmpApi";
-import { fetchEdgarFinancials } from "./secEdgarApi";
-import { proxyFetch, checkWorkerHealth } from "./proxyFetch";
-export { proxyFetch, checkWorkerHealth };
+
+// ──────────────────────────────────────────────
+// Cloudflare Worker URL
+// ──────────────────────────────────────────────
+const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
+
+// Proxies CORS gratuits — allorigins en premier (confirmé fonctionnel)
+const FREE_PROXIES = [
+  url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` }),
+  url => ({ url: `https://corsproxy.io/?url=${encodeURIComponent(url)}` }),
+  url => ({ url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` }),
+  url => ({ url: `https://thingproxy.freeboard.io/fetch/${url}` }),
+  url => ({ url: `https://everyorigin.jwvbremen.nl/api/get?url=${encodeURIComponent(url)}`, unwrap: true }),
+];
 
 const YF = "https://query2.finance.yahoo.com";
+
+// ── Worker health check ──
+export async function checkWorkerHealth() {
+  if (!WORKER_URL) return false;
+  try {
+    const res = await fetch(WORKER_URL, { signal: AbortSignal.timeout(5000) });
+    return res.ok || res.status === 400; // 400 = alive but missing ?url param
+  } catch {
+    return false;
+  }
+}
+
+async function tryFetch(url, unwrap = false) {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(12000),
+    headers: { "Accept": "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  let data = JSON.parse(text);
+  if (unwrap && typeof data.contents === "string") {
+    data = JSON.parse(data.contents);
+  }
+  return data;
+}
+
+export async function proxyFetch(targetUrl) {
+  // 1) Cloudflare Worker (gère le crumb automatiquement)
+  if (WORKER_URL) {
+    try {
+      const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`);
+      console.log("[FF] Succès via Worker");
+      return data;
+    } catch (e) {
+      console.warn("[FF] Worker échoué:", e.message);
+    }
+  }
+
+  // 2) Fallback proxies gratuits
+  for (let i = 0; i < FREE_PROXIES.length; i++) {
+    const { url, unwrap } = FREE_PROXIES[i](targetUrl);
+    const label = new URL(url).hostname;
+    try {
+      const data = await tryFetch(url, unwrap);
+      console.log(`[FF] Succès via ${label}`);
+      return data;
+    } catch (e) {
+      console.warn(`[FF] ${label} → ${e.message}`);
+    }
+  }
+
+  throw new Error("Impossible de contacter Yahoo Finance.");
+}
 
 // ── Fetch Yahoo Finance (essaie query2 puis query1) ──
 async function yfFetch(path) {
@@ -280,110 +344,6 @@ function fmpToYahooCashflow(arr) {
   }));
 }
 
-// ── Convertisseurs Yahoo → FMP format (pour exploiter les données EDGAR dans la vue enrichie) ──
-function yahooToFmpBalance(arr) {
-  if (!arr?.length) return [];
-  return arr.map(s => {
-    const yr = s.endDate?.fmt?.slice(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
-    return {
-      date: s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null),
-      calendarYear: yr,
-      totalAssets: s.totalAssets?.raw,
-      totalCurrentAssets: s.totalCurrentAssets?.raw,
-      cashAndCashEquivalents: s.cash?.raw,
-      shortTermInvestments: s.shortTermInvestments?.raw,
-      cashAndShortTermInvestments: (s.cash?.raw || 0) + (s.shortTermInvestments?.raw || 0) || null,
-      netReceivables: s.netReceivables?.raw,
-      inventory: s.inventory?.raw,
-      otherCurrentAssets: s.otherCurrentAssets?.raw,
-      propertyPlantEquipmentNet: s.propertyPlantEquipment?.raw,
-      goodwill: s.goodWill?.raw,
-      intangibleAssets: s.intangibleAssets?.raw,
-      longTermInvestments: s.longTermInvestments?.raw,
-      otherNonCurrentAssets: s.otherAssets?.raw,
-      totalNonCurrentAssets: s.totalNonCurrentAssets?.raw
-        || (s.totalAssets?.raw && s.totalCurrentAssets?.raw ? s.totalAssets.raw - s.totalCurrentAssets.raw : null),
-      totalLiabilities: s.totalLiab?.raw,
-      totalCurrentLiabilities: s.totalCurrentLiabilities?.raw,
-      accountPayables: s.accountsPayable?.raw,
-      shortTermDebt: s.shortLongTermDebt?.raw,
-      otherCurrentLiabilities: s.otherCurrentLiab?.raw,
-      longTermDebt: s.longTermDebt?.raw,
-      otherNonCurrentLiabilities: s.otherLiab?.raw,
-      totalDebt: s.totalDebt?.raw || ((s.shortLongTermDebt?.raw || 0) + (s.longTermDebt?.raw || 0)) || null,
-      totalStockholdersEquity: s.totalStockholderEquity?.raw,
-      retainedEarnings: s.retainedEarnings?.raw,
-      commonStock: s.commonStock?.raw,
-      treasuryStock: s.treasuryStock?.raw,
-      additionalPaidInCapital: s.capitalSurplus?.raw,
-      minorityInterest: s.minorityInterest?.raw,
-    };
-  });
-}
-
-function yahooToFmpIncome(arr) {
-  if (!arr?.length) return [];
-  return arr.map(s => {
-    const yr = s.endDate?.fmt?.slice(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
-    return {
-      date: s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null),
-      calendarYear: yr,
-      revenue: s.totalRevenue?.raw,
-      costOfRevenue: s.costOfRevenue?.raw,
-      grossProfit: s.grossProfit?.raw,
-      researchAndDevelopmentExpenses: s.researchDevelopment?.raw,
-      sellingGeneralAndAdministrativeExpenses: s.sellingGeneralAdministrative?.raw,
-      operatingExpenses: s.totalOperatingExpenses?.raw,
-      operatingIncome: s.operatingIncome?.raw,
-      interestExpense: s.interestExpense?.raw ? Math.abs(s.interestExpense.raw) : null,
-      incomeBeforeTax: s.incomeBeforeTax?.raw,
-      incomeTaxExpense: s.incomeTaxExpense?.raw,
-      netIncome: s.netIncome?.raw,
-      ebitda: s.ebitda?.raw,
-      epsdiluted: s.dilutedEPS?.raw,
-      weightedAverageShsOutDil: s.dilutedAverageShares?.raw,
-    };
-  });
-}
-
-function yahooToFmpCashflow(arr) {
-  if (!arr?.length) return [];
-  return arr.map(s => {
-    const yr = s.endDate?.fmt?.slice(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
-    return {
-      date: s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null),
-      calendarYear: yr,
-      operatingCashFlow: s.totalCashFromOperatingActivities?.raw,
-      depreciationAndAmortization: s.depreciation?.raw,
-      capitalExpenditure: s.capitalExpenditures?.raw,
-      freeCashFlow: s.freeCashFlow?.raw,
-      netCashUsedForInvestingActivites: s.totalCashflowsFromInvestingActivities?.raw || s.totalCashFromInvestingActivities?.raw,
-      netCashUsedProvidedByFinancingActivities: s.totalCashFromFinancingActivities?.raw,
-      dividendsPaid: s.dividendsPaid?.raw,
-      commonStockRepurchased: s.repurchaseOfStock?.raw,
-      stockBasedCompensation: s.stockBasedCompensation?.raw,
-      netChangeInCash: s.changeInCash?.raw,
-    };
-  });
-}
-
-// Build FMP-compatible _fmpData from Yahoo-format arrays (enriched by EDGAR)
-function buildFmpDataFromYahoo(data) {
-  const bs = data?.balanceSheetHistory?.balanceSheetStatements || [];
-  const is = data?.incomeStatementHistory?.incomeStatementHistory || [];
-  const cf = data?.cashflowStatementHistory?.cashflowStatements || [];
-  if (bs.length === 0 && is.length === 0) return null;
-  return {
-    income: yahooToFmpIncome(is),
-    balance: yahooToFmpBalance(bs),
-    cashflow: yahooToFmpCashflow(cf),
-    ratios: [],
-    keyMetrics: [],
-    productSegments: [],
-    geoSegments: [],
-  };
-}
-
 // ── Cache sessionStorage (15 min TTL) ──
 const CACHE_TTL = 15 * 60 * 1000;
 
@@ -393,15 +353,6 @@ function getCachedData(sym) {
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
     if (Date.now() - ts > CACHE_TTL) {
-      sessionStorage.removeItem(`ff_${sym}`);
-      return null;
-    }
-    // Invalidate cache if financial statements are empty (pre-EDGAR cache)
-    const hasFin = (data?.balanceSheetHistory?.balanceSheetStatements?.length > 0)
-      || (data?.incomeStatementHistory?.incomeStatementHistory?.length > 0)
-      || (data?._fmpData?.balance?.length > 0);
-    if (!hasFin) {
-      console.log(`[FF] Cache invalidé pour ${sym} (pas de données financières)`);
       sessionStorage.removeItem(`ff_${sym}`);
       return null;
     }
@@ -543,33 +494,6 @@ export async function fetchStockData(sym) {
           const isN = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
           console.log(`[FF] timeseries enrichissement OK — ${bsN} ans bilan, ${isN} ans résultats`);
 
-          // Enrichir avec SEC EDGAR (15+ ans, gratuit, sans clé)
-          try {
-            const edgar = await fetchEdgarFinancials(sym).catch(e => {
-              console.warn("[FF][EDGAR] échoué:", e.message);
-              return null;
-            });
-            if (edgar) {
-              if (edgar.balanceSheetStatements?.length > 0) {
-                const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
-                yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeByDate(edgar.balanceSheetStatements, existing) };
-              }
-              if (edgar.incomeStatements?.length > 0) {
-                const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
-                yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeByDate(edgar.incomeStatements, existing) };
-              }
-              if (edgar.cashflowStatements?.length > 0) {
-                const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
-                yahooResult.cashflowStatementHistory = { cashflowStatements: mergeByDate(edgar.cashflowStatements, existing) };
-              }
-              const bsEdgar = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
-              const isEdgar = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
-              console.log(`[FF][EDGAR] enrichissement OK — ${bsEdgar} ans bilan, ${isEdgar} ans résultats`);
-            }
-          } catch (e) {
-            console.warn("[FF][EDGAR] enrichissement échoué:", e.message);
-          }
-
           // Also fetch FMP for 20-year charts if key available
           if (hasFmpApiKey()) {
             try {
@@ -584,41 +508,7 @@ export async function fetchStockData(sym) {
           }
         } else {
 
-          // Try SEC EDGAR as fallback when timeseries failed
-          try {
-            const edgar = await fetchEdgarFinancials(sym).catch(() => null);
-            if (edgar) {
-              const mergeSimple = (edgarArr, existingArr) => {
-                const dateMap = new Map();
-                for (const s of (edgarArr || [])) {
-                  const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
-                  if (key) dateMap.set(key, s);
-                }
-                for (const s of (existingArr || [])) {
-                  const key = s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0, 10) : null);
-                  if (key) dateMap.set(key, s);
-                }
-                return [...dateMap.values()].sort((a, b) => (b.endDate?.raw || 0) - (a.endDate?.raw || 0));
-              };
-              if (edgar.balanceSheetStatements?.length > 0) {
-                const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
-                yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeSimple(edgar.balanceSheetStatements, existing) };
-              }
-              if (edgar.incomeStatements?.length > 0) {
-                const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
-                yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeSimple(edgar.incomeStatements, existing) };
-              }
-              if (edgar.cashflowStatements?.length > 0) {
-                const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
-                yahooResult.cashflowStatementHistory = { cashflowStatements: mergeSimple(edgar.cashflowStatements, existing) };
-              }
-              console.log("[FF][EDGAR] fallback enrichissement OK");
-            }
-          } catch (e) {
-            console.warn("[FF][EDGAR] fallback échoué:", e.message);
-          }
-
-          // Try FMP as last resort if still no data AND FMP key available
+          // Try FMP as last resort if timeseries also failed AND FMP key available
           const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
           if (stillNoBs && hasFmpApiKey()) {
             console.log("[FF] timeseries insuffisant, tentative FMP…");
@@ -646,15 +536,6 @@ export async function fetchStockData(sym) {
             }
           }
         }
-        // Build FMP-compatible data from Yahoo/EDGAR if no real FMP data
-        if (!yahooResult._fmpData) {
-          const synthFmp = buildFmpDataFromYahoo(yahooResult);
-          if (synthFmp && (synthFmp.balance.length > 0 || synthFmp.income.length > 0)) {
-            yahooResult._fmpData = synthFmp;
-            console.log("[FF] _fmpData synthétisé depuis Yahoo/EDGAR:", synthFmp.balance.length, "ans balance,", synthFmp.income.length, "ans income");
-          }
-        }
-
         // Always return Yahoo result (enriched or not)
         setCachedData(sym, yahooResult);
         return { data: yahooResult, fetchedAt: Date.now() };
