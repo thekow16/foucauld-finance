@@ -216,7 +216,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
         <span className="section-title">Chandeliers Japonais</span>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
           <button
             className={`measure-btn${measureMode ? " active" : ""}`}
             onClick={toggleMeasure}

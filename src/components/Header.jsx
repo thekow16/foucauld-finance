@@ -6,6 +6,7 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const debounceRef = useRef(null);
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
@@ -62,38 +63,57 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
     onSearch(sym);
   };
 
+  const navActions = (
+    <>
+      <button onClick={() => { onShowInvestors(); setMenuOpen(false); }} className="watchlist-header-btn" title="Investisseurs" style={{ fontSize: 15, color: "#f59e0b" }}>
+        🏆
+      </button>
+      <button onClick={() => { onShowWatchlist(); setMenuOpen(false); }} className="watchlist-header-btn" title="Ma Watchlist">
+        ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
+      </button>
+      <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
+        {dark ? "☀️" : "🌙"}
+      </button>
+      {user ? (
+        <div className="auth-header-group">
+          <span className="auth-header-name">{user.displayName}</span>
+          <button onClick={() => { onLogout(); setMenuOpen(false); }} className="auth-header-btn auth-logout-btn" title="Déconnexion">
+            Déconnexion
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => { onShowAuth(); setMenuOpen(false); }} className="auth-header-btn" title="Se connecter">
+          Connexion
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className="hero">
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, position: "relative", zIndex: 1 }}>
+        <div className="header-bar">
           <div className="logo">
             <div className="logo-icon">📈</div>
             <span className="logo-text">Foucauld Finance</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={onShowInvestors} className="watchlist-header-btn" title="Investisseurs" style={{ fontSize: 15, color: "#f59e0b" }}>
-              🏆
-            </button>
-            <button onClick={onShowWatchlist} className="watchlist-header-btn" title="Ma Watchlist">
-              ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
-            </button>
-            <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
-              {dark ? "☀️" : "🌙"}
-            </button>
-            {user ? (
-              <div className="auth-header-group">
-                <span className="auth-header-name">{user.displayName}</span>
-                <button onClick={onLogout} className="auth-header-btn auth-logout-btn" title="Déconnexion">
-                  Déconnexion
-                </button>
-              </div>
-            ) : (
-              <button onClick={onShowAuth} className="auth-header-btn" title="Se connecter">
-                Connexion
-              </button>
-            )}
+          {/* Desktop nav */}
+          <div className="header-nav-desktop">
+            {navActions}
           </div>
+          {/* Mobile hamburger */}
+          <button className="hamburger-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
+            <span className={`hamburger-line ${menuOpen ? "open" : ""}`} />
+            <span className={`hamburger-line ${menuOpen ? "open" : ""}`} />
+            <span className={`hamburger-line ${menuOpen ? "open" : ""}`} />
+          </button>
         </div>
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="mobile-nav">
+            {navActions}
+          </div>
+        )}
         <div ref={wrapRef} style={{ position: "relative", zIndex: 10 }}>
           <form onSubmit={handleSubmit} className="search-wrap">
             <input
