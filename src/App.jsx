@@ -103,19 +103,28 @@ export default function FoucauldFinance() {
     triggeredCountRef.current = triggered.length;
   }, [triggered]);
 
-  // ── Dynamic page title ──
+  // ── Dynamic page title + OG meta tags ──
   useEffect(() => {
+    const setMeta = (prop, content) => {
+      let el = document.querySelector(`meta[property="${prop}"]`);
+      if (!el) { el = document.createElement("meta"); el.setAttribute("property", prop); document.head.appendChild(el); }
+      el.setAttribute("content", content);
+    };
     if (!data || !symbol) {
       document.title = "Foucauld Finance";
+      setMeta("og:title", "Foucauld Finance — Analyse boursière");
       return;
     }
     const pr = data.price;
     const price = pr?.regularMarketPrice?.raw;
     const name = pr?.shortName || symbol;
     const currency = pr?.currencySymbol || pr?.currency || "";
-    document.title = price != null
+    const title = price != null
       ? `${symbol} — ${price.toFixed(2)} ${currency} | Foucauld Finance`
       : `${name} | Foucauld Finance`;
+    document.title = title;
+    setMeta("og:title", title);
+    setMeta("og:description", `Analyse financière de ${name} (${symbol}) — cours, ratios, bilan, résultats et trésorerie.`);
   }, [data, symbol]);
 
   const doFetchStock = async (sym, { silent = false } = {}) => {
@@ -1736,6 +1745,20 @@ export default function FoucauldFinance() {
           .toast-container { left: 10px; right: 10px; max-width: none; }
           .legal-page section { padding: 16px 18px; }
           .modal-content { margin: 10px; max-width: none; }
+          /* Financial tables: sticky first column on mobile */
+          .ff-table { font-size: 11px; }
+          .ff-table th, .ff-table td { padding: 7px 8px; white-space: nowrap; }
+          .ff-table th:first-child, .ff-table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: var(--card);
+            min-width: 110px;
+            max-width: 140px;
+            white-space: normal;
+          }
+          .ff-table tr:hover td:first-child { background: var(--highlight-row); }
+          .tab-btn { padding: 10px 12px; font-size: 12px; }
         }
 
         /* ── Small phones ≤ 480px ── */
@@ -1746,6 +1769,8 @@ export default function FoucauldFinance() {
           .grid8 { grid-template-columns: 1fr; }
           .stock-price { font-size: 24px; }
           .card { padding: 14px; }
+          .ff-table { font-size: 10px; }
+          .ff-table th:first-child, .ff-table td:first-child { min-width: 90px; max-width: 120px; }
         }
       `}</style>
 
@@ -1809,7 +1834,17 @@ export default function FoucauldFinance() {
               </svg>
             </div>
             <p style={{ color: "#ef4444", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{error}</p>
-            <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 16 }}>Vérifiez le symbole ou votre connexion.</p>
+            <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 16 }}>
+              {error.includes("hors ligne")
+                ? "Reconnectez-vous à Internet puis réessayez."
+                : error.includes("proxies")
+                ? "Tous les serveurs sont surchargés. Réessayez dans 1-2 minutes."
+                : error.includes("trop de temps")
+                ? "Le serveur Yahoo Finance est lent. Réessayez dans quelques instants."
+                : error.includes("Trop de recherches")
+                ? "Limite anti-abus atteinte. Attendez quelques secondes avant de relancer."
+                : "Vérifiez le symbole ou votre connexion."}
+            </p>
             {symbol && (
               <button
                 className="ff-btn"
