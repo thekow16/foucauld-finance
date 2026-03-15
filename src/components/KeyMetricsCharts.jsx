@@ -38,6 +38,18 @@ function growthLabel(cur, prev) {
   return g >= 0 ? `+${g.toFixed(0)}%` : `${g.toFixed(0)}%`;
 }
 
+/* ── CAGR helper ── */
+function cagr(rows, key) {
+  const valid = rows.filter((d) => d[key] != null && d[key] > 0);
+  if (valid.length < 2) return null;
+  const first = valid[0][key];
+  const last = valid[valid.length - 1][key];
+  const years = Number(valid[valid.length - 1].year) - Number(valid[0].year);
+  if (years <= 0 || first <= 0) return null;
+  const rate = Math.pow(last / first, 1 / years) - 1;
+  return `CAGR ${years} ans : ${rate >= 0 ? "+" : ""}${(rate * 100).toFixed(1)}%`;
+}
+
 /* ── Data builder (historique complet, 10+ ans) ── */
 
 function buildSeries(data) {
@@ -64,6 +76,7 @@ function buildSeries(data) {
         year: y,
         fcf: d.freeCashFlow,
         sbc: d.stockBasedCompensation,
+        dividendsPaid: d.dividendsPaid,
       });
     });
     fmp.balance.forEach((d) => {
@@ -110,6 +123,7 @@ function buildSeries(data) {
       year: String(y),
       fcf: d.freeCashFlow?.raw,
       sbc: d.stockBasedCompensation?.raw,
+      dividendsPaid: d.dividendsPaid?.raw,
     });
   });
   balance.forEach((d) => {
@@ -137,7 +151,9 @@ function enrich(d) {
   const roce = investedCapital && d.ebit != null ? d.ebit / investedCapital : null;
   const fcfMargin = d.fcf != null && d.revenue ? d.fcf / d.revenue : null;
   const fcfPerShare = d.fcf != null && d.shares ? d.fcf / d.shares : null;
-  return { ...d, roce, fcfMargin, fcfPerShare };
+  const dividendPerShare =
+    d.dividendsPaid != null && d.shares ? Math.abs(d.dividendsPaid) / d.shares : null;
+  return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare };
 }
 
 /* ── Growth label rendered above bars ── */
@@ -200,7 +216,7 @@ function BaggrTooltip({ active, payload, label, fmt }) {
 }
 
 /* ── Chart card with Baggr-style header ── */
-function ChartCard({ title, subtitle, accentColor, children }) {
+function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
   return (
     <div
       style={{
@@ -226,8 +242,23 @@ function ChartCard({ title, subtitle, accentColor, children }) {
         }}
       />
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", letterSpacing: "-0.2px" }}>
-          {title}
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", letterSpacing: "-0.2px" }}>
+            {title}
+          </div>
+          {cagrLabel && (
+            <div style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: cagrLabel.startsWith("CAGR") && cagrLabel.includes("+") ? "#10b981" : "#ef4444",
+              background: cagrLabel.startsWith("CAGR") && cagrLabel.includes("+") ? "#10b98118" : "#ef444418",
+              padding: "2px 7px",
+              borderRadius: 6,
+              whiteSpace: "nowrap",
+            }}>
+              {cagrLabel}
+            </div>
+          )}
         </div>
         {subtitle && (
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontWeight: 500 }}>
@@ -294,7 +325,7 @@ export default function KeyMetricsCharts({ data }) {
       }}
     >
       {/* 1. Chiffre d'affaires */}
-      <ChartCard title="Chiffre d'affaires" subtitle="Évolution annuelle du CA" accentColor="#0891b2">
+      <ChartCard title="Chiffre d'affaires" subtitle="Évolution annuelle du CA" accentColor="#0891b2" cagrLabel={cagr(rows, "revenue")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
@@ -314,7 +345,7 @@ export default function KeyMetricsCharts({ data }) {
       </ChartCard>
 
       {/* 2. Free Cash Flow & SBC */}
-      <ChartCard title="Free Cash Flow & SBC" subtitle="FCF vs rémunération en actions" accentColor="#0d9488">
+      <ChartCard title="Free Cash Flow & SBC" subtitle="FCF vs rémunération en actions" accentColor="#0d9488" cagrLabel={cagr(rows, "fcf")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
@@ -337,7 +368,7 @@ export default function KeyMetricsCharts({ data }) {
       </ChartCard>
 
       {/* 3. FCF par action */}
-      <ChartCard title="Free Cash Flow par action" subtitle="FCF / actions diluées" accentColor="#2563eb">
+      <ChartCard title="Free Cash Flow par action" subtitle="FCF / actions diluées" accentColor="#2563eb" cagrLabel={cagr(rows, "fcfPerShare")}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -457,6 +488,36 @@ export default function KeyMetricsCharts({ data }) {
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
+
+      {/* 8. Dividendes par action */}
+      {rows.some((d) => d.dividendPerShare != null && d.dividendPerShare > 0) && (
+        <ChartCard title="Dividendes par action" subtitle="Dividendes / actions diluées" accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare")}>
+          <ResponsiveContainer>
+            <AreaChart data={rows}>
+              <defs>
+                <linearGradient id="gradDiv" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+              <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
+                tickFormatter={(v) => v != null ? `$${v.toFixed(2)}` : ""} />
+              <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `$${v.toFixed(3)}` : "—"} />} />
+              <Area
+                type="monotone"
+                dataKey="dividendPerShare"
+                stroke="#f59e0b"
+                strokeWidth={2.5}
+                fill="url(#gradDiv)"
+                dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
+                activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
     </div>
   );
 }
