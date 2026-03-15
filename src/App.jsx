@@ -22,7 +22,7 @@ const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
 import { useDarkMode } from "./hooks/useDarkMode";
-import { fetchStockData } from "./utils/api";
+import { fetchStockData, classifyError } from "./utils/api";
 import { getCurrentUser, logoutUser } from "./utils/auth";
 
 class ErrorBoundary extends Component {
@@ -103,7 +103,7 @@ export default function FoucauldFinance() {
       const result = await fetchStockData(sym);
       setData(result);
     } catch (e) {
-      setError(e.message || "Erreur inconnue.");
+      setError(classifyError(e));
     } finally {
       setLoading(false);
     }
@@ -1579,9 +1579,23 @@ export default function FoucauldFinance() {
 
         {!loading && error && (
           <div className="card" style={{ textAlign: "center", padding: "52px 24px" }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>!</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <circle cx="28" cy="28" r="26" stroke="#ef4444" strokeWidth="2" opacity=".3" />
+                <path d="M28 18v12M28 36v2" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            </div>
             <p style={{ color: "#ef4444", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{error}</p>
-            <p style={{ color: "var(--muted)", fontSize: 13 }}>Vérifiez le symbole et réessayez.</p>
+            <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 16 }}>Vérifiez le symbole ou votre connexion.</p>
+            {symbol && (
+              <button
+                className="ff-btn"
+                onClick={() => doFetchStock(symbol)}
+                style={{ fontSize: 14, padding: "10px 28px" }}
+              >
+                Réessayer
+              </button>
+            )}
           </div>
         )}
 

@@ -14,6 +14,9 @@ export function getFmpApiKey() {
 }
 
 export function setFmpApiKey(key) {
+  if (key) {
+    console.warn("[FF] Clé FMP stockée en localStorage (visible dans DevTools). Pour un usage en production, utilisez un backend sécurisé.");
+  }
   localStorage.setItem(STORAGE_KEY, key);
 }
 
@@ -21,9 +24,44 @@ export function hasFmpApiKey() {
   return !!getFmpApiKey();
 }
 
+// ── Compteur journalier FMP (protection 250 req/jour) ──
+const FMP_COUNTER_KEY = "fmp_daily_count";
+const FMP_DAILY_LIMIT = 230; // marge de sécurité (limite réelle 250)
+
+function getFmpDailyCount() {
+  try {
+    const raw = localStorage.getItem(FMP_COUNTER_KEY);
+    if (!raw) return { count: 0, date: "" };
+    return JSON.parse(raw);
+  } catch { return { count: 0, date: "" }; }
+}
+
+function incrementFmpCount() {
+  const today = new Date().toISOString().slice(0, 10);
+  const stored = getFmpDailyCount();
+  const count = stored.date === today ? stored.count + 1 : 1;
+  localStorage.setItem(FMP_COUNTER_KEY, JSON.stringify({ count, date: today }));
+  return count;
+}
+
+export function getFmpUsage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const stored = getFmpDailyCount();
+  return stored.date === today ? stored.count : 0;
+}
+
 async function fmpFetch(endpoint, base = FMP_BASE) {
   const key = getFmpApiKey();
   if (!key) throw new Error("Clé API FMP manquante");
+
+  // Vérif quota journalier
+  const today = new Date().toISOString().slice(0, 10);
+  const stored = getFmpDailyCount();
+  if (stored.date === today && stored.count >= FMP_DAILY_LIMIT) {
+    console.warn(`[FMP] Limite journalière atteinte (${stored.count}/${FMP_DAILY_LIMIT})`);
+    throw new Error("Limite FMP atteinte pour aujourd'hui (250 req/jour). Les données Yahoo Finance restent disponibles.");
+  }
+  incrementFmpCount();
   const url = `${base}${endpoint}${endpoint.includes("?") ? "&" : "?"}apikey=${key}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) {

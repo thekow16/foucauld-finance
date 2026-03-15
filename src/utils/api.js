@@ -366,6 +366,41 @@ function setCachedData(sym, data) {
   }
 }
 
+// ── Rate limiter (max 3 recherches / 5s côté client) ──
+const searchTimestamps = [];
+const RATE_LIMIT_WINDOW = 5000;
+const RATE_LIMIT_MAX = 3;
+
+function checkRateLimit() {
+  const now = Date.now();
+  // Purge les entrées hors fenêtre
+  while (searchTimestamps.length && now - searchTimestamps[0] > RATE_LIMIT_WINDOW) {
+    searchTimestamps.shift();
+  }
+  if (searchTimestamps.length >= RATE_LIMIT_MAX) {
+    const waitSec = Math.ceil((RATE_LIMIT_WINDOW - (now - searchTimestamps[0])) / 1000);
+    throw new Error(`Trop de recherches. Patientez ${waitSec}s avant de réessayer.`);
+  }
+  searchTimestamps.push(now);
+}
+
+// ── Détection réseau ──
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+export function classifyError(e) {
+  if (isOffline()) return "Vous êtes hors ligne. Vérifiez votre connexion Internet.";
+  const msg = e?.message || "";
+  if (msg.includes("timeout") || msg.includes("Timeout") || msg.includes("AbortError"))
+    return "Le serveur met trop de temps à répondre. Réessayez dans un instant.";
+  if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Network request failed"))
+    return "Erreur réseau — impossible de joindre les serveurs. Vérifiez votre connexion.";
+  if (msg.includes("Impossible de contacter"))
+    return "Tous les proxies CORS sont indisponibles. Réessayez dans quelques minutes.";
+  return msg || "Erreur inconnue.";
+}
+
 // ── Données complètes (v10/quoteSummary via Worker, sinon fallback chart) ──
 export async function fetchStockData(sym) {
   console.log("[FF] fetchStockData:", sym);
@@ -373,6 +408,12 @@ export async function fetchStockData(sym) {
   // Check cache first
   const cached = getCachedData(sym);
   if (cached) return cached;
+
+  // Vérification hors-ligne immédiate
+  if (isOffline()) throw new Error("Vous êtes hors ligne. Vérifiez votre connexion Internet.");
+
+  // Rate limiting côté client
+  checkRateLimit();
 
   // Essai 1 : quoteSummary via Worker (qui gère le crumb)
   let yahooResult = null;
