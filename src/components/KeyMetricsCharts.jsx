@@ -50,6 +50,12 @@ function cagr(rows, key) {
   return `CAGR ${years} ans : ${rate >= 0 ? "+" : ""}${(rate * 100).toFixed(1)}%`;
 }
 
+/* ── Check if a row has at least one financial value ── */
+function hasFinancialData(d) {
+  const keys = ["revenue", "fcf", "sbc", "shares", "ebit", "cash", "debt", "assets", "dividendsPaid"];
+  return keys.some((k) => d[k] != null);
+}
+
 /* ── Data builder (historique complet, 10+ ans) ── */
 
 function buildSeries(data) {
@@ -101,10 +107,12 @@ function buildSeries(data) {
       });
     });
 
-    return [...byYear.values()]
+    const fmpRows = [...byYear.values()]
       .map((d) => enrich(d))
-      .filter((d) => d.year)
+      .filter((d) => d.year && hasFinancialData(d))
       .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+    console.log("[FF][Charts] FMP rows with data:", fmpRows.length);
+    return fmpRows;
   }
 
   /* Fallback Yahoo */
@@ -148,10 +156,17 @@ function buildSeries(data) {
     });
   });
 
-  return [...byYear.values()]
+  const yahooRows = [...byYear.values()]
     .map((d) => enrich(d))
-    .filter((d) => d.year)
+    .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  console.log("[FF][Charts] Yahoo rows with data:", yahooRows.length, "/ total years:", byYear.size);
+  if (yahooRows.length === 0 && byYear.size > 0) {
+    // Log sample row to help debug
+    const sample = [...byYear.values()][0];
+    console.warn("[FF][Charts] Rows exist but no financial data. Sample:", JSON.stringify(sample));
+  }
+  return yahooRows;
 }
 
 function enrich(d) {
@@ -313,7 +328,25 @@ function renderGrowthLabel(data, dataKey) {
 
 export default function KeyMetricsCharts({ data }) {
   const rows = buildSeries(data);
-  if (!rows.length) return null;
+  if (!rows.length) return (
+    <div style={{
+      background: "var(--card)",
+      borderRadius: 16,
+      padding: "32px 24px",
+      textAlign: "center",
+      border: "1px solid var(--border)",
+      marginBottom: 16,
+    }}>
+      <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
+      <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
+        Données financières indisponibles
+      </div>
+      <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+        Les données historiques (CA, FCF, ROCE…) ne sont pas disponibles pour cette action.
+        <br />Vérifiez la console (F12) pour plus de détails.
+      </div>
+    </div>
+  );
 
   const many = rows.length > 12;
   const axisStyle = { fontSize: many ? 9 : 10, fill: "var(--muted)" };
