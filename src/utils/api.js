@@ -16,6 +16,17 @@ const FREE_PROXIES = [
 
 const YF = "https://query2.finance.yahoo.com";
 
+// ── Worker health check ──
+export async function checkWorkerHealth() {
+  if (!WORKER_URL) return false;
+  try {
+    const res = await fetch(WORKER_URL, { signal: AbortSignal.timeout(5000) });
+    return res.ok || res.status === 400; // 400 = alive but missing ?url param
+  } catch {
+    return false;
+  }
+}
+
 async function tryFetch(url, unwrap = false) {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(12000),

@@ -22,7 +22,7 @@ const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
 import { useDarkMode } from "./hooks/useDarkMode";
-import { fetchStockData, classifyError } from "./utils/api";
+import { fetchStockData, classifyError, checkWorkerHealth } from "./utils/api";
 import { getCurrentUser, logoutUser } from "./utils/auth";
 
 class ErrorBoundary extends Component {
@@ -68,6 +68,7 @@ export default function FoucauldFinance() {
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
   const [legalPage, setLegalPage] = useState(null); // "mentions" | "confidentialite" | "cgu" | "cgv"
+  const [workerDown, setWorkerDown] = useState(false);
 
   const handleLogout = () => {
     logoutUser();
@@ -100,6 +101,21 @@ export default function FoucauldFinance() {
     }
     triggeredCountRef.current = triggered.length;
   }, [triggered]);
+
+  // ── Dynamic page title ──
+  useEffect(() => {
+    if (!data || !symbol) {
+      document.title = "Foucauld Finance";
+      return;
+    }
+    const pr = data.price;
+    const price = pr?.regularMarketPrice?.raw;
+    const name = pr?.shortName || symbol;
+    const currency = pr?.currencySymbol || pr?.currency || "";
+    document.title = price != null
+      ? `${symbol} — ${price.toFixed(2)} ${currency} | Foucauld Finance`
+      : `${name} | Foucauld Finance`;
+  }, [data, symbol]);
 
   const doFetchStock = async (sym, { silent = false } = {}) => {
     if (!silent) {
@@ -162,6 +178,14 @@ export default function FoucauldFinance() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
+
+  // ── Worker health check (on mount + every 3 min) ──
+  useEffect(() => {
+    const check = () => checkWorkerHealth().then(ok => setWorkerDown(!ok));
+    check();
+    const id = setInterval(check, 3 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Search history (localStorage, last 10) ──
   const HISTORY_KEY = "ff_search_history";
@@ -549,6 +573,20 @@ export default function FoucauldFinance() {
           font-size: 11px;
           color: var(--muted);
           margin-top: 4px;
+        }
+        .worker-banner {
+          background: #fef3c7;
+          color: #92400e;
+          text-align: center;
+          padding: 10px 16px;
+          font-size: 13px;
+          font-weight: 500;
+          border-bottom: 1px solid #fcd34d;
+        }
+        [data-theme="dark"] .worker-banner {
+          background: #78350f;
+          color: #fde68a;
+          border-bottom-color: #92400e;
         }
         .stock-fetched-at {
           font-size: 10px;
@@ -1619,6 +1657,12 @@ export default function FoucauldFinance() {
       `}</style>
 
       <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
+
+      {workerDown && (
+        <div className="worker-banner">
+          Service dégradé — le serveur proxy est temporairement indisponible. Les données peuvent être incomplètes.
+        </div>
+      )}
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
 
