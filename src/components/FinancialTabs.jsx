@@ -304,8 +304,8 @@ export function BilanTab({ data, symbol }) {
     yahooBs0Sample: _bsArr[0] ? { totalAssets: _bsArr[0].totalAssets, cash: _bsArr[0].cash, endDate: _bsArr[0].endDate } : "none",
   });
 
-  // FMP / EDGAR balance sheet data (enriched view)
-  if (fmpData?.balance?.length > 0) {
+  // FMP balance sheet data
+  if (hasKey && fmpData?.balance?.length > 0) {
     const bs = fmpData.balance;
     const ratios = fmpData.ratios || [];
     const keyMetrics = fmpData.keyMetrics || [];
@@ -505,7 +505,7 @@ export function BilanTab({ data, symbol }) {
 
         <FmpTable data={bsEnriched} rows={rows} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
-          📋 Source : {fmpData?.ratios?.length > 0 ? "Financial Modeling Prep" : "SEC EDGAR / Yahoo Finance"} · {bs.length} années de données
+          📋 Source : Financial Modeling Prep · {bs.length} années de données
         </div>
       </div>
     );
@@ -708,7 +708,7 @@ export function ResultatsTab({ data, symbol }) {
     return () => { cancelled = true; };
   }, [symbol, hasKey]);
 
-  if (fmpData?.income?.length > 0) {
+  if (hasKey && fmpData?.income?.length > 0) {
     const inc = fmpData.income;
     const ratios = fmpData.ratios || [];
     const keyMetrics = fmpData.keyMetrics || [];
@@ -925,7 +925,7 @@ export function ResultatsTab({ data, symbol }) {
 
         <FmpTable data={incEnriched} rows={rows} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
-          📋 Source : {fmpData?.ratios?.length > 0 ? "Financial Modeling Prep" : "SEC EDGAR / Yahoo Finance"} · {inc.length} années de données
+          📋 Source : Financial Modeling Prep · {inc.length} années de données
         </div>
       </div>
     );
@@ -1138,7 +1138,7 @@ export function TresorerieTab({ data, symbol }) {
     return () => { cancelled = true; };
   }, [symbol, hasKey]);
 
-  if (fmpData?.cashflow?.length > 0) {
+  if (hasKey && fmpData?.cashflow?.length > 0) {
     const cf = fmpData.cashflow;
     const keyMetrics = fmpData.keyMetrics || [];
     const inc2 = fmpData.income || [];
@@ -1329,7 +1329,7 @@ export function TresorerieTab({ data, symbol }) {
 
         <FmpTable data={cfEnriched} rows={rows} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
-          📋 Source : {fmpData?.ratios?.length > 0 ? "Financial Modeling Prep" : "SEC EDGAR / Yahoo Finance"} · {cf.length} années de données
+          📋 Source : Financial Modeling Prep · {cf.length} années de données
         </div>
       </div>
     );
