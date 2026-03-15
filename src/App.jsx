@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
-const MetricCards = lazy(() => import("./components/MetricCards"));
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 
@@ -1902,8 +1901,6 @@ export default function FoucauldFinance() {
               isInWatchlist={isInWatchlist}
               onToggleWatchlist={handleToggleWatchlist}
             />
-
-            <MetricCards data={data} />
 
             <KeyMetricsCharts data={data} />
 
