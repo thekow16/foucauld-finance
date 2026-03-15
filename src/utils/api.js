@@ -396,6 +396,15 @@ function getCachedData(sym) {
       sessionStorage.removeItem(`ff_${sym}`);
       return null;
     }
+    // Invalidate cache if financial statements are empty (pre-EDGAR cache)
+    const hasFin = (data?.balanceSheetHistory?.balanceSheetStatements?.length > 0)
+      || (data?.incomeStatementHistory?.incomeStatementHistory?.length > 0)
+      || (data?._fmpData?.balance?.length > 0);
+    if (!hasFin) {
+      console.log(`[FF] Cache invalidé pour ${sym} (pas de données financières)`);
+      sessionStorage.removeItem(`ff_${sym}`);
+      return null;
+    }
     console.log(`[FF] Cache hit for ${sym} (${Math.round((Date.now() - ts) / 1000)}s ago)`);
     return { data, fetchedAt: ts };
   } catch {
