@@ -118,12 +118,27 @@ export async function fetchCandleData(sym, interval, range) {
 // ── Yahoo Timeseries API — retourne les données financières détaillées ──
 // L'API quoteSummary ne retourne plus les valeurs financières (seulement endDate),
 // donc on utilise fundamentals-timeseries comme source alternative.
+// Les requêtes sont divisées en 2 lots parallèles pour réduire la taille des URLs.
 async function fetchYahooTimeseries(sym) {
   const now = Math.floor(Date.now() / 1000);
   const fortyYearsAgo = now - 40 * 365 * 86400;
 
-  // Balance sheet fields
-  const bsFields = [
+  // Batch 1: Income + Cashflow (essential for charts)
+  const batch1Fields = [
+    "annualTotalRevenue", "annualCostOfRevenue", "annualGrossProfit",
+    "annualResearchAndDevelopment", "annualSellingGeneralAndAdministration",
+    "annualOperatingExpense", "annualOperatingIncome", "annualInterestExpense",
+    "annualPretaxIncome", "annualTaxProvision", "annualNetIncome",
+    "annualEBITDA", "annualDilutedEPS", "annualBasicEPS",
+    "annualDilutedAverageShares",
+    "annualOperatingCashFlow", "annualCapitalExpenditure", "annualFreeCashFlow",
+    "annualInvestingCashFlow", "annualFinancingCashFlow",
+    "annualRepurchaseOfCapitalStock", "annualCashDividendsPaid",
+    "annualChangeInCashSupplementalAsReported", "annualStockBasedCompensation",
+  ];
+
+  // Batch 2: Balance sheet
+  const batch2Fields = [
     "annualTotalAssets", "annualTotalCurrentAssets", "annualCashAndCashEquivalents",
     "annualShortTermInvestments", "annualNetReceivables", "annualInventory",
     "annualOtherCurrentAssets", "annualNetPPE", "annualGoodwillAndOtherIntangibleAssets",
@@ -133,34 +148,36 @@ async function fetchYahooTimeseries(sym) {
     "annualStockholdersEquity", "annualRetainedEarnings", "annualCommonStock",
     "annualMinorityInterest",
   ];
-  // Income statement fields
-  const isFields = [
-    "annualTotalRevenue", "annualCostOfRevenue", "annualGrossProfit",
-    "annualResearchAndDevelopment", "annualSellingGeneralAndAdministration",
-    "annualOperatingExpense", "annualOperatingIncome", "annualInterestExpense",
-    "annualPretaxIncome", "annualTaxProvision", "annualNetIncome",
-    "annualEBITDA", "annualDilutedEPS", "annualBasicEPS",
-    "annualDilutedAverageShares",
-  ];
-  // Cash flow fields
-  const cfFields = [
-    "annualOperatingCashFlow", "annualCapitalExpenditure", "annualFreeCashFlow",
-    "annualInvestingCashFlow", "annualFinancingCashFlow",
-    "annualRepurchaseOfCapitalStock", "annualCashDividendsPaid",
-    "annualChangeInCashSupplementalAsReported", "annualStockBasedCompensation",
-  ];
 
-  const allFields = [...bsFields, ...isFields, ...cfFields];
-  const url = `${YF}/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}?period1=${fortyYearsAgo}&period2=${now}&type=${allFields.join(",")}&merge=false&padTimeSeries=false`;
+  const baseUrl = `${YF}/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}?period1=${fortyYearsAgo}&period2=${now}&merge=false&padTimeSeries=false&type=`;
 
   try {
-    const json = await proxyFetch(url);
-    const series = json.timeseries?.result || [];
-    console.log("[FF] timeseries fetched, series count:", series.length);
+    // Fetch both batches in parallel for speed
+    const [json1, json2] = await Promise.all([
+      proxyFetch(baseUrl + batch1Fields.join(",")).catch(e => {
+        console.warn("[FF] timeseries batch1 (IS+CF) failed:", e.message);
+        return null;
+      }),
+      proxyFetch(baseUrl + batch2Fields.join(",")).catch(e => {
+        console.warn("[FF] timeseries batch2 (BS) failed:", e.message);
+        return null;
+      }),
+    ]);
+
+    // Merge results from both batches
+    const allSeries = [
+      ...(json1?.timeseries?.result || []),
+      ...(json2?.timeseries?.result || []),
+    ];
+
+    console.log("[FF] timeseries fetched, batch1:", json1?.timeseries?.result?.length ?? "FAIL",
+      "batch2:", json2?.timeseries?.result?.length ?? "FAIL", "total:", allSeries.length);
+
+    if (allSeries.length === 0) return null;
 
     // Organize data by date
     const dateMap = {};
-    for (const s of series) {
+    for (const s of allSeries) {
       const fieldName = s.meta?.type?.[0];
       if (!fieldName) continue;
       const entries = s[fieldName] || [];
@@ -439,8 +456,12 @@ export async function fetchStockData(sym) {
         const bsCount = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
         const isCount = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
         const cfCount = (yahooResult.cashflowStatementHistory?.cashflowStatements || []).length;
+        // Check if quoteSummary actually has financial values (not just endDate)
+        const qsIs0 = (yahooResult.incomeStatementHistory?.incomeStatementHistory || [])[0];
+        const qsHasValues = qsIs0?.totalRevenue?.raw != null;
         console.log("[FF] quoteSummary OK via Worker — modules:", Object.keys(yahooResult).join(","),
-          "bs:", bsCount, "is:", isCount, "cf:", cfCount);
+          "bs:", bsCount, "is:", isCount, "cf:", cfCount,
+          "hasValues:", qsHasValues, "revenue[0]:", qsIs0?.totalRevenue?.raw);
 
         // Always fetch timeseries for full 10+ years of history
         // (quoteSummary only returns ~4 years)
@@ -467,11 +488,11 @@ export async function fetchStockData(sym) {
             return [...dateMap.values()].sort((a, b) => (b.endDate?.raw || 0) - (a.endDate?.raw || 0));
           };
 
-          if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements[0].totalAssets?.raw != null) {
+          if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements.some(s => s.totalAssets?.raw != null)) {
             const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
             yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeByDate(ts.balanceSheetStatements, existing) };
           }
-          if (ts.incomeStatements?.length > 0 && ts.incomeStatements[0].totalRevenue?.raw != null) {
+          if (ts.incomeStatements?.length > 0 && ts.incomeStatements.some(s => s.totalRevenue?.raw != null)) {
             const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
             yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeByDate(ts.incomeStatements, existing) };
           }
