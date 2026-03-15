@@ -15,8 +15,8 @@ export default function CompareMode({ currentSymbol, currentData }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchStockData(sym);
-      setCompareData({ symbol: sym, data });
+      const result = await fetchStockData(sym);
+      setCompareData({ symbol: sym, data: result.data });
     } catch (err) {
       setError(err.message);
     } finally {
