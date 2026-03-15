@@ -96,12 +96,13 @@ export async function fetchRevenueGeoSegmentation(symbol) {
 
 // ── Fetch toutes les données financières d'un coup ──
 export async function fetchAllFinancials(symbol) {
+  const limit = 10;
   const [income, balance, cashflow, ratios, keyMetrics, productSegments, geoSegments] = await Promise.all([
-    fetchIncomeStatement(symbol, 40).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
-    fetchBalanceSheet(symbol, 40).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),
-    fetchCashFlow(symbol, 40).catch(e => { console.warn("[FMP] cashflow err:", e.message); return []; }),
-    fetchRatios(symbol, 40).catch(e => { console.warn("[FMP] ratios err:", e.message); return []; }),
-    fetchKeyMetrics(symbol, 40).catch(e => { console.warn("[FMP] keyMetrics err:", e.message); return []; }),
+    fetchIncomeStatement(symbol, limit).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
+    fetchBalanceSheet(symbol, limit).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),
+    fetchCashFlow(symbol, limit).catch(e => { console.warn("[FMP] cashflow err:", e.message); return []; }),
+    fetchRatios(symbol, limit).catch(e => { console.warn("[FMP] ratios err:", e.message); return []; }),
+    fetchKeyMetrics(symbol, limit).catch(e => { console.warn("[FMP] keyMetrics err:", e.message); return []; }),
     fetchRevenueProductSegmentation(symbol).catch(e => { console.warn("[FMP] productSeg err:", e.message); return []; }),
     fetchRevenueGeoSegmentation(symbol).catch(e => { console.warn("[FMP] geoSeg err:", e.message); return []; }),
   ]);

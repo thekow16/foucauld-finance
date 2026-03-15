@@ -109,7 +109,7 @@ export async function fetchCandleData(sym, interval, range) {
 // donc on utilise fundamentals-timeseries comme source alternative.
 async function fetchYahooTimeseries(sym) {
   const now = Math.floor(Date.now() / 1000);
-  const fortyYearsAgo = now - 40 * 365 * 86400;
+  const fortyYearsAgo = now - 10 * 365 * 86400;
 
   // Balance sheet fields
   const bsFields = [
@@ -161,7 +161,7 @@ async function fetchYahooTimeseries(sym) {
       }
     }
 
-    const dates = Object.keys(dateMap).sort().reverse().slice(0, 40);
+    const dates = Object.keys(dateMap).sort().reverse().slice(0, 10);
     if (dates.length === 0) return null;
 
     const w = (v) => v != null ? { raw: v } : undefined;
@@ -250,7 +250,7 @@ function yw(v) { return v != null ? { raw: v } : undefined; }
 
 function fmpToYahooBalance(arr) {
   if (!arr?.length) return [];
-  return arr.slice(0, 40).map(d => ({
+  return arr.slice(0, 10).map(d => ({
     endDate: { raw: d.date ? Math.floor(new Date(d.date).getTime() / 1000) : 0 },
     totalAssets: yw(d.totalAssets),
     totalCurrentAssets: yw(d.totalCurrentAssets),
@@ -284,7 +284,7 @@ function fmpToYahooBalance(arr) {
 
 function fmpToYahooIncome(arr) {
   if (!arr?.length) return [];
-  return arr.slice(0, 40).map(d => ({
+  return arr.slice(0, 10).map(d => ({
     endDate: { raw: d.date ? Math.floor(new Date(d.date).getTime() / 1000) : 0 },
     totalRevenue: yw(d.revenue),
     costOfRevenue: yw(d.costOfRevenue),
@@ -309,7 +309,7 @@ function fmpToYahooIncome(arr) {
 
 function fmpToYahooCashflow(arr) {
   if (!arr?.length) return [];
-  return arr.slice(0, 40).map(d => ({
+  return arr.slice(0, 10).map(d => ({
     endDate: { raw: d.date ? Math.floor(new Date(d.date).getTime() / 1000) : 0 },
     totalCashFromOperatingActivities: yw(d.operatingCashFlow),
     depreciation: yw(d.depreciationAndAmortization),
