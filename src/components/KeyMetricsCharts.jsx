@@ -499,34 +499,32 @@ export default function KeyMetricsCharts({ data }) {
       </ChartCard>
 
       {/* 8. Dividendes par action */}
-      {rows.some((d) => d.dividendPerShare != null && d.dividendPerShare > 0) && (
-        <ChartCard title="Dividendes par action" subtitle="Dividendes / actions diluées" accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare")}>
-          <ResponsiveContainer>
-            <AreaChart data={rows}>
-              <defs>
-                <linearGradient id="gradDiv" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid {...gridProps} />
-              <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
-              <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
-                tickFormatter={(v) => v != null ? `$${v.toFixed(2)}` : ""} />
-              <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `$${v.toFixed(3)}` : "—"} />} />
-              <Area
-                type="monotone"
-                dataKey="dividendPerShare"
-                stroke="#f59e0b"
-                strokeWidth={2.5}
-                fill="url(#gradDiv)"
-                dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
-                activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
+      <ChartCard title="Dividendes par action" subtitle="Dividendes / actions diluées" accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare")}>
+        <ResponsiveContainer>
+          <AreaChart data={rows}>
+            <defs>
+              <linearGradient id="gradDiv" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridProps} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
+              tickFormatter={(v) => v != null ? `$${v.toFixed(2)}` : ""} />
+            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `$${v.toFixed(3)}` : "—"} />} />
+            <Area
+              type="monotone"
+              dataKey="dividendPerShare"
+              stroke="#f59e0b"
+              strokeWidth={2.5}
+              fill="url(#gradDiv)"
+              dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
+              activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartCard>
     </div>
   );
 }
