@@ -1,10 +1,14 @@
 // ──────────────────────────────────────────────
 // SEC EDGAR XBRL API — Données financières gratuites, sans clé API
-// 15+ ans d'historique pour les entreprises US
+// 15+ ans d'historique pour entreprises US + étrangères cotées aux US (20-F)
+// Supporte US-GAAP et IFRS
 // ──────────────────────────────────────────────
 
 const EDGAR_BASE = "https://data.sec.gov";
 const USER_AGENT = "FoucauldFinance contact@foucauld.finance";
+
+// Annual filing form types
+const ANNUAL_FORMS = new Set(["10-K", "10-KT", "20-F", "20-FT", "40-F"]);
 
 // ── Cache ticker → CIK ──
 let tickerToCikMap = null;
@@ -23,12 +27,89 @@ async function loadTickerMap() {
   return tickerToCikMap;
 }
 
+// Common international ticker → US ticker/ADR mappings
+const INTL_TICKER_ALIASES = {
+  // French stocks
+  "MC": ["LVMUY", "LVMHF"], // LVMH
+  "OR": ["LRLCY", "LRLCF"],  // L'Oréal
+  "SAN": ["SNYNF", "SNY"],    // Sanofi
+  "AI": ["AIQUF", "AIRP"],    // Air Liquide
+  "SU": ["SBGSY", "SBGSF"],   // Schneider Electric
+  "BN": ["BNPQY", "BNPQF"],   // Danone / BNP
+  "TTE": ["TTE"],              // TotalEnergies (same ticker)
+  "HO": ["THLLY", "THLLF"],   // Thales
+  "RMS": ["HESAY", "HESAF"],   // Hermès
+  "CDI": ["CDIOF"],            // Christian Dior
+  "KER": ["PPRUY", "PPRUF"],   // Kering
+  "CAP": ["CAPMF", "CGEMY"],   // Capgemini
+  "VIV": ["VIVHY", "VIVEF"],   // Vivendi
+  "DG": ["VEOEY", "VEOEF"],    // Vinci
+
+  // German stocks
+  "SAP": ["SAP"],               // SAP (same ticker)
+  "SIE": ["SIEGY", "SMAWF"],    // Siemens
+  "ALV": ["ALIZY", "ALIZF"],    // Allianz
+  "BAS": ["BASFY", "BFFAF"],    // BASF
+  "DTE": ["DTEGY", "DTEGF"],    // Deutsche Telekom
+  "MBG": ["MBGYY", "MBGAF"],    // Mercedes-Benz
+  "BMW": ["BMWYY", "BAMXF"],    // BMW
+  "ADS": ["ADDYY", "ADDDF"],    // Adidas
+  "MRK": ["MKKGY", "MKGAF"],    // Merck KGaA
+
+  // Dutch stocks
+  "ASML": ["ASML"],              // ASML (same ticker)
+  "PHIA": ["PHG"],               // Philips
+  "UNA": ["UL"],                 // Unilever
+
+  // Swiss stocks
+  "NESN": ["NSRGY", "NSRGF"],   // Nestlé
+  "ROG": ["RHHBY", "RHHBF"],    // Roche
+  "NOVN": ["NVS", "NVSEF"],     // Novartis
+  "ABBN": ["ABB"],               // ABB
+
+  // UK stocks
+  "SHEL": ["SHEL"],              // Shell (same ticker)
+  "AZN": ["AZN"],                // AstraZeneca (same ticker)
+  "HSBA": ["HSBC"],              // HSBC
+  "BP": ["BP"],                  // BP (same ticker)
+  "GSK": ["GSK"],                // GSK (same ticker)
+  "ULVR": ["UL"],                // Unilever
+  "RIO": ["RIO"],                // Rio Tinto (same ticker)
+  "BATS": ["BTI"],               // British American Tobacco
+  "DGE": ["DEO"],                // Diageo
+
+  // Japanese stocks (common ADRs)
+  "7203": ["TM"],                // Toyota
+  "6758": ["SONY"],              // Sony
+  "9984": ["SFTBY"],             // SoftBank
+  "6861": ["KSRYF"],             // Keyence
+  "9432": ["NTTYY"],             // NTT
+
+  // Other
+  "NOVO-B": ["NVO"],             // Novo Nordisk
+  "ASML": ["ASML"],
+};
+
 async function getCik(ticker) {
-  const clean = ticker.toUpperCase().split(".")[0]; // MC.PA → MC (won't work for non-US)
+  const upper = ticker.toUpperCase();
+  const clean = upper.split(".")[0]; // MC.PA → MC
   const map = await loadTickerMap();
-  const cik = map[clean];
-  if (!cik) return null;
-  return cik.padStart(10, "0");
+
+  // Try direct match first
+  if (map[clean]) return map[clean].padStart(10, "0");
+
+  // Try the full ticker (some have dots in SEC too)
+  if (map[upper]) return map[upper].padStart(10, "0");
+
+  // Try international aliases
+  const aliases = INTL_TICKER_ALIASES[clean];
+  if (aliases) {
+    for (const alt of aliases) {
+      if (map[alt]) return map[alt].padStart(10, "0");
+    }
+  }
+
+  return null;
 }
 
 // ── Fetch companyfacts ──
@@ -40,19 +121,34 @@ async function fetchCompanyFacts(cik) {
   return res.json();
 }
 
-// ── Extract annual values for a given XBRL tag ──
-function extractAnnualValues(facts, ...tagNames) {
+// ── Detect taxonomy: us-gaap or ifrs-full ──
+function detectTaxonomy(facts) {
   const gaap = facts?.facts?.["us-gaap"];
-  if (!gaap) return [];
+  const ifrs = facts?.facts?.["ifrs-full"];
+  // Prefer us-gaap if it has Assets; otherwise ifrs-full
+  if (gaap?.Assets) return "us-gaap";
+  if (ifrs?.Assets) return "ifrs-full";
+  // Check which has more data
+  const gaapCount = gaap ? Object.keys(gaap).length : 0;
+  const ifrsCount = ifrs ? Object.keys(ifrs).length : 0;
+  return ifrsCount > gaapCount ? "ifrs-full" : "us-gaap";
+}
+
+// ── Extract annual values for a given XBRL tag ──
+function extractAnnualValues(facts, taxonomy, ...tagNames) {
+  const ns = facts?.facts?.[taxonomy];
+  if (!ns) return [];
 
   for (const tag of tagNames) {
-    const concept = gaap[tag];
+    const concept = ns[tag];
     if (!concept) continue;
-    const units = concept.units?.USD || concept.units?.["USD/shares"] || concept.units?.shares || concept.units?.pure;
+    const units = concept.units?.USD || concept.units?.EUR || concept.units?.GBP
+      || concept.units?.JPY || concept.units?.CHF || concept.units?.["USD/shares"]
+      || concept.units?.["EUR/shares"] || concept.units?.shares || concept.units?.pure;
     if (!units?.length) continue;
 
-    // Filter: only 10-K filings, annual period (fp=FY)
-    const annual = units.filter(e => e.form === "10-K" && e.fp === "FY");
+    // Filter: annual filings (10-K, 20-F, 40-F), annual period (fp=FY)
+    const annual = units.filter(e => ANNUAL_FORMS.has(e.form) && e.fp === "FY");
     if (annual.length === 0) continue;
 
     // Deduplicate by fiscal year — keep the last filed
@@ -68,21 +164,111 @@ function extractAnnualValues(facts, ...tagNames) {
   return [];
 }
 
+// ── Tag name mapping: US-GAAP vs IFRS ──
+const TAG_MAP = {
+  "us-gaap": {
+    // Balance Sheet
+    assets: ["Assets"],
+    currentAssets: ["AssetsCurrent"],
+    cash: ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "Cash"],
+    shortTermInvestments: ["ShortTermInvestments", "AvailableForSaleSecuritiesCurrent", "MarketableSecuritiesCurrent"],
+    receivables: ["AccountsReceivableNetCurrent", "AccountsReceivableNet", "ReceivablesNetCurrent"],
+    inventory: ["InventoryNet", "Inventory"],
+    ppe: ["PropertyPlantAndEquipmentNet"],
+    goodwill: ["Goodwill"],
+    intangibles: ["IntangibleAssetsNetExcludingGoodwill", "FiniteLivedIntangibleAssetsNet"],
+    liabilities: ["Liabilities"],
+    currentLiabilities: ["LiabilitiesCurrent"],
+    accountsPayable: ["AccountsPayableCurrent", "AccountsPayable"],
+    shortTermDebt: ["ShortTermBorrowings", "CommercialPaper", "ShortTermDebtCurrent"],
+    longTermDebt: ["LongTermDebtNoncurrent", "LongTermDebt"],
+    equity: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
+    retainedEarnings: ["RetainedEarningsAccumulatedDeficit"],
+    commonStock: ["CommonStocksIncludingAdditionalPaidInCapital", "CommonStockValue"],
+    // Income Statement
+    revenue: ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax"],
+    costOfRevenue: ["CostOfGoodsAndServicesSold", "CostOfRevenue", "CostOfGoodsSold"],
+    grossProfit: ["GrossProfit"],
+    rd: ["ResearchAndDevelopmentExpense"],
+    sga: ["SellingGeneralAndAdministrativeExpense"],
+    opExpenses: ["OperatingExpenses", "CostsAndExpenses"],
+    operatingIncome: ["OperatingIncomeLoss"],
+    interestExpense: ["InterestExpense", "InterestExpenseDebt"],
+    incomeBeforeTax: ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest", "IncomeLossFromContinuingOperationsBeforeIncomeTaxes"],
+    incomeTax: ["IncomeTaxExpenseBenefit"],
+    netIncome: ["NetIncomeLoss", "NetIncome", "ProfitLoss"],
+    epsBasic: ["EarningsPerShareBasic"],
+    epsDiluted: ["EarningsPerShareDiluted"],
+    sharesOut: ["WeightedAverageNumberOfDilutedSharesOutstanding", "CommonStockSharesOutstanding"],
+    depreciation: ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization", "Depreciation"],
+    // Cash Flow
+    opCashFlow: ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByOperatingActivities"],
+    capex: ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements"],
+    investingCF: ["NetCashProvidedByUsedInInvestingActivities", "NetCashUsedInInvestingActivities"],
+    financingCF: ["NetCashProvidedByUsedInFinancingActivities", "NetCashUsedInFinancingActivities"],
+    dividendsPaid: ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends", "Dividends"],
+    repurchase: ["PaymentsForRepurchaseOfCommonStock", "StockRepurchasedDuringPeriodValue"],
+    sbc: ["ShareBasedCompensation", "StockBasedCompensation", "AllocatedShareBasedCompensationExpense"],
+  },
+  "ifrs-full": {
+    // Balance Sheet (IFRS taxonomy)
+    assets: ["Assets"],
+    currentAssets: ["CurrentAssets"],
+    cash: ["CashAndCashEquivalents"],
+    shortTermInvestments: ["CurrentFinancialAssets", "OtherCurrentFinancialAssets"],
+    receivables: ["TradeAndOtherCurrentReceivables", "CurrentTradeReceivables"],
+    inventory: ["Inventories"],
+    ppe: ["PropertyPlantAndEquipment"],
+    goodwill: ["Goodwill"],
+    intangibles: ["IntangibleAssetsOtherThanGoodwill", "OtherIntangibleAssets"],
+    liabilities: ["Liabilities"],
+    currentLiabilities: ["CurrentLiabilities"],
+    accountsPayable: ["TradeAndOtherCurrentPayables", "CurrentTradePayables"],
+    shortTermDebt: ["CurrentBorrowings", "ShorttermBorrowings"],
+    longTermDebt: ["NoncurrentBorrowings", "LongtermBorrowings"],
+    equity: ["Equity", "EquityAttributableToOwnersOfParent"],
+    retainedEarnings: ["RetainedEarnings"],
+    commonStock: ["IssuedCapital", "ShareCapital"],
+    // Income Statement (IFRS)
+    revenue: ["Revenue", "RevenueFromContractsWithCustomers"],
+    costOfRevenue: ["CostOfSales"],
+    grossProfit: ["GrossProfit"],
+    rd: ["ResearchAndDevelopmentExpense"],
+    sga: ["SellingGeneralAndAdministrativeExpense", "AdministrativeExpense"],
+    opExpenses: ["OtherExpenseByFunction"],
+    operatingIncome: ["ProfitLossFromOperatingActivities", "OperatingProfitLoss"],
+    interestExpense: ["InterestExpense", "FinanceCosts"],
+    incomeBeforeTax: ["ProfitLossBeforeTax"],
+    incomeTax: ["IncomeTaxExpenseContinuingOperations", "TaxExpenseIncome"],
+    netIncome: ["ProfitLoss", "ProfitLossAttributableToOwnersOfParent"],
+    epsBasic: ["BasicEarningsLossPerShare"],
+    epsDiluted: ["DilutedEarningsLossPerShare"],
+    sharesOut: ["WeightedAverageShares", "NumberOfSharesOutstanding"],
+    depreciation: ["DepreciationAndAmortisationExpense", "DepreciationExpense"],
+    // Cash Flow (IFRS)
+    opCashFlow: ["CashFlowsFromUsedInOperatingActivities"],
+    capex: ["PurchaseOfPropertyPlantAndEquipment", "PaymentsForPropertyPlantAndEquipment"],
+    investingCF: ["CashFlowsFromUsedInInvestingActivities"],
+    financingCF: ["CashFlowsFromUsedInFinancingActivities"],
+    dividendsPaid: ["DividendsPaid", "DividendsPaidClassifiedAsFinancingActivities"],
+    repurchase: ["PurchaseOfTreasuryShares", "PaymentsForRepurchaseOfEquity"],
+    sbc: ["SharebasedPaymentArrangementExpense"],
+  },
+};
+
 // ── Build fiscal year date map ──
-function buildDateMap(facts) {
-  // Get all fiscal year-end dates from Assets (most reliable tag)
-  const assetEntries = extractAnnualValues(facts, "Assets");
+function buildDateMap(facts, taxonomy) {
   const dateMap = {};
+  // Try Assets first (most reliable for balance sheet)
+  const tags = TAG_MAP[taxonomy];
+  const assetEntries = extractAnnualValues(facts, taxonomy, ...tags.assets);
   for (const e of assetEntries) {
-    const date = e.end;
-    if (!date) continue;
-    dateMap[e.fy] = { date, fy: e.fy };
+    if (e.end) dateMap[e.fy] = { date: e.end, fy: e.fy };
   }
 
-  // If no Assets, try Revenue
+  // Fallback to Revenue
   if (Object.keys(dateMap).length === 0) {
-    const revEntries = extractAnnualValues(facts,
-      "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax");
+    const revEntries = extractAnnualValues(facts, taxonomy, ...tags.revenue);
     for (const e of revEntries) {
       if (e.end && !dateMap[e.fy]) dateMap[e.fy] = { date: e.end, fy: e.fy };
     }
@@ -91,9 +277,11 @@ function buildDateMap(facts) {
   return dateMap;
 }
 
-function getVal(facts, fy, ...tags) {
+function getVal(facts, taxonomy, fy, key) {
+  const tags = TAG_MAP[taxonomy]?.[key];
+  if (!tags) return null;
   for (const tag of tags) {
-    const entries = extractAnnualValues(facts, tag);
+    const entries = extractAnnualValues(facts, taxonomy, tag);
     const match = entries.find(e => e.fy === fy);
     if (match?.val != null) return match.val;
   }
@@ -102,12 +290,16 @@ function getVal(facts, fy, ...tags) {
 
 // ── Parse into Yahoo-compatible format ──
 function parseEdgarToYahoo(facts) {
-  const dateMap = buildDateMap(facts);
+  const taxonomy = detectTaxonomy(facts);
+  console.log("[FF][EDGAR] Taxonomie détectée:", taxonomy);
+
+  const dateMap = buildDateMap(facts, taxonomy);
   const years = Object.keys(dateMap).map(Number).sort((a, b) => b - a);
 
   if (years.length === 0) return null;
 
   const w = (v) => v != null ? { raw: v } : undefined;
+  const g = (fy, key) => getVal(facts, taxonomy, fy, key);
 
   const balanceSheetStatements = [];
   const incomeStatements = [];
@@ -118,24 +310,23 @@ function parseEdgarToYahoo(facts) {
     const endDate = { raw: Math.floor(new Date(date).getTime() / 1000), fmt: date };
 
     // ── Balance Sheet ──
-    const totalAssets = getVal(facts, fy, "Assets");
-    const totalCurrentAssets = getVal(facts, fy, "AssetsCurrent");
-    const cash = getVal(facts, fy, "CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "Cash");
-    const shortTermInvestments = getVal(facts, fy, "ShortTermInvestments", "AvailableForSaleSecuritiesCurrent", "MarketableSecuritiesCurrent");
-    const netReceivables = getVal(facts, fy, "AccountsReceivableNetCurrent", "AccountsReceivableNet", "ReceivablesNetCurrent");
-    const inventory = getVal(facts, fy, "InventoryNet", "Inventory");
-    const ppe = getVal(facts, fy, "PropertyPlantAndEquipmentNet");
-    const goodwill = getVal(facts, fy, "Goodwill");
-    const intangibles = getVal(facts, fy, "IntangibleAssetsNetExcludingGoodwill", "FiniteLivedIntangibleAssetsNet");
-    const totalLiab = getVal(facts, fy, "Liabilities");
-    const totalCurrentLiabilities = getVal(facts, fy, "LiabilitiesCurrent");
-    const accountsPayable = getVal(facts, fy, "AccountsPayableCurrent", "AccountsPayable");
-    const shortTermDebt = getVal(facts, fy, "ShortTermBorrowings", "CommercialPaper", "ShortTermDebtCurrent");
-    const longTermDebt = getVal(facts, fy, "LongTermDebtNoncurrent", "LongTermDebt");
-    const totalEquity = getVal(facts, fy, "StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest");
-    const retainedEarnings = getVal(facts, fy, "RetainedEarningsAccumulatedDeficit");
-    const commonStock = getVal(facts, fy, "CommonStocksIncludingAdditionalPaidInCapital", "CommonStockValue");
-
+    const totalAssets = g(fy, "assets");
+    const totalCurrentAssets = g(fy, "currentAssets");
+    const cash = g(fy, "cash");
+    const shortTermInvestments = g(fy, "shortTermInvestments");
+    const netReceivables = g(fy, "receivables");
+    const inventory = g(fy, "inventory");
+    const ppe = g(fy, "ppe");
+    const goodwill = g(fy, "goodwill");
+    const intangibles = g(fy, "intangibles");
+    const totalLiab = g(fy, "liabilities");
+    const totalCurrentLiabilities = g(fy, "currentLiabilities");
+    const accountsPayable = g(fy, "accountsPayable");
+    const shortTermDebt = g(fy, "shortTermDebt");
+    const longTermDebt = g(fy, "longTermDebt");
+    const totalEquity = g(fy, "equity");
+    const retainedEarnings = g(fy, "retainedEarnings");
+    const commonStock = g(fy, "commonStock");
     const totalDebt = (shortTermDebt || 0) + (longTermDebt || 0) || null;
 
     balanceSheetStatements.push({
@@ -162,23 +353,21 @@ function parseEdgarToYahoo(facts) {
     });
 
     // ── Income Statement ──
-    const revenue = getVal(facts, fy,
-      "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet",
-      "RevenueFromContractWithCustomerIncludingAssessedTax");
-    const costOfRevenue = getVal(facts, fy, "CostOfGoodsAndServicesSold", "CostOfRevenue", "CostOfGoodsSold");
-    const grossProfit = getVal(facts, fy, "GrossProfit") || (revenue && costOfRevenue ? revenue - costOfRevenue : null);
-    const rd = getVal(facts, fy, "ResearchAndDevelopmentExpense");
-    const sga = getVal(facts, fy, "SellingGeneralAndAdministrativeExpense");
-    const opExpenses = getVal(facts, fy, "OperatingExpenses", "CostsAndExpenses");
-    const operatingIncome = getVal(facts, fy, "OperatingIncomeLoss");
-    const interestExpense = getVal(facts, fy, "InterestExpense", "InterestExpenseDebt");
-    const incomeBeforeTax = getVal(facts, fy, "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest", "IncomeLossFromContinuingOperationsBeforeIncomeTaxes");
-    const incomeTax = getVal(facts, fy, "IncomeTaxExpenseBenefit");
-    const netIncome = getVal(facts, fy, "NetIncomeLoss", "NetIncome", "ProfitLoss");
-    const epsBasic = getVal(facts, fy, "EarningsPerShareBasic");
-    const epsDiluted = getVal(facts, fy, "EarningsPerShareDiluted");
-    const sharesOut = getVal(facts, fy, "WeightedAverageNumberOfDilutedSharesOutstanding", "CommonStockSharesOutstanding");
-    const depreciation = getVal(facts, fy, "DepreciationDepletionAndAmortization", "DepreciationAndAmortization", "Depreciation");
+    const revenue = g(fy, "revenue");
+    const costOfRevenue = g(fy, "costOfRevenue");
+    const grossProfit = g(fy, "grossProfit") || (revenue && costOfRevenue ? revenue - costOfRevenue : null);
+    const rd = g(fy, "rd");
+    const sga = g(fy, "sga");
+    const opExpenses = g(fy, "opExpenses");
+    const operatingIncome = g(fy, "operatingIncome");
+    const interestExpense = g(fy, "interestExpense");
+    const incomeBeforeTax = g(fy, "incomeBeforeTax");
+    const incomeTax = g(fy, "incomeTax");
+    const netIncome = g(fy, "netIncome");
+    const epsBasic = g(fy, "epsBasic");
+    const epsDiluted = g(fy, "epsDiluted");
+    const sharesOut = g(fy, "sharesOut");
+    const depreciation = g(fy, "depreciation");
     const ebitda = operatingIncome != null && depreciation != null ? operatingIncome + depreciation : null;
 
     incomeStatements.push({
@@ -204,20 +393,14 @@ function parseEdgarToYahoo(facts) {
     });
 
     // ── Cash Flow ──
-    const opCashFlow = getVal(facts, fy,
-      "NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByOperatingActivities");
-    const capex = getVal(facts, fy,
-      "PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements");
+    const opCashFlow = g(fy, "opCashFlow");
+    const capex = g(fy, "capex");
     const fcf = opCashFlow != null && capex != null ? opCashFlow - Math.abs(capex) : null;
-    const investingCF = getVal(facts, fy,
-      "NetCashProvidedByUsedInInvestingActivities", "NetCashUsedInInvestingActivities");
-    const financingCF = getVal(facts, fy,
-      "NetCashProvidedByUsedInFinancingActivities", "NetCashUsedInFinancingActivities");
-    const dividendsPaid = getVal(facts, fy,
-      "PaymentsOfDividendsCommonStock", "PaymentsOfDividends", "Dividends");
-    const repurchase = getVal(facts, fy,
-      "PaymentsForRepurchaseOfCommonStock", "StockRepurchasedDuringPeriodValue");
-    const sbc = getVal(facts, fy, "ShareBasedCompensation", "StockBasedCompensation", "AllocatedShareBasedCompensationExpense");
+    const investingCF = g(fy, "investingCF");
+    const financingCF = g(fy, "financingCF");
+    const dividendsPaid = g(fy, "dividendsPaid");
+    const repurchase = g(fy, "repurchase");
+    const sbc = g(fy, "sbc");
 
     cashflowStatements.push({
       endDate,
@@ -240,7 +423,7 @@ function parseEdgarToYahoo(facts) {
 export async function fetchEdgarFinancials(ticker) {
   const cik = await getCik(ticker);
   if (!cik) {
-    console.log("[FF][EDGAR] Ticker non trouvé dans SEC (non-US?):", ticker);
+    console.log("[FF][EDGAR] Ticker non trouvé dans SEC:", ticker);
     return null;
   }
   console.log("[FF][EDGAR] Fetch companyfacts CIK", cik, "pour", ticker);
