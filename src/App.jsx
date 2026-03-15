@@ -1,17 +1,24 @@
-import { useState, useEffect, useRef, Component } from "react";
+import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
-import CandlestickChart from "./components/CandlestickChart";
 import KeyMetricsCharts from "./components/KeyMetricsCharts";
 import RevenueBreakdown from "./components/RevenueBreakdown";
-import { BilanTab, ResultatsTab, TresorerieTab } from "./components/FinancialTabs";
-import CompareMode from "./components/CompareMode";
-import EarningsTab from "./components/EarningsTab";
-import InvestorsTab from "./components/InvestorsTab";
-import Watchlist from "./components/Watchlist";
-import WatchlistTab from "./components/WatchlistTab";
 import AuthModal from "./components/AuthModal";
-import { MentionsLegales, PolitiqueConfidentialite, CGU, CGV } from "./components/LegalPages";
+
+// Lazy-loaded components (code splitting)
+const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
+const CompareMode = lazy(() => import("./components/CompareMode"));
+const EarningsTab = lazy(() => import("./components/EarningsTab"));
+const InvestorsTab = lazy(() => import("./components/InvestorsTab"));
+const Watchlist = lazy(() => import("./components/Watchlist"));
+const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
+const BilanTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.BilanTab })));
+const ResultatsTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.ResultatsTab })));
+const TresorerieTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.TresorerieTab })));
+const MentionsLegales = lazy(() => import("./components/LegalPages").then(m => ({ default: m.MentionsLegales })));
+const PolitiqueConfidentialite = lazy(() => import("./components/LegalPages").then(m => ({ default: m.PolitiqueConfidentialite })));
+const CGU = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGU })));
+const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGV })));
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
 import { useDarkMode } from "./hooks/useDarkMode";
@@ -1530,6 +1537,7 @@ export default function FoucauldFinance() {
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
 
       <div className="main">
+        <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
         {legalPage === "mentions" ? (
           <MentionsLegales onBack={() => setLegalPage(null)} />
         ) : legalPage === "confidentialite" ? (
@@ -1674,6 +1682,7 @@ export default function FoucauldFinance() {
             </div>
           </div>
         )}
+        </Suspense>
       </div>
 
       {/* Toast notifications pour alertes MA */}
