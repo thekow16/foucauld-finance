@@ -51,8 +51,13 @@ const TABS = [
   { id: "compare", label: "Comparer" },
 ];
 
+function getInitialSymbol() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("s")?.toUpperCase() || null;
+}
+
 export default function FoucauldFinance() {
-  const [symbol, setSymbol] = useState(null);
+  const [symbol, setSymbol] = useState(getInitialSymbol);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -112,11 +117,70 @@ export default function FoucauldFinance() {
     }
   };
 
+  // ── Deep linking: sync URL ↔ symbol ──
+  useEffect(() => {
+    if (symbol) {
+      const url = new URL(window.location);
+      url.searchParams.set("s", symbol);
+      window.history.replaceState(null, "", url);
+    }
+  }, [symbol]);
+
+  // Load from URL on first mount
+  useEffect(() => {
+    const init = getInitialSymbol();
+    if (init) doFetchStock(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const onPop = () => {
+      const sym = new URLSearchParams(window.location.search).get("s")?.toUpperCase();
+      if (sym && sym !== symbol) { setSymbol(sym); doFetchStock(sym); }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
+
+  // ── Auto-refresh every 5 min when tab is visible ──
+  useEffect(() => {
+    if (!symbol) return;
+    const REFRESH_INTERVAL = 5 * 60 * 1000;
+    let id;
+    const schedule = () => {
+      id = setInterval(() => {
+        if (document.visibilityState === "visible") doFetchStock(symbol);
+      }, REFRESH_INTERVAL);
+    };
+    schedule();
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
+
+  // ── Search history (localStorage, last 10) ──
+  const HISTORY_KEY = "ff_search_history";
+  const getSearchHistory = () => {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+    catch { return []; }
+  };
+  const addToHistory = (sym) => {
+    const history = getSearchHistory().filter(s => s !== sym);
+    history.unshift(sym);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
+  };
+
   const handleSearch = (sym) => {
     setSymbol(sym);
     setActiveTab("bilan");
     setShowWatchlist(false);
     setShowInvestors(false);
+    addToHistory(sym);
+    // Push state for back/forward navigation
+    const url = new URL(window.location);
+    url.searchParams.set("s", sym);
+    window.history.pushState(null, "", url);
     doFetchStock(sym);
   };
 
@@ -286,6 +350,14 @@ export default function FoucauldFinance() {
           border: 1px solid var(--border);
           overflow: hidden;
           z-index: 100;
+        }
+        .history-label {
+          padding: 8px 16px 4px;
+          font-size: 11px;
+          color: var(--muted);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
         .autocomplete-item {
           display: flex;
@@ -1542,7 +1614,7 @@ export default function FoucauldFinance() {
         }
       `}</style>
 
-      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} />
+      <Header onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
 

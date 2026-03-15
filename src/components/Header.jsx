@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout }) {
+export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout, searchHistory = [] }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const debounceRef = useRef(null);
   const wrapRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowSugg(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setShowSugg(false);
+        setShowHistory(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -18,6 +22,7 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
 
   const handleInput = (val) => {
     setQuery(val);
+    setShowHistory(false);
     clearTimeout(debounceRef.current);
     if (val.trim().length < 2) { setSuggestions([]); setShowSugg(false); return; }
     debounceRef.current = setTimeout(async () => {
@@ -27,17 +32,27 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
     }, 300);
   };
 
+  const handleFocus = () => {
+    if (query.trim().length >= 2 && suggestions.length > 0) {
+      setShowSugg(true);
+    } else if (query.trim().length < 2 && searchHistory.length > 0) {
+      setShowHistory(true);
+    }
+  };
+
   const handleSubmit = (e) => {
     e?.preventDefault();
     const sym = query.trim().toUpperCase();
     if (!sym) return;
     setShowSugg(false);
+    setShowHistory(false);
     onSearch(sym);
     setQuery("");
   };
 
   const pickSuggestion = (sym) => {
     setShowSugg(false);
+    setShowHistory(false);
     setQuery("");
     onSearch(sym);
   };
@@ -80,7 +95,7 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
               className="ff-input"
               value={query}
               onChange={e => handleInput(e.target.value)}
-              onFocus={() => suggestions.length > 0 && setShowSugg(true)}
+              onFocus={handleFocus}
               placeholder="Rechercher une action…"
             />
             <button type="submit" className="ff-btn">Analyser</button>
@@ -92,6 +107,16 @@ export default function Header({ onSearch, dark, toggleDark, onShowWatchlist, wa
                   <span className="ac-symbol">{s.symbol}</span>
                   <span className="ac-name">{s.shortname || s.longname || ""}</span>
                   <span className="ac-exchange">{s.exchDisp || ""}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {showHistory && (
+            <div className="autocomplete-dropdown">
+              <div className="history-label">Recherches récentes</div>
+              {searchHistory.map(sym => (
+                <button key={sym} className="autocomplete-item" onClick={() => pickSuggestion(sym)}>
+                  <span className="ac-symbol">{sym}</span>
                 </button>
               ))}
             </div>
