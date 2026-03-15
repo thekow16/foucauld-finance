@@ -61,6 +61,10 @@ function extractHistory(data, key) {
     grossProfit: () => incArr.map(s => s.grossProfit?.raw ?? null),
     operatingIncome: () => incArr.map(s => s.operatingIncome?.raw ?? null),
     eps: () => incArr.map(s => s.dilutedEPS?.raw ?? null),
+    dividendsPaid: () => cfArr.map(s => {
+      const v = s.dividendsPaid?.raw;
+      return v != null ? Math.abs(v) : null;
+    }),
   };
 
   const fn = map[key];
@@ -85,10 +89,7 @@ export default function MetricCards({ data }) {
     { label: "BPA (dilué)", val: fmt(stats?.trailingEps?.raw, "ratio"), color: "#7c3aed", icon: "📈", histKey: "eps" },
     { label: "Résultat opérationnel", val: fmt(fin?.operatingCashflow?.raw, "currency"), color: "#6366f1", icon: "🔮", histKey: "operatingIncome" },
     { label: "P/B Ratio", val: fmt(stats?.priceToBook?.raw, "ratio"), color: "#0891b2", icon: "📖" },
-    { label: "EV/EBITDA", val: fmt(stats?.enterpriseToEbitda?.raw, "ratio"), color: "#a855f7", icon: "⚖️" },
-    { label: "Marge nette", val: fmt(fin?.profitMargins?.raw, "percent"), color: "#16a34a", icon: "📐" },
-    { label: "ROE", val: fmt(fin?.returnOnEquity?.raw, "percent"), color: "#ea580c", icon: "🎯" },
-    { label: "Dividende", val: summ?.dividendYield?.raw ? fmt(summ.dividendYield.raw, "percent") : "—", color: "#16a34a", icon: "🪙" },
+    { label: "Dividendes", val: summ?.dividendYield?.raw ? `${fmt(summ.dividendYield.raw, "percent")} (${summ?.dividendRate?.raw ? fmt(summ.dividendRate.raw, "ratio") + "/action" : "—"})` : "—", color: "#f59e0b", icon: "🪙", histKey: "dividendsPaid" },
   ];
 
   return (
