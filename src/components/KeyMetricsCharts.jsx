@@ -38,7 +38,7 @@ function growthLabel(cur, prev) {
   return g >= 0 ? `+${g.toFixed(0)}%` : `${g.toFixed(0)}%`;
 }
 
-/* ── Data builder (10 dernières années) ── */
+/* ── Data builder (historique complet, 10+ ans) ── */
 
 function buildSeries(data) {
   const fmp = data?._fmpData;
@@ -82,8 +82,7 @@ function buildSeries(data) {
     return [...byYear.values()]
       .map((d) => enrich(d))
       .filter((d) => d.year)
-      .sort((a, b) => String(a.year).localeCompare(String(b.year)))
-      .slice(-10);
+      .sort((a, b) => String(a.year).localeCompare(String(b.year)));
   }
 
   /* Fallback Yahoo */
@@ -110,6 +109,7 @@ function buildSeries(data) {
       ...(byYear.get(String(y)) || {}),
       year: String(y),
       fcf: d.freeCashFlow?.raw,
+      sbc: d.stockBasedCompensation?.raw,
     });
   });
   balance.forEach((d) => {
@@ -128,8 +128,7 @@ function buildSeries(data) {
   return [...byYear.values()]
     .map((d) => enrich(d))
     .filter((d) => d.year)
-    .sort((a, b) => String(a.year).localeCompare(String(b.year)))
-    .slice(-10);
+    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
 }
 
 function enrich(d) {
@@ -243,9 +242,12 @@ function ChartCard({ title, subtitle, accentColor, children }) {
 
 /* ── Custom bar label showing YoY growth ── */
 function renderGrowthLabel(data, dataKey) {
+  // Skip labels every N bars when data is dense
+  const step = data.length > 15 ? 3 : data.length > 10 ? 2 : 1;
   return (props) => {
     const { x, y, width, index, value } = props;
     if (index === 0 || value == null) return null;
+    if (step > 1 && index % step !== 0) return null;
     const prev = data[index - 1]?.[dataKey];
     const label = growthLabel(value, prev);
     if (!label) return null;
@@ -256,7 +258,7 @@ function renderGrowthLabel(data, dataKey) {
         y={y - 6}
         textAnchor="middle"
         style={{
-          fontSize: 9,
+          fontSize: data.length > 12 ? 8 : 9,
           fontWeight: 700,
           fill: isPos ? "#10b981" : "#ef4444",
         }}
@@ -273,8 +275,14 @@ export default function KeyMetricsCharts({ data }) {
   const rows = buildSeries(data);
   if (!rows.length) return null;
 
-  const axisStyle = { fontSize: 10, fill: "var(--muted)" };
+  const many = rows.length > 12;
+  const axisStyle = { fontSize: many ? 9 : 10, fill: "var(--muted)" };
   const gridProps = { strokeDasharray: "3 3", stroke: "var(--border)", strokeOpacity: 0.6 };
+  // Show every Nth year on X axis when there are many data points
+  const xTickInterval = many ? Math.max(1, Math.floor(rows.length / 10)) - 1 : 0;
+  const yearTick = many
+    ? (val) => `'${String(val).slice(-2)}`
+    : undefined;
 
   return (
     <div
@@ -290,7 +298,7 @@ export default function KeyMetricsCharts({ data }) {
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Bar dataKey="revenue" shape={<RoundedBar />} label={renderGrowthLabel(rows, "revenue")}>
@@ -310,7 +318,7 @@ export default function KeyMetricsCharts({ data }) {
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Legend
@@ -339,7 +347,7 @@ export default function KeyMetricsCharts({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
               tickFormatter={(v) => v != null ? `$${v.toFixed(1)}` : ""} />
             <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `$${v.toFixed(2)}` : "—"} />} />
@@ -367,7 +375,7 @@ export default function KeyMetricsCharts({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tickFormatter={pct} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip fmt={pct} />} />
             <ReferenceLine y={0.15} stroke="#ea580c" strokeDasharray="4 4" strokeOpacity={0.4} />
@@ -395,7 +403,7 @@ export default function KeyMetricsCharts({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tickFormatter={pct} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip fmt={pct} />} />
             <Area
@@ -416,7 +424,7 @@ export default function KeyMetricsCharts({ data }) {
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Bar dataKey="shares" shape={<RoundedBar />} label={renderGrowthLabel(rows, "shares")}>
@@ -436,7 +444,7 @@ export default function KeyMetricsCharts({ data }) {
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Legend
