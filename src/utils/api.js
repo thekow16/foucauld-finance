@@ -473,6 +473,19 @@ export async function fetchStockData(sym) {
           const bsN = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
           const isN = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
           console.log(`[FF] timeseries enrichissement OK — ${bsN} ans bilan, ${isN} ans résultats`);
+
+          // Also fetch FMP for 20-year charts if key available
+          if (hasFmpApiKey()) {
+            try {
+              const fins = await fetchAllFinancials(sym).catch(() => null);
+              if (fins?.income?.length > 0 || fins?.balance?.length > 0) {
+                yahooResult._fmpData = fins;
+                console.log("[FF] FMP charts data OK —", fins.income?.length || 0, "ans");
+              }
+            } catch (e) {
+              console.warn("[FF] FMP charts fetch échoué:", e.message);
+            }
+          }
         } else {
 
           // Try FMP as last resort if timeseries also failed AND FMP key available
