@@ -38,7 +38,7 @@ function growthLabel(cur, prev) {
   return g >= 0 ? `+${g.toFixed(0)}%` : `${g.toFixed(0)}%`;
 }
 
-/* ── Data builder (up to 20 years) ── */
+/* ── Data builder (10 dernières années) ── */
 
 function buildSeries(data) {
   const fmp = data?._fmpData;
@@ -82,7 +82,8 @@ function buildSeries(data) {
     return [...byYear.values()]
       .map((d) => enrich(d))
       .filter((d) => d.year)
-      .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+      .sort((a, b) => String(a.year).localeCompare(String(b.year)))
+      .slice(-10);
   }
 
   /* Fallback Yahoo */
@@ -127,7 +128,8 @@ function buildSeries(data) {
   return [...byYear.values()]
     .map((d) => enrich(d))
     .filter((d) => d.year)
-    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+    .sort((a, b) => String(a.year).localeCompare(String(b.year)))
+    .slice(-10);
 }
 
 function enrich(d) {
