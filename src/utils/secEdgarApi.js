@@ -2,28 +2,51 @@
 // SEC EDGAR XBRL API — Données financières gratuites, sans clé API
 // 15+ ans d'historique pour entreprises US + étrangères cotées aux US (20-F)
 // Supporte US-GAAP et IFRS
+// Tous les appels passent par le proxy CORS (proxyFetch)
 // ──────────────────────────────────────────────
 
+import { proxyFetch } from "./proxyFetch";
+
 const EDGAR_BASE = "https://data.sec.gov";
-const USER_AGENT = "FoucauldFinance contact@foucauld.finance";
+const EDGAR_TIMEOUT = 8000; // 8s max pour ne pas bloquer l'UX
 
 // Annual filing form types
 const ANNUAL_FORMS = new Set(["10-K", "10-KT", "20-F", "20-FT", "40-F"]);
 
-// ── Cache ticker → CIK ──
+// ── Cache ticker → CIK (mémoire + localStorage) ──
 let tickerToCikMap = null;
+const TICKER_MAP_CACHE_KEY = "ff_edgar_tickers";
+const TICKER_MAP_TTL = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
 async function loadTickerMap() {
   if (tickerToCikMap) return tickerToCikMap;
-  const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
-    headers: { "User-Agent": USER_AGENT },
-  });
-  if (!res.ok) throw new Error("Impossible de charger la table ticker→CIK");
-  const data = await res.json();
+
+  // Essayer localStorage d'abord
+  try {
+    const cached = localStorage.getItem(TICKER_MAP_CACHE_KEY);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < TICKER_MAP_TTL && data && Object.keys(data).length > 1000) {
+        tickerToCikMap = data;
+        console.log("[FF][EDGAR] Ticker map chargé depuis cache (" + Object.keys(data).length + " tickers)");
+        return tickerToCikMap;
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Fetch via proxy CORS
+  const data = await proxyFetch("https://www.sec.gov/files/company_tickers.json");
   tickerToCikMap = {};
   for (const entry of Object.values(data)) {
     tickerToCikMap[entry.ticker?.toUpperCase()] = String(entry.cik_str);
   }
+
+  // Sauvegarder en localStorage
+  try {
+    localStorage.setItem(TICKER_MAP_CACHE_KEY, JSON.stringify({ data: tickerToCikMap, ts: Date.now() }));
+  } catch { /* localStorage plein */ }
+
+  console.log("[FF][EDGAR] Ticker map chargé (" + Object.keys(tickerToCikMap).length + " tickers)");
   return tickerToCikMap;
 }
 
@@ -112,13 +135,9 @@ async function getCik(ticker) {
   return null;
 }
 
-// ── Fetch companyfacts ──
+// ── Fetch companyfacts via proxy CORS ──
 async function fetchCompanyFacts(cik) {
-  const res = await fetch(`${EDGAR_BASE}/api/xbrl/companyfacts/CIK${cik}.json`, {
-    headers: { "User-Agent": USER_AGENT },
-  });
-  if (!res.ok) throw new Error(`EDGAR companyfacts error: ${res.status}`);
-  return res.json();
+  return proxyFetch(`${EDGAR_BASE}/api/xbrl/companyfacts/CIK${cik}.json`);
 }
 
 // ── Detect taxonomy: us-gaap or ifrs-full ──
@@ -419,15 +438,23 @@ function parseEdgarToYahoo(facts) {
   return { balanceSheetStatements, incomeStatements, cashflowStatements };
 }
 
+// ── Timeout helper ──
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`EDGAR timeout (${ms}ms)`)), ms)),
+  ]);
+}
+
 // ── API publique ──
 export async function fetchEdgarFinancials(ticker) {
-  const cik = await getCik(ticker);
+  const cik = await withTimeout(getCik(ticker), EDGAR_TIMEOUT);
   if (!cik) {
     console.log("[FF][EDGAR] Ticker non trouvé dans SEC:", ticker);
     return null;
   }
   console.log("[FF][EDGAR] Fetch companyfacts CIK", cik, "pour", ticker);
-  const facts = await fetchCompanyFacts(cik);
+  const facts = await withTimeout(fetchCompanyFacts(cik), EDGAR_TIMEOUT);
   const result = parseEdgarToYahoo(facts);
   if (result) {
     console.log("[FF][EDGAR] Parsed:", result.balanceSheetStatements.length, "ans BS,",
