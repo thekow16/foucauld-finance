@@ -351,41 +351,38 @@ export async function fetchStockData(sym) {
         console.log("[FF] quoteSummary OK via Worker — modules:", Object.keys(yahooResult).join(","),
           "bs:", bsCount, "is:", isCount, "cf:", cfCount);
 
-        // Check if quoteSummary has real data (not just endDate shells)
-        const bsHasData = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s =>
-          s.totalAssets?.raw != null
-        );
-        const isHasData = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).some(s =>
-          s.totalRevenue?.raw != null
-        );
-
-        // If quoteSummary returned shells without data, use timeseries API
-        if (!bsHasData || !isHasData) {
-          console.log("[FF] quoteSummary données vides, tentative timeseries…");
-          const ts = await fetchYahooTimeseries(sym);
-          if (ts) {
-            if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements[0].totalAssets?.raw != null) {
-              yahooResult.balanceSheetHistory = { balanceSheetStatements: ts.balanceSheetStatements };
-            }
-            if (ts.incomeStatements?.length > 0 && ts.incomeStatements[0].totalRevenue?.raw != null) {
-              yahooResult.incomeStatementHistory = { incomeStatementHistory: ts.incomeStatements };
-            }
-            if (ts.cashflowStatements?.length > 0) {
-              yahooResult.cashflowStatementHistory = { cashflowStatements: ts.cashflowStatements };
-            }
-            // Enrich financialData from timeseries if needed
-            const fd = yahooResult.financialData || {};
-            const is0 = ts.incomeStatements?.[0];
-            const bs0 = ts.balanceSheetStatements?.[0];
-            const cf0 = ts.cashflowStatements?.[0];
-            if (!fd.totalRevenue?.raw && is0?.totalRevenue?.raw) fd.totalRevenue = is0.totalRevenue;
-            if (!fd.ebitda?.raw && is0?.ebitda?.raw) fd.ebitda = is0.ebitda;
-            if (!fd.totalCash?.raw && bs0?.cash?.raw) fd.totalCash = bs0.cash;
-            if (!fd.totalDebt?.raw && bs0?.totalDebt?.raw) fd.totalDebt = bs0.totalDebt;
-            if (!fd.freeCashflow?.raw && cf0?.freeCashFlow?.raw) fd.freeCashflow = cf0.freeCashFlow;
-            if (!fd.operatingCashflow?.raw && cf0?.totalCashFromOperatingActivities?.raw) fd.operatingCashflow = cf0.totalCashFromOperatingActivities;
-            console.log("[FF] timeseries enrichissement OK");
+        // Always fetch timeseries for full 10+ years of history
+        // (quoteSummary only returns ~4 years)
+        console.log("[FF] Fetch timeseries pour historique complet (10+ ans)…");
+        const ts = await fetchYahooTimeseries(sym).catch(e => {
+          console.warn("[FF] timeseries échoué:", e.message);
+          return null;
+        });
+        if (ts) {
+          if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements[0].totalAssets?.raw != null) {
+            yahooResult.balanceSheetHistory = { balanceSheetStatements: ts.balanceSheetStatements };
           }
+          if (ts.incomeStatements?.length > 0 && ts.incomeStatements[0].totalRevenue?.raw != null) {
+            yahooResult.incomeStatementHistory = { incomeStatementHistory: ts.incomeStatements };
+          }
+          if (ts.cashflowStatements?.length > 0) {
+            yahooResult.cashflowStatementHistory = { cashflowStatements: ts.cashflowStatements };
+          }
+          // Enrich financialData from timeseries if needed
+          const fd = yahooResult.financialData || {};
+          const is0 = ts.incomeStatements?.[0];
+          const bs0 = ts.balanceSheetStatements?.[0];
+          const cf0 = ts.cashflowStatements?.[0];
+          if (!fd.totalRevenue?.raw && is0?.totalRevenue?.raw) fd.totalRevenue = is0.totalRevenue;
+          if (!fd.ebitda?.raw && is0?.ebitda?.raw) fd.ebitda = is0.ebitda;
+          if (!fd.totalCash?.raw && bs0?.cash?.raw) fd.totalCash = bs0.cash;
+          if (!fd.totalDebt?.raw && bs0?.totalDebt?.raw) fd.totalDebt = bs0.totalDebt;
+          if (!fd.freeCashflow?.raw && cf0?.freeCashFlow?.raw) fd.freeCashflow = cf0.freeCashFlow;
+          if (!fd.operatingCashflow?.raw && cf0?.totalCashFromOperatingActivities?.raw) fd.operatingCashflow = cf0.totalCashFromOperatingActivities;
+          const bsN = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
+          const isN = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
+          console.log(`[FF] timeseries enrichissement OK — ${bsN} ans bilan, ${isN} ans résultats`);
+        } else {
 
           // Try FMP as last resort if timeseries also failed AND FMP key available
           const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);

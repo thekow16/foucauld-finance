@@ -24,14 +24,17 @@ function fix(v, d = 1) { return v != null ? v.toFixed(d) : null; }
      6. Dividende (10 pts)
    ═══════════════════════════════════════════════ */
 
+// Unwrap Yahoo {raw} format or plain number
+function rv(v) { return v?.raw ?? v ?? null; }
+
 function analyzeStock(data, symbol) {
   const p = data?.price || {};
   const fd = data?.financialData || {};
   const stats = data?.defaultKeyStatistics || {};
   const profile = data?.assetProfile || {};
-  const income = (data?.incomeStatementHistory?.incomeStatementHistory || []).slice(0, 3);
-  const cashflow = (data?.cashflowStatementHistory?.cashflowStatements || []).slice(0, 3);
-  const balance = (data?.balanceSheetHistory?.balanceSheetStatements || []).slice(0, 3);
+  const income = (data?.incomeStatementHistory?.incomeStatementHistory || []).slice(0, 10);
+  const cashflow = (data?.cashflowStatementHistory?.cashflowStatements || []).slice(0, 10);
+  const balance = (data?.balanceSheetHistory?.balanceSheetStatements || []).slice(0, 10);
 
   const ticker = symbol.split(".")[0];
   const name = p.shortName || p.longName || symbol;
@@ -88,37 +91,73 @@ function analyzeStock(data, symbol) {
   const revGrowth = fd.revenueGrowth;
   const epsGrowth = fd.earningsGrowth;
 
-  // Multi-year revenue growth from income statements
+  // Multi-year revenue CAGR (use max available history, up to 10 years)
   let revenueCAGR = null;
-  if (income.length >= 2 && income[0]?.totalRevenue && income[income.length - 1]?.totalRevenue) {
-    const latest = income[0].totalRevenue;
-    const oldest = income[income.length - 1].totalRevenue;
-    if (oldest > 0) {
-      const years = income.length - 1;
-      revenueCAGR = Math.pow(latest / oldest, 1 / years) - 1;
+  const nYears = income.length;
+  if (nYears >= 2) {
+    const latest = rv(income[0]?.totalRevenue);
+    const oldest = rv(income[nYears - 1]?.totalRevenue);
+    if (latest > 0 && oldest > 0) {
+      revenueCAGR = Math.pow(latest / oldest, 1 / (nYears - 1)) - 1;
+    }
+  }
+
+  // Net income CAGR
+  let netIncomeCAGR = null;
+  if (nYears >= 2) {
+    const latestNI = rv(income[0]?.netIncome);
+    const oldestNI = rv(income[nYears - 1]?.netIncome);
+    if (latestNI > 0 && oldestNI > 0) {
+      netIncomeCAGR = Math.pow(latestNI / oldestNI, 1 / (nYears - 1)) - 1;
+    }
+  }
+
+  // Revenue consistency (% of years with positive growth)
+  let positiveGrowthYears = 0;
+  let growthCheckYears = 0;
+  for (let i = 0; i < nYears - 1; i++) {
+    const cur = rv(income[i]?.totalRevenue);
+    const prev = rv(income[i + 1]?.totalRevenue);
+    if (cur != null && prev != null && prev > 0) {
+      growthCheckYears++;
+      if (cur > prev) positiveGrowthYears++;
     }
   }
 
   if (revGrowth != null) {
-    if (revGrowth > 0.20) { croissScore += 7; forces.push(`Croissance du CA de ${pct(revGrowth)} sur le dernier exercice`); }
-    else if (revGrowth > 0.08) { croissScore += 4; forces.push(`Croissance solide du CA à ${pct(revGrowth)}`); }
-    else if (revGrowth > 0) { croissScore += 2; }
+    if (revGrowth > 0.20) { croissScore += 5; forces.push(`Croissance du CA de ${pct(revGrowth)} sur le dernier exercice`); }
+    else if (revGrowth > 0.08) { croissScore += 3; forces.push(`Croissance solide du CA à ${pct(revGrowth)}`); }
+    else if (revGrowth > 0) { croissScore += 1; }
     else { faiblesses.push(`CA en recul de ${pct(revGrowth)}`); }
   }
   if (epsGrowth != null) {
-    if (epsGrowth > 0.20) { croissScore += 6; forces.push(`BPA en forte hausse de ${pct(epsGrowth)}`); }
-    else if (epsGrowth > 0.05) { croissScore += 3; }
+    if (epsGrowth > 0.20) { croissScore += 4; forces.push(`BPA en forte hausse de ${pct(epsGrowth)}`); }
+    else if (epsGrowth > 0.05) { croissScore += 2; }
     else if (epsGrowth < -0.10) { faiblesses.push(`BPA en forte baisse de ${pct(epsGrowth)}`); croissScore -= 1; }
   }
   if (revenueCAGR != null) {
-    if (revenueCAGR > 0.15) croissScore += 5;
-    else if (revenueCAGR > 0.05) croissScore += 3;
-    else if (revenueCAGR < 0) { croissScore -= 1; faiblesses.push(`CA en déclin sur ${income.length - 1} ans (TCAM ${pct(revenueCAGR)})`); }
-    else croissScore += 1;
+    const label = `${nYears - 1} ans`;
+    if (revenueCAGR > 0.15) { croissScore += 5; forces.push(`TCAM du CA de ${pct(revenueCAGR)} sur ${label}`); }
+    else if (revenueCAGR > 0.05) { croissScore += 3; forces.push(`Croissance régulière du CA (TCAM ${pct(revenueCAGR)} sur ${label})`); }
+    else if (revenueCAGR < 0) { croissScore -= 1; faiblesses.push(`CA en déclin sur ${label} (TCAM ${pct(revenueCAGR)})`); }
+    else { croissScore += 1; }
   }
-  // Net income trend
-  if (income.length >= 2 && income[0]?.netIncome != null && income[1]?.netIncome != null) {
-    if (income[0].netIncome > income[1].netIncome && income[0].netIncome > 0) croissScore += 2;
+  if (netIncomeCAGR != null && nYears >= 4) {
+    if (netIncomeCAGR > 0.12) croissScore += 2;
+    else if (netIncomeCAGR < -0.05) croissScore -= 1;
+  }
+  // Consistency bonus: positive growth in most years
+  if (growthCheckYears >= 5) {
+    const ratio = positiveGrowthYears / growthCheckYears;
+    if (ratio >= 0.8) { croissScore += 3; forces.push(`CA en hausse ${positiveGrowthYears}/${growthCheckYears} ans, trajectoire très régulière`); }
+    else if (ratio >= 0.6) croissScore += 1;
+    else if (ratio < 0.4) faiblesses.push(`CA instable, en hausse seulement ${positiveGrowthYears}/${growthCheckYears} ans`);
+  }
+  // Net income trend (last year)
+  if (nYears >= 2) {
+    const niCur = rv(income[0]?.netIncome);
+    const niPrev = rv(income[1]?.netIncome);
+    if (niCur != null && niPrev != null && niCur > niPrev && niCur > 0) croissScore += 1;
   }
   scores.croissance = { score: Math.max(Math.min(croissScore, 20), 0), max: 20 };
   totalScore += scores.croissance.score;
@@ -189,17 +228,18 @@ function analyzeStock(data, symbol) {
     else { santeScore += 1; }
   }
   if (b) {
-    const equity = b.totalStockholderEquity;
-    const totalAssets = b.totalAssets;
+    const equity = rv(b.totalStockholderEquity);
+    const totalAssets = rv(b.totalAssets);
     if (equity != null && totalAssets != null && totalAssets > 0) {
       const equityRatio = equity / totalAssets;
       if (equityRatio > 0.50) santeScore += 4;
       else if (equityRatio > 0.30) santeScore += 2;
       else if (equityRatio < 0.10) faiblesses.push("Fonds propres très faibles par rapport au total du bilan");
     }
-    if (b.cash && marketCap) {
-      const cashPct = b.cash / marketCap;
-      if (cashPct > 0.20) { santeScore += 2; forces.push(`Trésorerie importante (${fmt(b.cash)} ${currency}, ${(cashPct * 100).toFixed(0)}% de la capitalisation)`); }
+    const bCash = rv(b.cash);
+    if (bCash && marketCap) {
+      const cashPct = bCash / marketCap;
+      if (cashPct > 0.20) { santeScore += 2; forces.push(`Trésorerie importante (${fmt(bCash)} ${currency}, ${(cashPct * 100).toFixed(0)}% de la capitalisation)`); }
     }
   }
   scores.sante = { score: Math.min(santeScore, 15), max: 15 };
@@ -210,19 +250,19 @@ function analyzeStock(data, symbol) {
   let cfScore = 0;
   if (cashflow.length > 0) {
     const latestCF = cashflow[0];
-    const opCF = latestCF?.totalCashFromOperatingActivities;
-    const capex = latestCF?.capitalExpenditures;
+    const opCF = rv(latestCF?.totalCashFromOperatingActivities);
+    const capex = rv(latestCF?.capitalExpenditures);
+    const fcfDirect = rv(latestCF?.freeCashFlow);
+    const fcf = fcfDirect ?? (opCF != null && capex != null ? opCF + capex : null);
     if (opCF != null && opCF > 0) {
       cfScore += 3;
-      const fcf = capex != null ? opCF + capex : null; // capex is negative
       if (fcf != null && fcf > 0) {
         cfScore += 3;
         forces.push(`Free cash flow positif de ${fmt(fcf)} ${currency}`);
-        // FCF yield
         if (marketCap && marketCap > 0) {
           const fcfYield = fcf / marketCap;
-          if (fcfYield > 0.06) { cfScore += 4; forces.push(`Rendement FCF de ${pct(fcfYield)}, très attractif`); }
-          else if (fcfYield > 0.03) { cfScore += 2; }
+          if (fcfYield > 0.06) { cfScore += 2; forces.push(`Rendement FCF de ${pct(fcfYield)}, très attractif`); }
+          else if (fcfYield > 0.03) { cfScore += 1; }
         }
       } else if (fcf != null && fcf < 0) {
         faiblesses.push(`Free cash flow négatif (${fmt(fcf)} ${currency}), les investissements dépassent les flux opérationnels`);
@@ -230,10 +270,18 @@ function analyzeStock(data, symbol) {
     } else if (opCF != null && opCF < 0) {
       faiblesses.push(`Cash flow opérationnel négatif (${fmt(opCF)} ${currency})`);
     }
-    // CF trend
-    if (cashflow.length >= 2) {
-      const prev = cashflow[1]?.totalCashFromOperatingActivities;
-      if (opCF != null && prev != null && prev > 0 && opCF > prev) cfScore += 1;
+    // FCF consistency over available history
+    let positiveFcfYears = 0;
+    let fcfCheckYears = 0;
+    for (let i = 0; i < cashflow.length; i++) {
+      const f = rv(cashflow[i]?.freeCashFlow) ?? (rv(cashflow[i]?.totalCashFromOperatingActivities) != null && rv(cashflow[i]?.capitalExpenditures) != null
+        ? rv(cashflow[i].totalCashFromOperatingActivities) + rv(cashflow[i].capitalExpenditures) : null);
+      if (f != null) { fcfCheckYears++; if (f > 0) positiveFcfYears++; }
+    }
+    if (fcfCheckYears >= 5 && positiveFcfYears === fcfCheckYears) {
+      cfScore += 1; forces.push(`FCF positif chaque année sur ${fcfCheckYears} ans de données`);
+    } else if (fcfCheckYears >= 5 && positiveFcfYears < fcfCheckYears * 0.5) {
+      faiblesses.push(`FCF négatif ${fcfCheckYears - positiveFcfYears}/${fcfCheckYears} ans`);
     }
   }
   scores.cashflow = { score: Math.min(cfScore, 10), max: 10 };
@@ -286,11 +334,12 @@ function analyzeStock(data, symbol) {
   if (valoText.length === 0) valoText.push("Données de valorisation insuffisantes pour conclure.");
 
   // ── RÉSUMÉ ──
-  const resumeText = `${ticker} (${name}) est un titre du secteur ${sector || "non défini"} coté à ${price ? `${fix(price, 2)} ${currency}` : "prix indisponible"} pour une capitalisation de ${fmt(marketCap)} ${currency}. Score fondamental : ${Math.round(pctScore)}/100.`;
+  const dataYears = Math.max(income.length, balance.length, cashflow.length);
+  const resumeText = `${ticker} (${name}) est un titre du secteur ${sector || "non défini"} coté à ${price ? `${fix(price, 2)} ${currency}` : "prix indisponible"} pour une capitalisation de ${fmt(marketCap)} ${currency}. Score fondamental : ${Math.round(pctScore)}/100${dataYears > 1 ? ` (basé sur ${dataYears} ans de données)` : ""}.`;
 
   // Keep max 4 forces, 3 faiblesses
-  const topForces = forces.slice(0, 4);
-  const topFaiblesses = faiblesses.slice(0, 3);
+  const topForces = forces.slice(0, 5);
+  const topFaiblesses = faiblesses.slice(0, 4);
   if (topFaiblesses.length === 0) topFaiblesses.push("Aucun point faible majeur identifié dans les données disponibles");
   if (topForces.length === 0) topForces.push("Données insuffisantes pour identifier des points forts marquants");
 
