@@ -54,6 +54,15 @@ function cagr(rows, key) {
 
 function buildSeries(data) {
   const fmp = data?._fmpData;
+  // Debug: log what data sources are available
+  const bsArr = data?.balanceSheetHistory?.balanceSheetStatements || [];
+  const isArr = data?.incomeStatementHistory?.incomeStatementHistory || [];
+  const cfArr = data?.cashflowStatementHistory?.cashflowStatements || [];
+  const bsDates = bsArr.map(s => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0,10) : '?'));
+  const isDates = isArr.map(s => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0,10) : '?'));
+  console.log("[FF][Charts] _fmpData?", !!fmp, "fmp.income:", fmp?.income?.length, "fmp.balance:", fmp?.balance?.length, "fmp.cashflow:", fmp?.cashflow?.length);
+  console.log("[FF][Charts] Yahoo BS dates:", bsDates.join(", "));
+  console.log("[FF][Charts] Yahoo IS dates:", isDates.join(", "));
 
   if (fmp?.income?.length && fmp?.cashflow?.length && fmp?.balance?.length) {
     const byYear = new Map();
