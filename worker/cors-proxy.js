@@ -12,6 +12,7 @@ const ALLOWED_HOSTS = [
   "data.sec.gov",
   "www.sec.gov",
   "efts.sec.gov",
+  "api.anthropic.com",
 ];
 
 // Cache crumb + cookie en mémoire (persiste entre les requêtes sur le même isolate)
@@ -55,8 +56,8 @@ async function getCrumb() {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key, anthropic-version, anthropic-dangerous-direct-browser-access",
 };
 
 export default {
@@ -149,6 +150,29 @@ export default {
         return new Response(body, {
           status: resp.status,
           headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=300" },
+        });
+      }
+
+      // ── Anthropic API : proxy POST avec headers ──
+      if (targetUrl.hostname === "api.anthropic.com") {
+        const reqHeaders = {
+          "Content-Type": "application/json",
+          "anthropic-version": request.headers.get("anthropic-version") || "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        };
+        const apiKey = request.headers.get("x-api-key");
+        if (apiKey) reqHeaders["x-api-key"] = apiKey;
+
+        const fetchOpts = { method: request.method, headers: reqHeaders };
+        if (request.method === "POST") {
+          fetchOpts.body = await request.text();
+        }
+
+        const resp = await fetch(targetUrl.toString(), fetchOpts);
+        const body = await resp.text();
+        return new Response(body, {
+          status: resp.status,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS },
         });
       }
 
