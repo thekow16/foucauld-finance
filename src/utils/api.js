@@ -332,9 +332,47 @@ function fmpToYahooCashflow(arr) {
   }));
 }
 
+// ── Cache sessionStorage (15 min TTL) ──
+const CACHE_TTL = 15 * 60 * 1000;
+
+function getCachedData(sym) {
+  try {
+    const raw = sessionStorage.getItem(`ff_${sym}`);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) {
+      sessionStorage.removeItem(`ff_${sym}`);
+      return null;
+    }
+    console.log(`[FF] Cache hit for ${sym} (${Math.round((Date.now() - ts) / 1000)}s ago)`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedData(sym, data) {
+  try {
+    sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now() }));
+  } catch {
+    // sessionStorage full — clear old entries
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key?.startsWith("ff_")) sessionStorage.removeItem(key);
+      }
+      sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now() }));
+    } catch { /* ignore */ }
+  }
+}
+
 // ── Données complètes (v10/quoteSummary via Worker, sinon fallback chart) ──
 export async function fetchStockData(sym) {
   console.log("[FF] fetchStockData:", sym);
+
+  // Check cache first
+  const cached = getCachedData(sym);
+  if (cached) return cached;
 
   // Essai 1 : quoteSummary via Worker (qui gère le crumb)
   let yahooResult = null;
@@ -413,6 +451,7 @@ export async function fetchStockData(sym) {
           }
         }
         // Always return Yahoo result (enriched or not)
+        setCachedData(sym, yahooResult);
         return yahooResult;
       }
     } catch (e) {
@@ -481,7 +520,7 @@ export async function fetchStockData(sym) {
   const evToRevenue = inc?.revenue && evVal ? evVal / inc.revenue : null;
 
   // Retourner un objet compatible avec la structure attendue par les composants
-  return {
+  const chartResult = {
     price: {
       regularMarketPrice: { raw: currentPrice, fmt: currentPrice.toFixed(2) },
       regularMarketChange: { raw: change, fmt: change.toFixed(2) },
@@ -564,6 +603,8 @@ export async function fetchStockData(sym) {
     },
     _fromChart: true,
   };
+  setCachedData(sym, chartResult);
+  return chartResult;
 }
 
 // ── Traduction en français via Google Translate (gratuit) ──
