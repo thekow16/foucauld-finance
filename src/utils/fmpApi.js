@@ -6,11 +6,12 @@
 const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 const FMP_V4 = "https://financialmodelingprep.com/api/v4";
 
-// Clé FMP — l'utilisateur doit fournir sa propre clé (gratuite sur financialmodelingprep.com)
+// Clé FMP — priorité : variable d'env VITE_FMP_API_KEY > localStorage
 const STORAGE_KEY = "fmp_api_key";
+const ENV_KEY = import.meta.env.VITE_FMP_API_KEY || "";
 
 export function getFmpApiKey() {
-  return localStorage.getItem(STORAGE_KEY) || "";
+  return ENV_KEY || localStorage.getItem(STORAGE_KEY) || "";
 }
 
 export function setFmpApiKey(key) {
