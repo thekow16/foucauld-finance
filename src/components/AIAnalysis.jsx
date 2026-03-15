@@ -40,8 +40,8 @@ function analyzeStock(data, symbol) {
   const name = p.shortName || p.longName || symbol;
   const sector = profile.sector || null;
   const currency = p.currency || "USD";
-  const price = p.regularMarketPrice;
-  const marketCap = p.marketCap;
+  const price = rv(p.regularMarketPrice);
+  const marketCap = rv(p.marketCap);
 
   const forces = [];
   const faiblesses = [];
@@ -51,11 +51,11 @@ function analyzeStock(data, symbol) {
 
   // ── 1. RENTABILITÉ (25 pts) ──
   let rentScore = 0;
-  const roe = fd.returnOnEquity;
-  const roa = fd.returnOnAssets;
-  const marginNet = fd.profitMargins;
-  const marginBrute = fd.grossMargins;
-  const marginOp = fd.operatingMargins;
+  const roe = rv(fd.returnOnEquity);
+  const roa = rv(fd.returnOnAssets);
+  const marginNet = rv(fd.profitMargins);
+  const marginBrute = rv(fd.grossMargins);
+  const marginOp = rv(fd.operatingMargins);
 
   if (roe != null) {
     if (roe > 0.20) { rentScore += 8; forces.push(`ROE excellent de ${pct(roe)}, signe d'une forte création de valeur`); }
@@ -88,8 +88,8 @@ function analyzeStock(data, symbol) {
 
   // ── 2. CROISSANCE (20 pts) ──
   let croissScore = 0;
-  const revGrowth = fd.revenueGrowth;
-  const epsGrowth = fd.earningsGrowth;
+  const revGrowth = rv(fd.revenueGrowth);
+  const epsGrowth = rv(fd.earningsGrowth);
 
   // Multi-year revenue CAGR (use max available history, up to 10 years)
   let revenueCAGR = null;
@@ -165,11 +165,11 @@ function analyzeStock(data, symbol) {
 
   // ── 3. VALORISATION (20 pts) ──
   let valoScore = 0;
-  const pe = stats.trailingPE || stats.forwardPE;
-  const forwardPE = stats.forwardPE;
-  const pb = stats.priceToBook;
-  const evEbitda = stats.enterpriseToEbitda;
-  const peg = stats.pegRatio;
+  const pe = rv(stats.trailingPE) || rv(stats.forwardPE);
+  const forwardPE = rv(stats.forwardPE);
+  const pb = rv(stats.priceToBook);
+  const evEbitda = rv(stats.enterpriseToEbitda);
+  const peg = rv(stats.pegRatio);
 
   const valoDetails = [];
 
@@ -211,8 +211,8 @@ function analyzeStock(data, symbol) {
 
   // ── 4. SANTÉ FINANCIÈRE (15 pts) ──
   let santeScore = 0;
-  const debtEquity = fd.debtToEquity;
-  const currentRatio = fd.currentRatio;
+  const debtEquity = rv(fd.debtToEquity);
+  const currentRatio = rv(fd.currentRatio);
   const b = balance[0];
 
   if (debtEquity != null) {
@@ -290,8 +290,8 @@ function analyzeStock(data, symbol) {
 
   // ── 6. DIVIDENDE (10 pts) ──
   let divScore = 0;
-  const divYield = stats.trailingAnnualDividendYield;
-  const payout = stats.payoutRatio;
+  const divYield = rv(stats.trailingAnnualDividendYield);
+  const payout = rv(stats.payoutRatio);
 
   if (divYield != null && divYield > 0) {
     if (divYield > 0.04) { divScore += 5; forces.push(`Rendement du dividende élevé (${pct(divYield)})`); }
@@ -435,7 +435,7 @@ export default function AIAnalysis({ data, symbol }) {
 
   const result = useMemo(() => {
     if (!data || !symbol) return null;
-    try { return analyzeStock(data, symbol); } catch { return null; }
+    try { return analyzeStock(data, symbol); } catch (e) { console.error("[AIAnalysis] erreur:", e); return null; }
   }, [data, symbol]);
 
   if (!result) return null;
