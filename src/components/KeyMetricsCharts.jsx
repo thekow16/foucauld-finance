@@ -14,9 +14,9 @@ import {
   ReferenceLine,
 } from "recharts";
 
-/* ── Helpers ── */
+/* ── Helpers (exported for testing) ── */
 
-function compact(v) {
+export function compact(v) {
   if (v == null || Number.isNaN(v)) return "—";
   const abs = Math.abs(v);
   const sign = v < 0 ? "-" : "";
@@ -39,7 +39,7 @@ function growthLabel(cur, prev) {
 }
 
 /* ── CAGR helper ── */
-function cagr(rows, key) {
+export function cagr(rows, key) {
   const valid = rows.filter((d) => d[key] != null && d[key] > 0);
   if (valid.length < 2) return null;
   const first = valid[0][key];
@@ -58,7 +58,7 @@ function hasFinancialData(d) {
 
 /* ── Data builder (historique complet, 10+ ans) ── */
 
-function buildSeries(data) {
+export function buildSeries(data) {
   const fmp = data?._fmpData;
   // Debug: log what data sources are available
   const bsArr = data?.balanceSheetHistory?.balanceSheetStatements || [];
@@ -178,6 +178,37 @@ function enrich(d) {
   const dividendPerShare =
     d.dividendsPaid != null && d.shares ? Math.abs(d.dividendsPaid) / d.shares : null;
   return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare };
+}
+
+/* ── Quarterly data builder ── */
+function buildQuarterlySeries(data) {
+  const qArr = data?._quarterlyData || [];
+  if (!qArr.length) return [];
+
+  const byQuarter = new Map();
+  qArr.forEach((d) => {
+    const date = d.endDate?.fmt || (d.endDate?.raw ? new Date(d.endDate.raw * 1000).toISOString().slice(0, 10) : null);
+    if (!date) return;
+    const label = date.slice(0, 7); // "2024-03" format
+    byQuarter.set(label, {
+      year: label,
+      revenue: d.totalRevenue?.raw,
+      ebit: d.operatingIncome?.raw,
+      shares: d.dilutedAverageShares?.raw,
+      fcf: d.freeCashFlow?.raw,
+      sbc: d.stockBasedCompensation?.raw,
+      dividendsPaid: d.dividendsPaid?.raw,
+      cash: d.cash?.raw,
+      debt: d.totalDebt?.raw,
+      assets: d.totalAssets?.raw,
+      currentLiabilities: d.totalCurrentLiabilities?.raw,
+    });
+  });
+
+  return [...byQuarter.values()]
+    .map((d) => enrich(d))
+    .filter((d) => d.year && hasFinancialData(d))
+    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
 }
 
 /* ── Growth label rendered above bars ── */
@@ -324,11 +355,20 @@ function renderGrowthLabel(data, dataKey) {
   };
 }
 
+/* ── Currency symbol lookup ── */
+const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", GBP: "£", JPY: "¥", CHF: "CHF ", CNY: "¥", CAD: "CA$", AUD: "A$", KRW: "₩", INR: "₹", BRL: "R$", SEK: "kr ", DKK: "kr ", NOK: "kr ", HKD: "HK$", SGD: "S$", TWD: "NT$", ZAR: "R " };
+export function getCurrencySymbol(code) { return CURRENCY_SYMBOLS[code] || (code ? code + " " : "$"); }
+
 /* ── Main Component ── */
 
-export default function KeyMetricsCharts({ data }) {
-  const rows = buildSeries(data);
-  if (!rows.length) return (
+export default function KeyMetricsCharts({ data, currency = "USD" }) {
+  const [quarterly, setQuarterly] = useState(false);
+  const annualRows = buildSeries(data);
+  const quarterlyRows = buildQuarterlySeries(data);
+  const hasQuarterly = quarterlyRows.length > 0;
+  const rows = quarterly && hasQuarterly ? quarterlyRows : annualRows;
+  const cs = getCurrencySymbol(currency);
+  if (!annualRows.length) return (
     <div style={{
       background: "var(--card)",
       borderRadius: 16,
@@ -357,17 +397,44 @@ export default function KeyMetricsCharts({ data }) {
     ? (val) => `'${String(val).slice(-2)}`
     : undefined;
 
-  const shortHistory = rows.length > 0 && rows.length <= 5;
+  const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
         gap: 16,
         marginBottom: 16,
       }}
     >
+      {/* Toggle annuel / trimestriel */}
+      {hasQuarterly && (
+        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 4 }}>
+          {["Annuel", "Trimestriel"].map((label, i) => {
+            const isActive = i === 0 ? !quarterly : quarterly;
+            return (
+              <button
+                key={label}
+                onClick={() => setQuarterly(i === 1)}
+                style={{
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: isActive ? "var(--accent, #2563eb)" : "var(--card)",
+                  color: isActive ? "#fff" : "var(--muted)",
+                  cursor: "pointer",
+                  transition: "all .15s",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {shortHistory && (
         <div
           style={{
@@ -444,8 +511,8 @@ export default function KeyMetricsCharts({ data }) {
             <CartesianGrid {...gridProps} />
             <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
             <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
-              tickFormatter={(v) => v != null ? `$${v.toFixed(1)}` : ""} />
-            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `$${v.toFixed(2)}` : "—"} />} />
+              tickFormatter={(v) => v != null ? `${cs}${v.toFixed(1)}` : ""} />
+            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(2)}` : "—"} />} />
             <Area
               type="monotone"
               dataKey="fcfPerShare"
@@ -567,8 +634,8 @@ export default function KeyMetricsCharts({ data }) {
               <CartesianGrid {...gridProps} />
               <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
               <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
-                tickFormatter={(v) => v != null ? `$${v.toFixed(2)}` : ""} />
-              <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `$${v.toFixed(3)}` : "—"} />} />
+                tickFormatter={(v) => v != null ? `${cs}${v.toFixed(2)}` : ""} />
+              <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(3)}` : "—"} />} />
               <Area
                 type="monotone"
                 dataKey="dividendPerShare"

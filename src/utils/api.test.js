@@ -23,6 +23,11 @@ describe("classifyError", () => {
     expect(classifyError(new Error("Impossible de contacter Yahoo Finance."))).toContain("proxies");
   });
 
+  it("returns rate limit message for 429 errors", () => {
+    expect(classifyError(new Error("Rate limit serveur dépassé"))).toContain("requêtes");
+    expect(classifyError(new Error("HTTP 429"))).toContain("requêtes");
+  });
+
   it("returns original message for unknown errors", () => {
     expect(classifyError(new Error("Something weird"))).toBe("Something weird");
   });

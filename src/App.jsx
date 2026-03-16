@@ -1843,6 +1843,8 @@ export default function FoucauldFinance() {
                 ? "Le serveur Yahoo Finance est lent. Réessayez dans quelques instants."
                 : error.includes("Trop de recherches")
                 ? "Limite anti-abus atteinte. Attendez quelques secondes avant de relancer."
+                : error.includes("Trop de requêtes") || error.includes("Rate limit")
+                ? "Le serveur est temporairement surchargé. Patientez 1 minute."
                 : "Vérifiez le symbole ou votre connexion."}
             </p>
             {symbol && (
@@ -1902,7 +1904,7 @@ export default function FoucauldFinance() {
               onToggleWatchlist={handleToggleWatchlist}
             />
 
-            <KeyMetricsCharts data={data} />
+            <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
 
             <RevenueBreakdown data={data} symbol={symbol} />
 

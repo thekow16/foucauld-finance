@@ -20,9 +20,8 @@ const YF = "https://query2.finance.yahoo.com";
 export async function checkWorkerHealth() {
   if (!WORKER_URL) return false;
   try {
-    // HEAD request pour vérifier que le Worker répond, sans polluer la console
-    const res = await fetch(WORKER_URL, { method: "HEAD", signal: AbortSignal.timeout(5000) });
-    return res.ok || res.status === 400; // 400 = alive but missing ?url param
+    const res = await fetch(`${WORKER_URL}/health`, { signal: AbortSignal.timeout(5000) });
+    return res.ok;
   } catch {
     return false;
   }
@@ -33,6 +32,7 @@ async function tryFetch(url, unwrap = false) {
     signal: AbortSignal.timeout(12000),
     headers: { "Accept": "application/json" },
   });
+  if (res.status === 429) throw new Error("Rate limit serveur dépassé. Patientez 1 minute.");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
   let data = JSON.parse(text);
@@ -150,11 +150,21 @@ async function fetchYahooTimeseries(sym) {
     "annualMinorityInterest",
   ];
 
+  // Batch 3: Quarterly data (key metrics only for charts toggle)
+  const batch3Fields = [
+    "quarterlyTotalRevenue", "quarterlyOperatingIncome", "quarterlyNetIncome",
+    "quarterlyDilutedEPS", "quarterlyDilutedAverageShares",
+    "quarterlyOperatingCashFlow", "quarterlyCapitalExpenditure", "quarterlyFreeCashFlow",
+    "quarterlyStockBasedCompensation", "quarterlyCashDividendsPaid",
+    "quarterlyTotalAssets", "quarterlyTotalCurrentAssets", "quarterlyCashAndCashEquivalents",
+    "quarterlyTotalDebt", "quarterlyCurrentLiabilities", "quarterlyStockholdersEquity",
+  ];
+
   const baseUrl = `${YF}/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}?period1=${fortyYearsAgo}&period2=${now}&merge=false&padTimeSeries=false&type=`;
 
   try {
-    // Fetch both batches in parallel for speed
-    const [json1, json2] = await Promise.all([
+    // Fetch all batches in parallel for speed
+    const [json1, json2, json3] = await Promise.all([
       proxyFetch(baseUrl + batch1Fields.join(",")).catch(e => {
         console.warn("[FF] timeseries batch1 (IS+CF) failed:", e.message);
         return null;
@@ -163,16 +173,24 @@ async function fetchYahooTimeseries(sym) {
         console.warn("[FF] timeseries batch2 (BS) failed:", e.message);
         return null;
       }),
+      proxyFetch(baseUrl + batch3Fields.join(",")).catch(e => {
+        console.warn("[FF] timeseries batch3 (quarterly) failed:", e.message);
+        return null;
+      }),
     ]);
 
-    // Merge results from both batches
+    // Merge results from all batches (annual)
     const allSeries = [
       ...(json1?.timeseries?.result || []),
       ...(json2?.timeseries?.result || []),
     ];
 
+    // Quarterly series (separate)
+    const quarterlySeries = json3?.timeseries?.result || [];
+
     console.log("[FF] timeseries fetched, batch1:", json1?.timeseries?.result?.length ?? "FAIL",
-      "batch2:", json2?.timeseries?.result?.length ?? "FAIL", "total:", allSeries.length);
+      "batch2:", json2?.timeseries?.result?.length ?? "FAIL",
+      "batch3 (quarterly):", quarterlySeries.length, "total annual:", allSeries.length);
 
     if (allSeries.length === 0) return null;
 
@@ -268,7 +286,50 @@ async function fetchYahooTimeseries(sym) {
       "bs sample:", balanceSheetStatements[0]?.totalAssets?.raw,
       "is sample:", incomeStatements[0]?.totalRevenue?.raw);
 
-    return { balanceSheetStatements, incomeStatements, cashflowStatements };
+    // Parse quarterly data
+    let quarterlyData = null;
+    if (quarterlySeries.length > 0) {
+      const qDateMap = {};
+      for (const s of quarterlySeries) {
+        const fieldName = s.meta?.type?.[0];
+        if (!fieldName) continue;
+        const entries = s[fieldName] || [];
+        for (const entry of entries) {
+          const date = entry.asOfDate;
+          if (!date) continue;
+          if (!qDateMap[date]) qDateMap[date] = {};
+          qDateMap[date][fieldName] = entry.reportedValue?.raw;
+        }
+      }
+      const qDates = Object.keys(qDateMap).sort().reverse();
+      if (qDates.length > 0) {
+        quarterlyData = qDates.map(date => {
+          const d = qDateMap[date];
+          return {
+            endDate: { raw: Math.floor(new Date(date).getTime() / 1000), fmt: date },
+            totalRevenue: w(d.quarterlyTotalRevenue),
+            operatingIncome: w(d.quarterlyOperatingIncome),
+            netIncome: w(d.quarterlyNetIncome),
+            dilutedEPS: w(d.quarterlyDilutedEPS),
+            dilutedAverageShares: w(d.quarterlyDilutedAverageShares),
+            totalCashFromOperatingActivities: w(d.quarterlyOperatingCashFlow),
+            capitalExpenditures: w(d.quarterlyCapitalExpenditure),
+            freeCashFlow: w(d.quarterlyFreeCashFlow),
+            stockBasedCompensation: w(d.quarterlyStockBasedCompensation),
+            dividendsPaid: w(d.quarterlyCashDividendsPaid),
+            totalAssets: w(d.quarterlyTotalAssets),
+            totalCurrentAssets: w(d.quarterlyTotalCurrentAssets),
+            cash: w(d.quarterlyCashAndCashEquivalents),
+            totalDebt: w(d.quarterlyTotalDebt),
+            totalCurrentLiabilities: w(d.quarterlyCurrentLiabilities),
+            totalStockholderEquity: w(d.quarterlyStockholdersEquity),
+          };
+        });
+        console.log("[FF] quarterly parsed:", quarterlyData.length, "quarters");
+      }
+    }
+
+    return { balanceSheetStatements, incomeStatements, cashflowStatements, quarterlyData };
   } catch (e) {
     console.warn("[FF] timeseries fetch failed:", e.message);
     return null;
@@ -429,6 +490,8 @@ export function classifyError(e) {
     return "Erreur réseau — impossible de joindre les serveurs. Vérifiez votre connexion.";
   if (msg.includes("Impossible de contacter"))
     return "Tous les proxies CORS sont indisponibles. Réessayez dans quelques minutes.";
+  if (msg.includes("Rate limit") || msg.includes("429"))
+    return "Trop de requêtes envoyées au serveur. Patientez 1 minute avant de réessayer.";
   return msg || "Erreur inconnue.";
 }
 
@@ -533,6 +596,12 @@ export async function fetchStockData(sym) {
           const bsN = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
           const isN = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
           console.log(`[FF] timeseries enrichissement OK — ${bsN} ans bilan, ${isN} ans résultats`);
+
+          // Store quarterly data if available
+          if (ts.quarterlyData?.length > 0) {
+            yahooResult._quarterlyData = ts.quarterlyData;
+            console.log(`[FF] quarterly data stored: ${ts.quarterlyData.length} quarters`);
+          }
 
           // Also fetch FMP for 20-year charts if key available
           if (hasFmpApiKey()) {

@@ -1,0 +1,21 @@
+name: Worker Health Check
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # Every 15 minutes
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Worker health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://foucauld-proxy.foucauld-finance.workers.dev/health)
+          echo "Worker health status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Worker health check failed with status $STATUS"
+            exit 1
+          fi
+          echo "Worker is healthy"
