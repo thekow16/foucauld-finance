@@ -4,6 +4,15 @@
  * Redéploiement :
  *   cd worker
  *   wrangler deploy cors-proxy.js --name foucauld-proxy --compatibility-date 2024-01-01 --no-bundle
+ *
+ * Monitoring :
+ *   GET /health → { status: "ok", crumbCached: bool, uptime: timestamp }
+ *   Configurer un check externe (UptimeRobot, Better Uptime, etc.) sur :
+ *     https://foucauld-proxy.foucauld-finance.workers.dev/health
+ *   Alerte si status != 200 pendant 2 minutes consécutives.
+ *
+ * Rate limiting :
+ *   30 requêtes/minute par IP. Retourne 429 si dépassé.
  */
 
 const ALLOWED_HOSTS = [
@@ -14,6 +23,28 @@ const ALLOWED_HOSTS = [
   "efts.sec.gov",
   "api.anthropic.com",
 ];
+
+// ── Rate limiter par IP (en mémoire, reset au redéploiement) ──
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 30;  // 30 req/min par IP
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  let entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    entry = { windowStart: now, count: 0 };
+    rateLimitMap.set(ip, entry);
+  }
+  entry.count++;
+  // Nettoyage périodique (évite fuite mémoire)
+  if (rateLimitMap.size > 10_000) {
+    for (const [key, val] of rateLimitMap) {
+      if (now - val.windowStart > RATE_LIMIT_WINDOW_MS) rateLimitMap.delete(key);
+    }
+  }
+  return entry.count <= RATE_LIMIT_MAX_REQUESTS;
+}
 
 // Cache crumb + cookie en mémoire (persiste entre les requêtes sur le même isolate)
 let cachedCrumb = null;
@@ -66,7 +97,30 @@ export default {
       return new Response(null, { headers: { ...CORS_HEADERS, "Access-Control-Max-Age": "86400" } });
     }
 
+    // HEAD request for health check — pas de log 400 dans la console
+    if (request.method === "HEAD") {
+      return new Response(null, { status: 200, headers: CORS_HEADERS });
+    }
+
     const url = new URL(request.url);
+
+    // Endpoint /health explicite
+    if (url.pathname === "/health") {
+      return new Response(JSON.stringify({ status: "ok", crumbCached: !!cachedCrumb, uptime: Date.now() }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
+    }
+
+    // Rate limiting par IP
+    const clientIP = request.headers.get("CF-Connecting-IP") || "unknown";
+    if (!checkRateLimit(clientIP)) {
+      return new Response(JSON.stringify({ error: "Rate limit dépassé. Réessayez dans 1 minute." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Retry-After": "60" },
+      });
+    }
+
     const target = url.searchParams.get("url");
 
     if (!target) {
