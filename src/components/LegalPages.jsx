@@ -7,8 +7,8 @@ export function MentionsLegales({ onBack }) {
       <section>
         <h2>1. Éditeur du site</h2>
         <p>
-          Le site <strong>Foucauld Finance</strong> est un projet personnel à vocation éducative.<br />
-          Responsable de la publication : Foucauld<br />
+          Le site <strong>Alphaview</strong> est un projet personnel à vocation éducative.<br />
+          Responsable de la publication : Alphaview<br />
           Contact : via le site
         </p>
       </section>
@@ -30,7 +30,7 @@ export function MentionsLegales({ onBack }) {
       <section>
         <h2>4. Limitation de responsabilité</h2>
         <p>
-          Les informations fournies sur Foucauld Finance le sont à titre purement informatif et éducatif. Elles ne constituent en aucun cas un conseil en investissement, une recommandation d'achat ou de vente de titres financiers, ni une incitation à réaliser des opérations boursières.
+          Les informations fournies sur Alphaview le sont à titre purement informatif et éducatif. Elles ne constituent en aucun cas un conseil en investissement, une recommandation d'achat ou de vente de titres financiers, ni une incitation à réaliser des opérations boursières.
         </p>
         <p>
           L'éditeur ne saurait être tenu responsable des décisions d'investissement prises sur la base des informations disponibles sur ce site, ni des éventuelles pertes financières qui pourraient en résulter.
@@ -65,13 +65,13 @@ export function PolitiqueConfidentialite({ onBack }) {
       <section>
         <h2>1. Introduction</h2>
         <p>
-          Foucauld Finance s'engage à protéger la vie privée de ses utilisateurs. Cette politique de confidentialité décrit les informations que nous collectons et comment nous les utilisons.
+          Alphaview s'engage à protéger la vie privée de ses utilisateurs. Cette politique de confidentialité décrit les informations que nous collectons et comment nous les utilisons.
         </p>
       </section>
 
       <section>
         <h2>2. Données collectées</h2>
-        <p>Foucauld Finance collecte les données suivantes :</p>
+        <p>Alphaview collecte les données suivantes :</p>
         <ul>
           <li><strong>Données de compte</strong> : lors de la création d'un compte, nous collectons votre adresse email, un pseudonyme et un mot de passe (stocké sous forme de hash cryptographique SHA-256).</li>
           <li><strong>Données de préférences</strong> : votre watchlist (liste de favoris), vos alertes de moyennes mobiles et vos préférences d'affichage (mode sombre/clair).</li>
@@ -89,7 +89,7 @@ export function PolitiqueConfidentialite({ onBack }) {
       <section>
         <h2>4. Cookies</h2>
         <p>
-          Foucauld Finance n'utilise pas de cookies. Les préférences utilisateur sont stockées via le mécanisme localStorage du navigateur, qui n'est pas un cookie au sens de la réglementation.
+          Alphaview n'utilise pas de cookies. Les préférences utilisateur sont stockées via le mécanisme localStorage du navigateur, qui n'est pas un cookie au sens de la réglementation.
         </p>
       </section>
 
@@ -144,14 +144,14 @@ export function CGU({ onBack }) {
       <section>
         <h2>1. Objet</h2>
         <p>
-          Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du site Foucauld Finance. En utilisant le site, vous acceptez sans réserve les présentes CGU.
+          Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du site Alphaview. En utilisant le site, vous acceptez sans réserve les présentes CGU.
         </p>
       </section>
 
       <section>
         <h2>2. Description du service</h2>
         <p>
-          Foucauld Finance est une plateforme web gratuite permettant de consulter et d'analyser des données financières publiques. Le service propose notamment :
+          Alphaview est une plateforme web gratuite permettant de consulter et d'analyser des données financières publiques. Le service propose notamment :
         </p>
         <ul>
           <li>La consultation de cours boursiers en temps réel</li>
@@ -192,7 +192,7 @@ export function CGU({ onBack }) {
       <section>
         <h2>6. Avertissement financier</h2>
         <p>
-          <strong>Foucauld Finance ne fournit aucun conseil en investissement.</strong> Les informations présentées sont à titre éducatif uniquement. Les performances passées ne préjugent pas des performances futures. Tout investissement comporte des risques de perte en capital. L'utilisateur est seul responsable de ses décisions d'investissement.
+          <strong>Alphaview ne fournit aucun conseil en investissement.</strong> Les informations présentées sont à titre éducatif uniquement. Les performances passées ne préjugent pas des performances futures. Tout investissement comporte des risques de perte en capital. L'utilisateur est seul responsable de ses décisions d'investissement.
         </p>
       </section>
 
@@ -238,28 +238,28 @@ export function CGV({ onBack }) {
       <section>
         <h2>1. Objet</h2>
         <p>
-          Les présentes Conditions Générales de Vente (CGV) régissent les éventuelles transactions commerciales liées à l'utilisation du site Foucauld Finance.
+          Les présentes Conditions Générales de Vente (CGV) régissent les éventuelles transactions commerciales liées à l'utilisation du site Alphaview.
         </p>
       </section>
 
       <section>
         <h2>2. Gratuité du service</h2>
         <p>
-          <strong>Foucauld Finance est un service entièrement gratuit.</strong> L'ensemble des fonctionnalités du site (consultation de données, analyse financière, watchlist, alertes, comparaison) sont accessibles sans aucun paiement.
+          <strong>Alphaview est un service entièrement gratuit.</strong> L'ensemble des fonctionnalités du site (consultation de données, analyse financière, watchlist, alertes, comparaison) sont accessibles sans aucun paiement.
         </p>
       </section>
 
       <section>
         <h2>3. Absence de transaction commerciale</h2>
         <p>
-          Le site ne propose aucun produit ni service payant. Aucune transaction financière n'est effectuée via le site. Foucauld Finance ne vend pas de données, d'abonnements ni de services premium.
+          Le site ne propose aucun produit ni service payant. Aucune transaction financière n'est effectuée via le site. Alphaview ne vend pas de données, d'abonnements ni de services premium.
         </p>
       </section>
 
       <section>
         <h2>4. Services tiers</h2>
         <p>
-          Certaines fonctionnalités avancées nécessitent une clé API Financial Modeling Prep (FMP) que l'utilisateur obtient directement auprès de FMP. Cette relation commerciale éventuelle est strictement entre l'utilisateur et FMP ; Foucauld Finance n'est pas partie prenante.
+          Certaines fonctionnalités avancées nécessitent une clé API Financial Modeling Prep (FMP) que l'utilisateur obtient directement auprès de FMP. Cette relation commerciale éventuelle est strictement entre l'utilisateur et FMP ; Alphaview n'est pas partie prenante.
         </p>
       </section>
 

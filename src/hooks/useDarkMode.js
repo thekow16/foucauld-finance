@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 export function useDarkMode() {
   const [dark, setDark] = useState(() => {
     try {
-      const saved = localStorage.getItem("foucauld-dark");
+      const saved = localStorage.getItem("alphaview-dark");
       if (saved !== null) return saved === "true";
       return window.matchMedia("(prefers-color-scheme: dark)").matches;
     } catch {
@@ -12,7 +12,7 @@ export function useDarkMode() {
   });
 
   useEffect(() => {
-    localStorage.setItem("foucauld-dark", String(dark));
+    localStorage.setItem("alphaview-dark", String(dark));
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   }, [dark]);
 

@@ -95,7 +95,7 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
         <div className="header-bar">
           <div className="logo">
             <div className="logo-icon">📈</div>
-            <span className="logo-text">Foucauld Finance</span>
+            <span className="logo-text">Alphaview</span>
           </div>
           {/* Desktop nav */}
           <div className="header-nav-desktop">

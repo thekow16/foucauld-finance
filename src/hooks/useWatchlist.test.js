@@ -9,7 +9,7 @@ describe("useWatchlist storage", () => {
   });
 
   it("persists watchlist to localStorage", () => {
-    const STORAGE_KEY = "foucauld-watchlist";
+    const STORAGE_KEY = "alphaview-watchlist";
     const watchlist = [{ symbol: "AAPL", name: "Apple", addedAt: 1000 }];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(watchlist));
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -18,10 +18,10 @@ describe("useWatchlist storage", () => {
   });
 
   it("handles corrupted localStorage gracefully", () => {
-    localStorage.setItem("foucauld-watchlist", "not-json");
+    localStorage.setItem("alphaview-watchlist", "not-json");
     let result = [];
     try {
-      result = JSON.parse(localStorage.getItem("foucauld-watchlist"));
+      result = JSON.parse(localStorage.getItem("alphaview-watchlist"));
     } catch {
       result = [];
     }

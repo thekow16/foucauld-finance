@@ -7,12 +7,12 @@ describe("useDarkMode storage", () => {
   });
 
   it("stores dark mode preference", () => {
-    localStorage.setItem("foucauld-dark", "true");
-    expect(localStorage.getItem("foucauld-dark")).toBe("true");
+    localStorage.setItem("alphaview-dark", "true");
+    expect(localStorage.getItem("alphaview-dark")).toBe("true");
   });
 
   it("defaults to system preference when no saved value", () => {
-    const saved = localStorage.getItem("foucauld-dark");
+    const saved = localStorage.getItem("alphaview-dark");
     expect(saved).toBeNull();
     // Would use matchMedia in real hook
   });
