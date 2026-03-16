@@ -85,21 +85,35 @@ async function getCrumb() {
   return { crumb, cookie };
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, x-api-key, anthropic-version, anthropic-dangerous-direct-browser-access",
-};
+// ── Origines autorisées (CORS) ──
+const ALLOWED_ORIGINS = [
+  "https://thekow16.github.io",
+  "http://localhost:5173",   // Vite dev server
+  "http://localhost:4173",   // Vite preview
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:4173",
+];
+
+function getCorsHeaders(request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-api-key, anthropic-version, anthropic-dangerous-direct-browser-access",
+    "Vary": "Origin",
+  };
+}
 
 export default {
   async fetch(request) {
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: { ...CORS_HEADERS, "Access-Control-Max-Age": "86400" } });
+      return new Response(null, { headers: { ...getCorsHeaders(request), "Access-Control-Max-Age": "86400" } });
     }
 
     // HEAD request for health check — pas de log 400 dans la console
     if (request.method === "HEAD") {
-      return new Response(null, { status: 200, headers: CORS_HEADERS });
+      return new Response(null, { status: 200, headers: getCorsHeaders(request) });
     }
 
     const url = new URL(request.url);
@@ -108,7 +122,7 @@ export default {
     if (url.pathname === "/health") {
       return new Response(JSON.stringify({ status: "ok", crumbCached: !!cachedCrumb, uptime: Date.now() }), {
         status: 200,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
@@ -117,7 +131,7 @@ export default {
     if (!checkRateLimit(clientIP)) {
       return new Response(JSON.stringify({ error: "Rate limit dépassé. Réessayez dans 1 minute." }), {
         status: 429,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Retry-After": "60" },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Retry-After": "60" },
       });
     }
 
@@ -126,7 +140,7 @@ export default {
     if (!target) {
       return new Response(JSON.stringify({ error: "Paramètre ?url= manquant" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
@@ -134,14 +148,14 @@ export default {
     try { targetUrl = new URL(target); } catch {
       return new Response(JSON.stringify({ error: "URL invalide" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
     if (!ALLOWED_HOSTS.includes(targetUrl.hostname)) {
       return new Response(JSON.stringify({ error: "Hôte non autorisé" }), {
         status: 403,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
@@ -181,14 +195,14 @@ export default {
           const body = await retry.text();
           return new Response(body, {
             status: retry.status,
-            headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+            headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=60" },
           });
         }
 
         const body = await resp.text();
         return new Response(body, {
           status: resp.status,
-          headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=60" },
         });
       }
 
@@ -203,7 +217,7 @@ export default {
         const body = await resp.text();
         return new Response(body, {
           status: resp.status,
-          headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=300" },
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=300" },
         });
       }
 
@@ -226,7 +240,7 @@ export default {
         const body = await resp.text();
         return new Response(body, {
           status: resp.status,
-          headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
         });
       }
 
@@ -237,12 +251,12 @@ export default {
       const body = await resp.text();
       return new Response(body, {
         status: resp.status,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=60" },
       });
     } catch (e) {
       return new Response(JSON.stringify({ error: e.message }), {
         status: 502,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
   },

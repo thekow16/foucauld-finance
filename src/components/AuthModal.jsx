@@ -57,7 +57,7 @@ export default function AuthModal({ onClose, onAuth }) {
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="ex : Foucauld"
+                placeholder="ex : Jean"
                 autoComplete="name"
               />
             </div>

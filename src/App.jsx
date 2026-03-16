@@ -56,7 +56,7 @@ function getInitialSymbol() {
   return params.get("s")?.toUpperCase() || null;
 }
 
-export default function FoucauldFinance() {
+export default function Alphaview() {
   const [symbol, setSymbol] = useState(getInitialSymbol);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -111,8 +111,8 @@ export default function FoucauldFinance() {
       el.setAttribute("content", content);
     };
     if (!data || !symbol) {
-      document.title = "Foucauld Finance";
-      setMeta("og:title", "Foucauld Finance — Analyse boursière");
+      document.title = "Alphaview";
+      setMeta("og:title", "Alphaview — Analyse boursière");
       return;
     }
     const pr = data.price;
@@ -120,8 +120,8 @@ export default function FoucauldFinance() {
     const name = pr?.shortName || symbol;
     const currency = pr?.currencySymbol || pr?.currency || "";
     const title = price != null
-      ? `${symbol} — ${price.toFixed(2)} ${currency} | Foucauld Finance`
-      : `${name} | Foucauld Finance`;
+      ? `${symbol} — ${price.toFixed(2)} ${currency} | Alphaview`
+      : `${name} | Alphaview`;
     document.title = title;
     setMeta("og:title", title);
     setMeta("og:description", `Analyse financière de ${name} (${symbol}) — cours, ratios, bilan, résultats et trésorerie.`);
@@ -1934,7 +1934,7 @@ export default function FoucauldFinance() {
 
             <div className="footer">
               Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
-              <strong style={{ color: "#4f46e5" }}>Foucauld Finance</strong>
+              <strong style={{ color: "#4f46e5" }}>Alphaview</strong>
               <div className="footer-links">
                 <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
                 <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>

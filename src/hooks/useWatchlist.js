@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "foucauld-watchlist";
+const STORAGE_KEY = "alphaview-watchlist";
 
 export function useWatchlist() {
   const [watchlist, setWatchlist] = useState(() => {

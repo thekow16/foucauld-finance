@@ -1,4 +1,4 @@
-const CACHE_NAME = "foucauld-finance-v1";
+const CACHE_NAME = "alphaview-v1";
 const STATIC_ASSETS = [
   "/foucauld-finance/",
   "/foucauld-finance/favicon.svg",
