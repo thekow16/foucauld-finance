@@ -20,7 +20,8 @@ const YF = "https://query2.finance.yahoo.com";
 export async function checkWorkerHealth() {
   if (!WORKER_URL) return false;
   try {
-    const res = await fetch(WORKER_URL, { signal: AbortSignal.timeout(5000) });
+    // HEAD request pour vérifier que le Worker répond, sans polluer la console
+    const res = await fetch(WORKER_URL, { method: "HEAD", signal: AbortSignal.timeout(5000) });
     return res.ok || res.status === 400; // 400 = alive but missing ?url param
   } catch {
     return false;
@@ -361,15 +362,16 @@ function fmpToYahooCashflow(arr) {
   }));
 }
 
-// ── Cache sessionStorage (15 min TTL) ──
+// ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
+const CACHE_VERSION = 2; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
     const raw = sessionStorage.getItem(`ff_${sym}`);
     if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) {
+    const { data, ts, v } = JSON.parse(raw);
+    if (v !== CACHE_VERSION || Date.now() - ts > CACHE_TTL) {
       sessionStorage.removeItem(`ff_${sym}`);
       return null;
     }
@@ -382,7 +384,7 @@ function getCachedData(sym) {
 
 function setCachedData(sym, data) {
   try {
-    sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now() }));
+    sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now(), v: CACHE_VERSION }));
   } catch {
     // sessionStorage full — clear old entries
     try {
@@ -390,7 +392,7 @@ function setCachedData(sym, data) {
         const key = sessionStorage.key(i);
         if (key?.startsWith("ff_")) sessionStorage.removeItem(key);
       }
-      sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now() }));
+      sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now(), v: CACHE_VERSION }));
     } catch { /* ignore */ }
   }
 }
