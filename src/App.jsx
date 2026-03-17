@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
+import SettingsModal from "./components/SettingsModal";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 
@@ -66,6 +67,7 @@ export default function Alphaview() {
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
   const [legalPage, setLegalPage] = useState(null); // "mentions" | "confidentialite" | "cgu" | "cgv"
   const [workerDown, setWorkerDown] = useState(false);
@@ -1774,7 +1776,7 @@ export default function Alphaview() {
         }
       `}</style>
 
-      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
+      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} onShowSettings={() => setShowSettings(true)} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
 
       {workerDown && (
         <div className="worker-banner">
@@ -1783,6 +1785,7 @@ export default function Alphaview() {
       )}
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onFmpKeyChange={() => { if (symbol) handleSearch(symbol); }} />}
 
       <div className="main">
         <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>

@@ -155,7 +155,7 @@ export async function fetchRevenueGeoSegmentation(symbol) {
 
 // ── Fetch toutes les données financières d'un coup ──
 export async function fetchAllFinancials(symbol) {
-  const limit = 20;
+  const limit = 40;
   const [income, balance, cashflow, ratios, keyMetrics, productSegments, geoSegments] = await Promise.all([
     fetchIncomeStatement(symbol, limit).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
     fetchBalanceSheet(symbol, limit).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),

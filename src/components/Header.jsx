@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout, searchHistory = [] }, ref) {
+export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, onShowSettings, user, onShowAuth, onLogout, searchHistory = [] }, ref) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
@@ -70,6 +70,9 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
       </button>
       <button onClick={() => { onShowWatchlist(); setMenuOpen(false); }} className="watchlist-header-btn" title="Ma Watchlist">
         ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
+      </button>
+      <button onClick={() => { onShowSettings?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Paramètres" style={{ fontSize: 15 }}>
+        &#9881;
       </button>
       <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
         {dark ? "☀️" : "🌙"}
