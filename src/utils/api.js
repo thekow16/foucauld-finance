@@ -1,4 +1,4 @@
-import { hasFmpApiKey, fetchProfile, fetchAllFinancials } from "./fmpApi";
+import { hasFmpApiKey, fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
 
 // ──────────────────────────────────────────────
 // Cloudflare Worker URL
@@ -336,6 +336,47 @@ async function fetchYahooTimeseries(sym) {
   }
 }
 
+// ── Build quarterly data from FMP (fallback when Yahoo timeseries batch3 fails) ──
+function buildFmpQuarterlyData({ income, balance, cashflow }) {
+  const dateMap = {};
+  const addToDate = (arr, mapper) => {
+    for (const d of (arr || [])) {
+      const date = d.date;
+      if (!date) continue;
+      if (!dateMap[date]) dateMap[date] = {};
+      Object.assign(dateMap[date], mapper(d));
+    }
+  };
+  addToDate(income, d => ({
+    totalRevenue: yw(d.revenue),
+    operatingIncome: yw(d.operatingIncome),
+    netIncome: yw(d.netIncome),
+    dilutedEPS: yw(d.epsdiluted),
+    dilutedAverageShares: yw(d.weightedAverageShsOutDil),
+  }));
+  addToDate(balance, d => ({
+    totalAssets: yw(d.totalAssets),
+    totalCurrentAssets: yw(d.totalCurrentAssets),
+    cash: yw(d.cashAndCashEquivalents),
+    totalDebt: yw(d.totalDebt),
+    totalCurrentLiabilities: yw(d.totalCurrentLiabilities),
+    totalStockholderEquity: yw(d.totalStockholdersEquity),
+  }));
+  addToDate(cashflow, d => ({
+    totalCashFromOperatingActivities: yw(d.operatingCashFlow),
+    capitalExpenditures: yw(d.capitalExpenditure),
+    freeCashFlow: yw(d.freeCashFlow),
+    stockBasedCompensation: yw(d.stockBasedCompensation),
+    dividendsPaid: yw(d.dividendsPaid),
+  }));
+  return Object.entries(dateMap)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, d]) => ({
+      endDate: { raw: Math.floor(new Date(date).getTime() / 1000), fmt: date },
+      ...d,
+    }));
+}
+
 // ── Convertisseurs FMP → Yahoo format ──
 function yw(v) { return v != null ? { raw: v } : undefined; }
 
@@ -603,13 +644,27 @@ export async function fetchStockData(sym) {
             console.log(`[FF] quarterly data stored: ${ts.quarterlyData.length} quarters`);
           }
 
-          // Also fetch FMP for 20-year charts if key available
+          // Also fetch FMP for 20-year charts + quarterly fallback if key available
           if (hasFmpApiKey()) {
             try {
-              const fins = await fetchAllFinancials(sym).catch(() => null);
+              const [fins, qFins] = await Promise.all([
+                fetchAllFinancials(sym).catch(() => null),
+                // FMP quarterly fallback if Yahoo quarterly data is missing
+                (!yahooResult._quarterlyData || yahooResult._quarterlyData.length === 0)
+                  ? fetchAllQuarterlyFinancials(sym).catch(() => null)
+                  : Promise.resolve(null),
+              ]);
               if (fins?.income?.length > 0 || fins?.balance?.length > 0) {
                 yahooResult._fmpData = fins;
                 console.log("[FF] FMP charts data OK —", fins.income?.length || 0, "ans");
+              }
+              // Build quarterly data from FMP if Yahoo didn't provide it
+              if (qFins && !yahooResult._quarterlyData?.length) {
+                const fmpQuarterly = buildFmpQuarterlyData(qFins);
+                if (fmpQuarterly.length > 0) {
+                  yahooResult._quarterlyData = fmpQuarterly;
+                  console.log(`[FF] FMP quarterly fallback: ${fmpQuarterly.length} quarters`);
+                }
               }
             } catch (e) {
               console.warn("[FF] FMP charts fetch échoué:", e.message);
@@ -798,6 +853,23 @@ export async function fetchStockData(sym) {
     },
     _fromChart: true,
   };
+
+  // Fetch FMP quarterly data for chart fallback path
+  if (hasFmpApiKey()) {
+    try {
+      const qFins = await fetchAllQuarterlyFinancials(sym).catch(() => null);
+      if (qFins) {
+        const fmpQuarterly = buildFmpQuarterlyData(qFins);
+        if (fmpQuarterly.length > 0) {
+          chartResult._quarterlyData = fmpQuarterly;
+          console.log(`[FF] FMP quarterly data (chart fallback): ${fmpQuarterly.length} quarters`);
+        }
+      }
+    } catch (e) {
+      console.warn("[FF] FMP quarterly fetch échoué:", e.message);
+    }
+  }
+
   setCachedData(sym, chartResult);
   return { data: chartResult, fetchedAt: Date.now() };
 }

@@ -38,16 +38,32 @@ function growthLabel(cur, prev) {
   return g >= 0 ? `+${g.toFixed(0)}%` : `${g.toFixed(0)}%`;
 }
 
-/* ── CAGR helper ── */
-export function cagr(rows, key) {
+/* ── CAGR helper (supports both annual "2024" and quarterly "2024-03" labels) ── */
+export function cagr(rows, key, isQuarterly = false) {
   const valid = rows.filter((d) => d[key] != null && d[key] > 0);
   if (valid.length < 2) return null;
   const first = valid[0][key];
   const last = valid[valid.length - 1][key];
-  const years = Number(valid[valid.length - 1].year) - Number(valid[0].year);
+  let years;
+  if (isQuarterly) {
+    // Count quarters and convert to years
+    const quarters = valid.length - 1;
+    years = quarters / 4;
+  } else {
+    years = Number(valid[valid.length - 1].year) - Number(valid[0].year);
+  }
   if (years <= 0 || first <= 0) return null;
   const rate = Math.pow(last / first, 1 / years) - 1;
-  return `CAGR ${years} ans : ${rate >= 0 ? "+" : ""}${(rate * 100).toFixed(1)}%`;
+  const label = isQuarterly ? `CAGR ~${years.toFixed(1)} ans` : `CAGR ${years} ans`;
+  return `${label} : ${rate >= 0 ? "+" : ""}${(rate * 100).toFixed(1)}%`;
+}
+
+/* ── Quarter label helper: "2024-03" → "Q1 24" ── */
+function quarterLabel(val) {
+  if (!val || typeof val !== "string" || !val.includes("-")) return val;
+  const [y, m] = val.split("-");
+  const q = Math.ceil(Number(m) / 3);
+  return `Q${q} ${y.slice(-2)}`;
 }
 
 /* ── Check if a row has at least one financial value ── */
@@ -249,6 +265,10 @@ function RoundedBar(props) {
 /* ── Custom Tooltip ── */
 function BaggrTooltip({ active, payload, label, fmt }) {
   if (!active || !payload?.length) return null;
+  // Format quarterly labels nicely: "2024-03" → "Q1 2024"
+  const displayLabel = typeof label === "string" && label.includes("-")
+    ? quarterLabel(label)
+    : label;
   return (
     <div
       style={{
@@ -260,7 +280,7 @@ function BaggrTooltip({ active, payload, label, fmt }) {
         fontSize: 12,
       }}
     >
-      <div style={{ fontWeight: 800, marginBottom: 6, color: "var(--text)" }}>{label}</div>
+      <div style={{ fontWeight: 800, marginBottom: 6, color: "var(--text)" }}>{displayLabel}</div>
       {payload.map((p) => (
         <div key={p.name || p.dataKey} style={{ color: p.color, fontWeight: 600, marginBottom: 2 }}>
           {p.name || p.dataKey}: {fmt ? fmt(p.value) : compact(p.value)}
@@ -391,11 +411,13 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   const many = rows.length > 12;
   const axisStyle = { fontSize: many ? 9 : 10, fill: "var(--muted)" };
   const gridProps = { strokeDasharray: "3 3", stroke: "var(--border)", strokeOpacity: 0.6 };
-  // Show every Nth year on X axis when there are many data points
+  // Show every Nth label on X axis when there are many data points
   const xTickInterval = many ? Math.max(1, Math.floor(rows.length / 10)) - 1 : 0;
-  const yearTick = many
-    ? (val) => `'${String(val).slice(-2)}`
-    : undefined;
+  const yearTick = quarterly
+    ? quarterLabel
+    : many
+      ? (val) => `'${String(val).slice(-2)}`
+      : undefined;
 
   const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
 
@@ -456,7 +478,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </div>
       )}
       {/* 1. Chiffre d'affaires */}
-      <ChartCard title="Chiffre d'affaires" subtitle="Évolution annuelle du CA" accentColor="#0891b2" cagrLabel={cagr(rows, "revenue")}>
+      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabel={cagr(rows, "revenue", quarterly)}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
@@ -476,7 +498,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 2. Free Cash Flow & SBC */}
-      <ChartCard title="Free Cash Flow & SBC" subtitle="FCF vs rémunération en actions" accentColor="#0d9488" cagrLabel={cagr(rows, "fcf")}>
+      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabel={cagr(rows, "fcf", quarterly)}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
@@ -499,7 +521,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 3. FCF par action */}
-      <ChartCard title="Free Cash Flow par action" subtitle="FCF / actions diluées" accentColor="#2563eb" cagrLabel={cagr(rows, "fcfPerShare")}>
+      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabel={cagr(rows, "fcfPerShare", quarterly)}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -527,7 +549,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 4. ROCE */}
-      <ChartCard title="ROCE" subtitle="Return on Capital Employed" accentColor="#ea580c">
+      <ChartCard title="ROCE" subtitle={quarterly ? "ROCE trimestriel" : "Return on Capital Employed"} accentColor="#ea580c">
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -555,7 +577,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 5. Marge de FCF */}
-      <ChartCard title="Marge de Free Cash Flow" subtitle="FCF / Chiffre d'affaires" accentColor="#16a34a">
+      <ChartCard title="Marge de Free Cash Flow" subtitle={quarterly ? "FCF / CA (trimestriel)" : "FCF / Chiffre d'affaires"} accentColor="#16a34a">
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -582,7 +604,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 6. Actions en circulation */}
-      <ChartCard title="Actions en circulation" subtitle="Nombre d'actions diluées" accentColor="#6366f1">
+      <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1">
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
@@ -602,7 +624,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 7. Cash & Dette */}
-      <ChartCard title="Cash & Dette" subtitle="Trésorerie vs dette totale" accentColor="#14b8a6">
+      <ChartCard title="Cash & Dette" subtitle={quarterly ? "Trésorerie vs dette (trimestriel)" : "Trésorerie vs dette totale"} accentColor="#14b8a6">
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap="20%">
             <CartesianGrid {...gridProps} />
@@ -622,7 +644,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
 
       {/* 8. Dividendes par action — uniquement si l'entreprise verse des dividendes */}
       {rows.some((d) => d.dividendPerShare != null && d.dividendPerShare > 0) && (
-        <ChartCard title="Dividendes par action" subtitle="Dividendes / actions diluées" accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare")}>
+        <ChartCard title="Dividendes par action" subtitle={quarterly ? "Dividendes / action (trimestriel)" : "Dividendes / actions diluées"} accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare", quarterly)}>
           <ResponsiveContainer>
             <AreaChart data={rows}>
               <defs>
