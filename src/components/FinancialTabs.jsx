@@ -118,7 +118,8 @@ function NoHistoricalData({ children, onKeySet }) {
         <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>📋 Données historiques indisponibles</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, lineHeight: 1.6 }}>
           Les données annuelles détaillées ne sont pas disponibles via Yahoo Finance pour cette action.<br />
-          Active une clé API <strong>Financial Modeling Prep</strong> (gratuite) pour accéder à 20 ans de données.
+          Active une clé API <strong>Financial Modeling Prep</strong> (gratuite) pour accéder à 20+ ans de données.<br />
+          Tu peux aussi la configurer via l'icône &#9881; Paramètres dans le header.
         </div>
         <FmpKeyPrompt onKeySet={onKeySet} />
       </div>
