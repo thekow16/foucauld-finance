@@ -473,8 +473,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
           }}
         >
           <span style={{ fontSize: 16 }}>&#9432;</span>
-          Historique limité à {rows.length} ans (source Yahoo Finance).
-          Pour 20+ ans de données, ajoutez une clé API FMP gratuite dans les paramètres.
+          Historique limité à {rows.length} ans pour cette action.
+          Certaines actions ont jusqu'à 20+ ans de données disponibles.
         </div>
       )}
       {/* 1. Chiffre d'affaires */}

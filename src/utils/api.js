@@ -162,21 +162,25 @@ async function fetchYahooTimeseries(sym) {
 
   const baseUrl = `${YF}/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}?period1=${fortyYearsAgo}&period2=${now}&merge=false&padTimeSeries=false&type=`;
 
+  // Retry helper for timeseries batches (network can be flaky)
+  const fetchWithRetry = async (url, label, retries = 2) => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        return await proxyFetch(url);
+      } catch (e) {
+        console.warn(`[FF] timeseries ${label} attempt ${i + 1}/${retries + 1} failed:`, e.message);
+        if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+    return null;
+  };
+
   try {
-    // Fetch all batches in parallel for speed
+    // Fetch all batches in parallel with retry for reliability
     const [json1, json2, json3] = await Promise.all([
-      proxyFetch(baseUrl + batch1Fields.join(",")).catch(e => {
-        console.warn("[FF] timeseries batch1 (IS+CF) failed:", e.message);
-        return null;
-      }),
-      proxyFetch(baseUrl + batch2Fields.join(",")).catch(e => {
-        console.warn("[FF] timeseries batch2 (BS) failed:", e.message);
-        return null;
-      }),
-      proxyFetch(baseUrl + batch3Fields.join(",")).catch(e => {
-        console.warn("[FF] timeseries batch3 (quarterly) failed:", e.message);
-        return null;
-      }),
+      fetchWithRetry(baseUrl + batch1Fields.join(","), "batch1 (IS+CF)"),
+      fetchWithRetry(baseUrl + batch2Fields.join(","), "batch2 (BS)"),
+      fetchWithRetry(baseUrl + batch3Fields.join(","), "batch3 (quarterly)"),
     ]);
 
     // Merge results from all batches (annual)
