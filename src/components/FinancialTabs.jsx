@@ -4,7 +4,7 @@ import {
   CartesianGrid, Tooltip, Legend, AreaChart, Area
 } from "recharts";
 import { fmt } from "../utils/format";
-import { hasFmpApiKey, fetchAllFinancials, getFmpApiKey, setFmpApiKey } from "../utils/fmpApi";
+import { hasFmpApiKey, fetchAllFinancials } from "../utils/fmpApi";
 
 // ── Format helper for FMP data ──
 function fmpFmt(v) {
@@ -110,18 +110,16 @@ function MetricGrid({ items }) {
 }
 
 // ── "No historical data" fallback using financialData ──
-function NoHistoricalData({ children, onKeySet }) {
+function NoHistoricalData({ children }) {
   return (
     <div>
       {children}
       <div style={{ marginTop: 20, padding: "20px", background: "var(--highlight-row)", borderRadius: 14, textAlign: "center" }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>📋 Données historiques indisponibles</div>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, lineHeight: 1.6 }}>
-          Les données annuelles détaillées ne sont pas disponibles via Yahoo Finance pour cette action.<br />
-          Active une clé API <strong>Financial Modeling Prep</strong> (gratuite) pour accéder à 20+ ans de données.<br />
-          Tu peux aussi la configurer via l'icône &#9881; Paramètres dans le header.
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10, lineHeight: 1.6 }}>
+          Les données historiques ne sont pas disponibles pour cette action.<br />
+          Essayez de recharger la page ou de rechercher un autre symbole.
         </div>
-        <FmpKeyPrompt onKeySet={onKeySet} />
       </div>
     </div>
   );
@@ -192,62 +190,7 @@ function YahooTable({ headers, rows, data }) {
   );
 }
 
-// ── API Key Setup Prompt ──
-function FmpKeyPrompt({ onKeySet }) {
-  const [key, setKey] = useState("");
-  const [testing, setTesting] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!key.trim()) return;
-    setTesting(true);
-    setError("");
-    try {
-      const res = await fetch(`https://financialmodelingprep.com/api/v3/profile/AAPL?apikey=${key.trim()}`, {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!res.ok) throw new Error("Clé invalide");
-      const data = await res.json();
-      if (!data || data.length === 0) throw new Error("Clé invalide");
-      setFmpApiKey(key.trim());
-      onKeySet();
-    } catch {
-      setError("Clé API invalide ou erreur réseau. Vérifie ta clé.");
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  return (
-    <div style={{ textAlign: "center", padding: "32px 20px" }}>
-      <div style={{ fontSize: 42, marginBottom: 14 }}>🔑</div>
-      <h3 style={{ fontWeight: 800, color: "var(--text)", marginBottom: 8, fontSize: 17 }}>
-        Données financières enrichies
-      </h3>
-      <p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: "0 auto 18px" }}>
-        Pour accéder à <strong>30+ métriques supplémentaires</strong> (marges détaillées, ratios, croissance...),
-        entre ta clé API <strong>Financial Modeling Prep</strong> (gratuite, 250 req/jour).
-      </p>
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, maxWidth: 450, margin: "0 auto" }}>
-        <input
-          className="compare-input"
-          value={key}
-          onChange={e => setKey(e.target.value)}
-          placeholder="Ta clé API FMP..."
-          style={{ flex: 1 }}
-        />
-        <button type="submit" className="compare-btn" disabled={testing || !key.trim()}>
-          {testing ? "Test..." : "Activer"}
-        </button>
-      </form>
-      {error && <p style={{ color: "#ef4444", fontSize: 12, fontWeight: 600, marginTop: 8 }}>{error}</p>}
-      <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 12 }}>
-        📋 Inscription gratuite sur <a href="https://financialmodelingprep.com/developer/docs/" target="_blank" rel="noopener noreferrer" style={{ color: "#4f46e5", fontWeight: 700 }}>financialmodelingprep.com</a>
-      </p>
-    </div>
-  );
-}
 
 // ── FMP-powered tabs with margin indicators ──
 function MarginBar({ label, value, color }) {
@@ -569,7 +512,7 @@ export function BilanTab({ data, symbol }) {
     ];
 
     return (
-      <NoHistoricalData onKeySet={() => setHasKey(true)}>
+      <NoHistoricalData>
         {fmpError && (
           <div style={{ margin: "0 0 16px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
             <strong>FMP API :</strong> {fmpError}
@@ -1005,7 +948,7 @@ export function ResultatsTab({ data, symbol }) {
     ];
 
     return (
-      <NoHistoricalData onKeySet={() => setHasKey(true)}>
+      <NoHistoricalData>
         {fmpError && (
           <div style={{ margin: "0 0 16px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
             <strong>FMP API :</strong> {fmpError}
@@ -1395,7 +1338,7 @@ export function TresorerieTab({ data, symbol }) {
     ];
 
     return (
-      <NoHistoricalData onKeySet={() => setHasKey(true)}>
+      <NoHistoricalData>
         {fmpError && (
           <div style={{ margin: "0 0 16px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
             <strong>FMP API :</strong> {fmpError}

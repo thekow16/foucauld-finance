@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getFmpApiKey, setFmpApiKey, hasFmpApiKey, getFmpUsage } from "../utils/fmpApi";
 
 export default function SettingsModal({ onClose, onFmpKeyChange }) {
   const [fmpKey, setFmpKey] = useState(getFmpApiKey());
   const [testing, setTesting] = useState(false);
-  const [status, setStatus] = useState(hasFmpApiKey() ? "saved" : "empty"); // empty | saved | error
+  const [status, setStatus] = useState(hasFmpApiKey() ? "saved" : "empty");
   const [errorMsg, setErrorMsg] = useState("");
   const usage = getFmpUsage();
 
-  // Mask API key for display
   const maskedKey = fmpKey && fmpKey.length > 8
     ? fmpKey.slice(0, 4) + "••••••••" + fmpKey.slice(-4)
     : fmpKey;
@@ -17,7 +16,6 @@ export default function SettingsModal({ onClose, onFmpKeyChange }) {
     e?.preventDefault();
     const trimmed = fmpKey.trim();
     if (!trimmed) {
-      // Clear key
       setFmpApiKey("");
       setStatus("empty");
       onFmpKeyChange?.();
@@ -54,7 +52,7 @@ export default function SettingsModal({ onClose, onFmpKeyChange }) {
   return (
     <div className="auth-overlay" onClick={onClose}>
       <div className="auth-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-        <button className="auth-close" onClick={onClose}>✕</button>
+        <button className="auth-close" onClick={onClose}>&#10005;</button>
 
         <div style={{ padding: "8px 0 0" }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>
@@ -64,115 +62,119 @@ export default function SettingsModal({ onClose, onFmpKeyChange }) {
             Configuration de l'application
           </div>
 
-          {/* FMP API Key Section */}
+          {/* Sources de données */}
           <div style={{
             background: "var(--bg)", borderRadius: 12, padding: 16,
             border: "1px solid var(--border)", marginBottom: 16,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 20 }}>🔑</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
-                  Financial Modeling Prep (FMP)
-                </div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                  Données financières enrichies — 20+ ans d'historique
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 10 }}>
+              Sources de données
+            </div>
+
+            {/* Yahoo Finance - always active */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, marginBottom: 14,
+              background: "var(--card)", borderRadius: 10, padding: "10px 14px",
+              border: "1px solid var(--border)",
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>Yahoo Finance</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+                  Cours, prix, historique 20+ ans, métriques de base
                 </div>
               </div>
-              {/* Status badge */}
               <div style={{
-                marginLeft: "auto",
-                padding: "3px 10px",
-                borderRadius: 20,
-                fontSize: 11,
-                fontWeight: 700,
-                background: status === "saved" ? "rgba(16,185,129,0.12)" : status === "error" ? "rgba(239,68,68,0.12)" : "rgba(107,114,128,0.12)",
-                color: status === "saved" ? "#10b981" : status === "error" ? "#ef4444" : "var(--muted)",
+                padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                background: "rgba(16,185,129,0.12)", color: "#10b981",
               }}>
-                {status === "saved" ? "Active" : status === "error" ? "Erreur" : "Inactive"}
+                Actif
               </div>
             </div>
 
-            {status === "saved" ? (
-              <div>
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: "var(--card)", borderRadius: 8, padding: "8px 12px",
-                  border: "1px solid var(--border)", marginBottom: 10,
-                }}>
-                  <span style={{ fontFamily: "monospace", fontSize: 13, color: "var(--text)", flex: 1 }}>
-                    {maskedKey}
-                  </span>
-                  <button
-                    onClick={handleRemoveKey}
-                    style={{
-                      background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none",
-                      borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700,
-                      cursor: "pointer", fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    Supprimer
-                  </button>
+            {/* FMP - optional */}
+            <div style={{
+              background: "var(--card)", borderRadius: 10, padding: "10px 14px",
+              border: "1px solid var(--border)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: status === "saved" ? 8 : 0 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>
+                    Financial Modeling Prep
+                    <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500, marginLeft: 6 }}>optionnel</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+                    Métriques avancées, segments, ratios supplémentaires
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                  Utilisation aujourd'hui : <strong>{usage}</strong> / 250 requêtes
+                <div style={{
+                  padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                  background: status === "saved" ? "rgba(16,185,129,0.12)" : "rgba(107,114,128,0.12)",
+                  color: status === "saved" ? "#10b981" : "var(--muted)",
+                }}>
+                  {status === "saved" ? "Actif" : "Inactif"}
                 </div>
               </div>
-            ) : (
-              <form onSubmit={handleSaveKey}>
-                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                  <input
-                    className="compare-input"
-                    value={fmpKey}
-                    onChange={(e) => { setFmpKey(e.target.value); setStatus("empty"); setErrorMsg(""); }}
-                    placeholder="Colle ta clé API FMP ici..."
-                    style={{ flex: 1, fontSize: 13 }}
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className="compare-btn"
-                    disabled={testing || !fmpKey.trim()}
-                  >
-                    {testing ? "Test..." : "Activer"}
-                  </button>
-                </div>
-                {errorMsg && (
-                  <div style={{ color: "#ef4444", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                    {errorMsg}
+
+              {status === "saved" ? (
+                <div>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: "var(--bg)", borderRadius: 8, padding: "6px 10px",
+                    border: "1px solid var(--border)", marginBottom: 6,
+                  }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--muted)", flex: 1 }}>
+                      {maskedKey}
+                    </span>
+                    <button
+                      onClick={handleRemoveKey}
+                      style={{
+                        background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none",
+                        borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 700,
+                        cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                      }}
+                    >
+                      Supprimer
+                    </button>
                   </div>
-                )}
-                <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6 }}>
-                  Inscription gratuite sur{" "}
-                  <a
-                    href="https://financialmodelingprep.com/developer/docs/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "var(--accent)", fontWeight: 700 }}
-                  >
-                    financialmodelingprep.com
-                  </a>
-                  {" "}— 250 requêtes/jour, 20+ ans de données financières.
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                    Utilisation : <strong>{usage}</strong> / 250 req/jour
+                  </div>
                 </div>
-              </form>
-            )}
+              ) : (
+                <form onSubmit={handleSaveKey} style={{ marginTop: 8 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      className="compare-input"
+                      value={fmpKey}
+                      onChange={(e) => { setFmpKey(e.target.value); setStatus("empty"); setErrorMsg(""); }}
+                      placeholder="Clé API FMP (optionnel)..."
+                      style={{ flex: 1, fontSize: 12, padding: "7px 12px" }}
+                    />
+                    <button
+                      type="submit"
+                      className="compare-btn"
+                      disabled={testing || !fmpKey.trim()}
+                      style={{ fontSize: 12, padding: "7px 14px" }}
+                    >
+                      {testing ? "..." : "OK"}
+                    </button>
+                  </div>
+                  {errorMsg && (
+                    <div style={{ color: "#ef4444", fontSize: 11, fontWeight: 600, marginTop: 4 }}>
+                      {errorMsg}
+                    </div>
+                  )}
+                </form>
+              )}
+            </div>
           </div>
 
-          {/* Info section */}
           <div style={{
-            background: "var(--bg)", borderRadius: 12, padding: 16,
-            border: "1px solid var(--border)", fontSize: 12, color: "var(--muted)", lineHeight: 1.7,
+            fontSize: 11, color: "var(--muted)", lineHeight: 1.6, textAlign: "center",
+            padding: "0 8px",
           }}>
-            <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Sources de données</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div><strong>Yahoo Finance</strong> — Cours, prix, métriques de base (toujours actif)</div>
-              <div><strong>FMP</strong> — Historique financier 20+ ans, métriques avancées, segments
-                {status === "saved"
-                  ? <span style={{ color: "#10b981", fontWeight: 700 }}> (actif)</span>
-                  : <span style={{ color: "var(--muted)", fontWeight: 700 }}> (clé requise)</span>
-                }
-              </div>
-            </div>
+            Les données historiques (20+ ans) sont fournies par Yahoo Finance sans aucune clé API.
+            <br />FMP est optionnel et ajoute des métriques supplémentaires.
           </div>
         </div>
       </div>
