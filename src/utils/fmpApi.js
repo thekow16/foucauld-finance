@@ -113,6 +113,26 @@ export async function fetchEarningsHistory(symbol) {
   return fmpFetch(`/historical/earning_calendar/${symbol}?limit=20`);
 }
 
+// ── Données trimestrielles (Income, Balance, Cashflow) ──
+export async function fetchQuarterlyIncome(symbol, limit = 40) {
+  return fmpFetch(`/income-statement/${symbol}?period=quarter&limit=${limit}`);
+}
+export async function fetchQuarterlyBalance(symbol, limit = 40) {
+  return fmpFetch(`/balance-sheet-statement/${symbol}?period=quarter&limit=${limit}`);
+}
+export async function fetchQuarterlyCashflow(symbol, limit = 40) {
+  return fmpFetch(`/cash-flow-statement/${symbol}?period=quarter&limit=${limit}`);
+}
+
+export async function fetchAllQuarterlyFinancials(symbol) {
+  const [income, balance, cashflow] = await Promise.all([
+    fetchQuarterlyIncome(symbol).catch(() => []),
+    fetchQuarterlyBalance(symbol).catch(() => []),
+    fetchQuarterlyCashflow(symbol).catch(() => []),
+  ]);
+  return { income, balance, cashflow };
+}
+
 // ── Communiqués de presse ──
 export async function fetchPressReleases(symbol, limit = 40) {
   return fmpFetch(`/press-releases/${symbol}?page=0&limit=${limit}`);
