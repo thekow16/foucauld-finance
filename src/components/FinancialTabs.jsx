@@ -231,9 +231,17 @@ export function BilanTab({ data, symbol }) {
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
   const [fmpError, setFmpError] = useState(null);
 
+  // Sync _fmpData from parent when it arrives (extended with Yahoo history)
+  useEffect(() => {
+    if (data?._fmpData && data._fmpData.balance?.length > (fmpData?.balance?.length || 0)) {
+      setFmpData(data._fmpData);
+    }
+  }, [data?._fmpData]);
+
   useEffect(() => {
     // Skip fetch if we already have FMP data from fetchStockData
     if (fmpData?.balance?.length > 0) return;
+    if (data?._fmpData?.balance?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -652,8 +660,16 @@ export function ResultatsTab({ data, symbol }) {
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
   const [fmpError, setFmpError] = useState(null);
 
+  // Sync _fmpData from parent when it arrives (extended with Yahoo history)
+  useEffect(() => {
+    if (data?._fmpData && data._fmpData.income?.length > (fmpData?.income?.length || 0)) {
+      setFmpData(data._fmpData);
+    }
+  }, [data?._fmpData]);
+
   useEffect(() => {
     if (fmpData?.income?.length > 0) return;
+    if (data?._fmpData?.income?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -1082,8 +1098,16 @@ export function TresorerieTab({ data, symbol }) {
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
   const [fmpError, setFmpError] = useState(null);
 
+  // Sync _fmpData from parent when it arrives (extended with Yahoo history)
+  useEffect(() => {
+    if (data?._fmpData && data._fmpData.cashflow?.length > (fmpData?.cashflow?.length || 0)) {
+      setFmpData(data._fmpData);
+    }
+  }, [data?._fmpData]);
+
   useEffect(() => {
     if (fmpData?.cashflow?.length > 0) return;
+    if (data?._fmpData?.cashflow?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);

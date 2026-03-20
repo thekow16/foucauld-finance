@@ -614,7 +614,7 @@ function yahooToFmpData(yahooResult) {
 
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 2; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 3; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
