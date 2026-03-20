@@ -462,7 +462,7 @@ export function BilanTab({ data, symbol }) {
 
         <FmpTable data={bsEnriched} rows={rows} exportFilename={`${symbol}_bilan`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
-          📋 Source : Financial Modeling Prep · {bs.length} années de données
+          📋 Source : {bs.some(d => d._source === "yahoo") ? "FMP + Yahoo Finance" : "Financial Modeling Prep"} · {bs.length} années de données
         </div>
       </div>
     );
@@ -882,7 +882,7 @@ export function ResultatsTab({ data, symbol }) {
 
         <FmpTable data={incEnriched} rows={rows} exportFilename={`${symbol}_resultats`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
-          📋 Source : Financial Modeling Prep · {inc.length} années de données
+          📋 Source : {inc.some(d => d._source === "yahoo") ? "FMP + Yahoo Finance" : "Financial Modeling Prep"} · {inc.length} années de données
         </div>
       </div>
     );
@@ -1286,7 +1286,7 @@ export function TresorerieTab({ data, symbol }) {
 
         <FmpTable data={cfEnriched} rows={rows} exportFilename={`${symbol}_tresorerie`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
-          📋 Source : Financial Modeling Prep · {cf.length} années de données
+          📋 Source : {cf.some(d => d._source === "yahoo") ? "FMP + Yahoo Finance" : "Financial Modeling Prep"} · {cf.length} années de données
         </div>
       </div>
     );

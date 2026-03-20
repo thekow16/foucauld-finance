@@ -468,6 +468,150 @@ function fmpToYahooCashflow(arr) {
   }));
 }
 
+// ── Extend FMP data with older Yahoo Timeseries years ──
+// Yahoo Timeseries often provides 10-20 years of history for free,
+// while FMP free plan only returns 5 years. This function converts
+// Yahoo's older years to FMP format and appends them.
+function extendFmpWithYahoo(fmpData, yahooResult) {
+  if (!fmpData || !yahooResult) return fmpData;
+
+  // Collect all years already present in FMP data
+  const fmpYears = new Set();
+  for (const arr of [fmpData.income, fmpData.balance, fmpData.cashflow]) {
+    for (const d of (arr || [])) {
+      const year = d.calendarYear || d.date?.substring(0, 4);
+      if (year) fmpYears.add(year);
+    }
+  }
+
+  const r = (obj) => obj?.raw; // extract raw value from Yahoo {raw} format
+
+  // Convert Yahoo balance sheet entries not already in FMP
+  const yahooBs = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
+  const extraBalance = yahooBs
+    .filter(s => {
+      const year = s.endDate?.fmt?.substring(0, 4);
+      return year && !fmpYears.has(year) && s.totalAssets?.raw != null;
+    })
+    .map(s => ({
+      date: s.endDate?.fmt,
+      calendarYear: s.endDate?.fmt?.substring(0, 4),
+      totalAssets: r(s.totalAssets),
+      totalCurrentAssets: r(s.totalCurrentAssets),
+      cashAndCashEquivalents: r(s.cash),
+      shortTermInvestments: r(s.shortTermInvestments),
+      cashAndShortTermInvestments: ((r(s.cash) || 0) + (r(s.shortTermInvestments) || 0)) || null,
+      netReceivables: r(s.netReceivables),
+      inventory: r(s.inventory),
+      otherCurrentAssets: r(s.otherCurrentAssets),
+      propertyPlantEquipmentNet: r(s.propertyPlantEquipment),
+      goodwill: r(s.goodWill),
+      totalNonCurrentAssets: r(s.totalNonCurrentAssets),
+      totalLiabilities: r(s.totalLiab),
+      totalCurrentLiabilities: r(s.totalCurrentLiabilities),
+      shortTermDebt: r(s.shortLongTermDebt),
+      accountPayables: r(s.accountsPayable),
+      totalNonCurrentLiabilities: r(s.nonCurrentLiabilities),
+      longTermDebt: r(s.longTermDebt),
+      totalDebt: r(s.totalDebt),
+      totalStockholdersEquity: r(s.totalStockholderEquity),
+      retainedEarnings: r(s.retainedEarnings),
+      commonStock: r(s.commonStock),
+      minorityInterest: r(s.minorityInterest),
+      _source: "yahoo",
+    }));
+
+  // Convert Yahoo income statement entries
+  const yahooIs = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
+  const extraIncome = yahooIs
+    .filter(s => {
+      const year = s.endDate?.fmt?.substring(0, 4);
+      return year && !fmpYears.has(year) && s.totalRevenue?.raw != null;
+    })
+    .map(s => {
+      const rev = r(s.totalRevenue);
+      const gp = r(s.grossProfit);
+      const oi = r(s.operatingIncome);
+      const ni = r(s.netIncome);
+      const ebitda = r(s.ebitda);
+      return {
+        date: s.endDate?.fmt,
+        calendarYear: s.endDate?.fmt?.substring(0, 4),
+        revenue: rev,
+        costOfRevenue: r(s.costOfRevenue),
+        grossProfit: gp,
+        researchAndDevelopmentExpenses: r(s.researchDevelopment),
+        sellingGeneralAndAdministrativeExpenses: r(s.sellingGeneralAdministrative),
+        operatingExpenses: r(s.totalOperatingExpenses),
+        operatingIncome: oi,
+        interestExpense: r(s.interestExpense),
+        incomeBeforeTax: r(s.incomeBeforeTax),
+        incomeTaxExpense: r(s.incomeTaxExpense),
+        netIncome: ni,
+        ebitda: ebitda,
+        epsdiluted: r(s.dilutedEPS),
+        eps: r(s.basicEPS),
+        weightedAverageShsOutDil: r(s.dilutedAverageShares),
+        // Compute margin ratios
+        grossProfitRatio: rev && gp ? gp / rev : null,
+        operatingIncomeRatio: rev && oi ? oi / rev : null,
+        netIncomeRatio: rev && ni ? ni / rev : null,
+        ebitdaratio: rev && ebitda ? ebitda / rev : null,
+        _source: "yahoo",
+      };
+    });
+
+  // Convert Yahoo cashflow entries
+  const yahooCf = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
+  const extraCashflow = yahooCf
+    .filter(s => {
+      const year = s.endDate?.fmt?.substring(0, 4);
+      return year && !fmpYears.has(year) && (s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null);
+    })
+    .map(s => ({
+      date: s.endDate?.fmt,
+      calendarYear: s.endDate?.fmt?.substring(0, 4),
+      operatingCashFlow: r(s.totalCashFromOperatingActivities),
+      capitalExpenditure: r(s.capitalExpenditures),
+      freeCashFlow: r(s.freeCashFlow),
+      netCashUsedForInvestingActivites: r(s.totalCashflowsFromInvestingActivities),
+      netCashUsedProvidedByFinancingActivities: r(s.totalCashFromFinancingActivities),
+      commonStockRepurchased: r(s.repurchaseOfStock),
+      dividendsPaid: r(s.dividendsPaid),
+      netChangeInCash: r(s.changeInCash),
+      stockBasedCompensation: r(s.stockBasedCompensation),
+      depreciationAndAmortization: r(s.depreciation),
+      _source: "yahoo",
+    }));
+
+  // Merge and sort (newest first)
+  const sortDesc = (a, b) => (b.date || "").localeCompare(a.date || "");
+  if (extraBalance.length > 0) {
+    fmpData.balance = [...(fmpData.balance || []), ...extraBalance].sort(sortDesc);
+  }
+  if (extraIncome.length > 0) {
+    fmpData.income = [...(fmpData.income || []), ...extraIncome].sort(sortDesc);
+  }
+  if (extraCashflow.length > 0) {
+    fmpData.cashflow = [...(fmpData.cashflow || []), ...extraCashflow].sort(sortDesc);
+  }
+
+  const totalYears = Math.max(fmpData.income?.length || 0, fmpData.balance?.length || 0, fmpData.cashflow?.length || 0);
+  const extraYears = Math.max(extraBalance.length, extraIncome.length, extraCashflow.length);
+  if (extraYears > 0) {
+    console.log(`[FF] FMP extended with ${extraYears} Yahoo years → ${totalYears} total years`);
+  }
+
+  return fmpData;
+}
+
+// Convert Yahoo data entirely to FMP format (when FMP key missing or FMP fails)
+function yahooToFmpData(yahooResult) {
+  if (!yahooResult) return null;
+  const fmpData = { income: [], balance: [], cashflow: [], ratios: [], keyMetrics: [] };
+  return extendFmpWithYahoo(fmpData, yahooResult);
+}
+
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
 const CACHE_VERSION = 2; // Incrémenter pour invalider le cache après un fix
@@ -648,7 +792,7 @@ export async function fetchStockData(sym) {
             console.log(`[FF] quarterly data stored: ${ts.quarterlyData.length} quarters`);
           }
 
-          // Also fetch FMP for 20-year charts + quarterly fallback if key available
+          // Also fetch FMP for charts + quarterly fallback if key available
           if (hasFmpApiKey()) {
             try {
               const [fins, qFins] = await Promise.all([
@@ -659,8 +803,17 @@ export async function fetchStockData(sym) {
                   : Promise.resolve(null),
               ]);
               if (fins?.income?.length > 0 || fins?.balance?.length > 0) {
+                // Extend FMP with older Yahoo Timeseries years for deeper history
+                extendFmpWithYahoo(fins, yahooResult);
                 yahooResult._fmpData = fins;
-                console.log("[FF] FMP charts data OK —", fins.income?.length || 0, "ans");
+                console.log("[FF] FMP charts data OK —", fins.income?.length || 0, "ans (extended with Yahoo)");
+              } else {
+                // FMP returned nothing usable — build _fmpData entirely from Yahoo
+                const converted = yahooToFmpData(yahooResult);
+                if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
+                  yahooResult._fmpData = converted;
+                  console.log("[FF] FMP vide, _fmpData construit depuis Yahoo:", converted.income?.length || 0, "ans");
+                }
               }
               // Build quarterly data from FMP if Yahoo didn't provide it
               if (qFins && !yahooResult._quarterlyData?.length) {
@@ -672,6 +825,13 @@ export async function fetchStockData(sym) {
               }
             } catch (e) {
               console.warn("[FF] FMP charts fetch échoué:", e.message);
+            }
+          } else {
+            // No FMP key — build _fmpData from Yahoo Timeseries for rich table display
+            const converted = yahooToFmpData(yahooResult);
+            if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
+              yahooResult._fmpData = converted;
+              console.log("[FF] Pas de clé FMP, _fmpData construit depuis Yahoo:", converted.income?.length || 0, "ans");
             }
           }
         } else {
