@@ -484,6 +484,11 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
     }
   }
 
+  const yahooBsCount = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
+  const yahooIsCount = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
+  const yahooCfCount = (yahooResult.cashflowStatementHistory?.cashflowStatements || []).length;
+  console.log(`[FF] extendFmpWithYahoo: FMP years: [${[...fmpYears].sort().join(",")}], Yahoo BS: ${yahooBsCount}, IS: ${yahooIsCount}, CF: ${yahooCfCount}`);
+
   const r = (obj) => obj?.raw; // extract raw value from Yahoo {raw} format
 
   // Convert Yahoo balance sheet entries not already in FMP
@@ -614,7 +619,7 @@ function yahooToFmpData(yahooResult) {
 
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 3; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 4; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
