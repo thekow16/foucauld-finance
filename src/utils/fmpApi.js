@@ -6,12 +6,17 @@
 const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 const FMP_V4 = "https://financialmodelingprep.com/api/v4";
 
-// Clé FMP — priorité : variable d'env VITE_FMP_API_KEY > localStorage
+// Clé FMP — stockée uniquement en localStorage (jamais dans le build)
 const STORAGE_KEY = "fmp_api_key";
-const ENV_KEY = import.meta.env.VITE_FMP_API_KEY || "";
+
+// Migration: si une clé env existe au build, on la persiste en localStorage puis on l'oublie
+const _envKey = import.meta.env.VITE_FMP_API_KEY || "";
+if (_envKey && !localStorage.getItem(STORAGE_KEY)) {
+  localStorage.setItem(STORAGE_KEY, _envKey);
+}
 
 export function getFmpApiKey() {
-  return ENV_KEY || localStorage.getItem(STORAGE_KEY) || "";
+  return localStorage.getItem(STORAGE_KEY) || "";
 }
 
 export function setFmpApiKey(key) {

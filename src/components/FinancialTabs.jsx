@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { fmt } from "../utils/format";
 import { hasFmpApiKey, fetchAllFinancials } from "../utils/fmpApi";
+import { exportTableToCsv } from "../utils/exportCsv";
 
 // ── Format helper for FMP data ──
 function fmpFmt(v) {
@@ -28,12 +29,24 @@ function ratioFmt(v) {
 }
 
 // ── Generic table for FMP data ──
-function FmpTable({ data, rows, valueFormatter = fmpFmt }) {
+function FmpTable({ data, rows, valueFormatter = fmpFmt, exportFilename }) {
   if (!data || data.length === 0) return null;
   const years = data.map(d => d.calendarYear || d.date?.substring(0, 4) || "—");
 
   return (
     <div style={{ overflowX: "auto" }}>
+      {exportFilename && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+          <button
+            className="period-btn"
+            style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}
+            onClick={() => exportTableToCsv(data, rows, valueFormatter, exportFilename)}
+            title="Exporter en CSV"
+          >
+            CSV
+          </button>
+        </div>
+      )}
       <table className="ff-table">
         <thead>
           <tr>
@@ -447,7 +460,7 @@ export function BilanTab({ data, symbol }) {
           </div>
         )}
 
-        <FmpTable data={bsEnriched} rows={rows} />
+        <FmpTable data={bsEnriched} rows={rows} exportFilename={`${symbol}_bilan`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
           📋 Source : Financial Modeling Prep · {bs.length} années de données
         </div>
@@ -867,7 +880,7 @@ export function ResultatsTab({ data, symbol }) {
           </div>
         )}
 
-        <FmpTable data={incEnriched} rows={rows} />
+        <FmpTable data={incEnriched} rows={rows} exportFilename={`${symbol}_resultats`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
           📋 Source : Financial Modeling Prep · {inc.length} années de données
         </div>
@@ -1271,7 +1284,7 @@ export function TresorerieTab({ data, symbol }) {
           </div>
         )}
 
-        <FmpTable data={cfEnriched} rows={rows} />
+        <FmpTable data={cfEnriched} rows={rows} exportFilename={`${symbol}_tresorerie`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
           📋 Source : Financial Modeling Prep · {cf.length} années de données
         </div>
