@@ -231,17 +231,13 @@ export function BilanTab({ data, symbol }) {
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
   const [fmpError, setFmpError] = useState(null);
 
-  // Sync _fmpData from parent when it arrives (extended with Yahoo history)
   useEffect(() => {
-    if (data?._fmpData && data._fmpData.balance?.length > (fmpData?.balance?.length || 0)) {
+    // If parent provides extended _fmpData (FMP + Yahoo history), use it directly
+    if (data?._fmpData?.balance?.length > 0) {
       setFmpData(data._fmpData);
+      return;
     }
-  }, [data?._fmpData]);
-
-  useEffect(() => {
-    // Skip fetch if we already have FMP data from fetchStockData
-    if (fmpData?.balance?.length > 0) return;
-    if (data?._fmpData?.balance?.length > 0) return;
+    // Otherwise fetch raw FMP as fallback (only if no parent data)
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -251,7 +247,7 @@ export function BilanTab({ data, symbol }) {
       .catch(e => { if (!cancelled) setFmpError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [symbol, hasKey]);
+  }, [data?._fmpData, symbol, hasKey]);
 
   const pr = data?.price;
 
@@ -660,16 +656,11 @@ export function ResultatsTab({ data, symbol }) {
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
   const [fmpError, setFmpError] = useState(null);
 
-  // Sync _fmpData from parent when it arrives (extended with Yahoo history)
   useEffect(() => {
-    if (data?._fmpData && data._fmpData.income?.length > (fmpData?.income?.length || 0)) {
+    if (data?._fmpData?.income?.length > 0) {
       setFmpData(data._fmpData);
+      return;
     }
-  }, [data?._fmpData]);
-
-  useEffect(() => {
-    if (fmpData?.income?.length > 0) return;
-    if (data?._fmpData?.income?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -679,7 +670,7 @@ export function ResultatsTab({ data, symbol }) {
       .catch(e => { if (!cancelled) setFmpError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [symbol, hasKey]);
+  }, [data?._fmpData, symbol, hasKey]);
 
   if (hasKey && fmpData?.income?.length > 0) {
     const inc = fmpData.income;
@@ -1098,16 +1089,11 @@ export function TresorerieTab({ data, symbol }) {
   const [hasKey, setHasKey] = useState(hasFmpApiKey());
   const [fmpError, setFmpError] = useState(null);
 
-  // Sync _fmpData from parent when it arrives (extended with Yahoo history)
   useEffect(() => {
-    if (data?._fmpData && data._fmpData.cashflow?.length > (fmpData?.cashflow?.length || 0)) {
+    if (data?._fmpData?.cashflow?.length > 0) {
       setFmpData(data._fmpData);
+      return;
     }
-  }, [data?._fmpData]);
-
-  useEffect(() => {
-    if (fmpData?.cashflow?.length > 0) return;
-    if (data?._fmpData?.cashflow?.length > 0) return;
     if (!hasKey || !symbol) return;
     let cancelled = false;
     setLoading(true);
@@ -1117,7 +1103,7 @@ export function TresorerieTab({ data, symbol }) {
       .catch(e => { if (!cancelled) setFmpError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [symbol, hasKey]);
+  }, [data?._fmpData, symbol, hasKey]);
 
   if (hasKey && fmpData?.cashflow?.length > 0) {
     const cf = fmpData.cashflow;
