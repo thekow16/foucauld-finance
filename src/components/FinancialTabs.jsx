@@ -1072,82 +1072,6 @@ export function TresorerieTab({ data, symbol }) {
       <div>
         {loading && <div style={{ textAlign: "center", padding: 20 }}><div className="spinner" /></div>}
 
-        {chart.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">🔄 FLUX DE TRÉSORERIE — EN MILLIARDS ({data?.price?.currency})</div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Flux Op." fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="FCF" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="CAPEX" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Allocation du capital */}
-        {allocationChart.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">🏦 ALLOCATION DU CAPITAL — EN MILLIARDS ({data?.price?.currency})</div>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={allocationChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="CAPEX" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Dividendes" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Rachats" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Remb. dette" fill="#0891b2" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Métriques de trésorerie */}
-        {cf.length > 0 && (
-          <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>💰 Métriques de trésorerie</div>
-            <MetricGrid items={[
-              { label: "Free Cash Flow", val: cf[0].freeCashFlow, fmt: fmpFmt, color: "#10b981" },
-              { label: "Flux opérationnels", val: cf[0].operatingCashFlow, fmt: fmpFmt, color: "#4f46e5" },
-              { label: "Conversion FCF/RN", val: cf[0].netIncome ? cf[0].freeCashFlow / cf[0].netIncome : null, fmt: pctFmt, color: "#4f46e5" },
-              { label: "CAPEX / CA", val: inc2[0]?.revenue && cf[0].capitalExpenditure ? Math.abs(cf[0].capitalExpenditure) / inc2[0].revenue : null, fmt: pctFmt, color: "#ea580c" },
-              { label: "SBC / CA", val: inc2[0]?.revenue && cf[0].stockBasedCompensation ? cf[0].stockBasedCompensation / inc2[0].revenue : null, fmt: pctFmt, color: "#f59e0b" },
-              { label: "Marge FCF", val: inc2[0]?.revenue ? cf[0].freeCashFlow / inc2[0].revenue : null, fmt: pctFmt, color: "#10b981" },
-              ...(keyMetrics.length > 0 ? [
-                { label: "FCF / Action", val: keyMetrics[0].freeCashFlowPerShare, fmt: ratioFmt, color: "#0891b2" },
-                { label: "FCF Yield", val: keyMetrics[0].freeCashFlowYield, fmt: pctFmt, color: "#7c3aed" },
-                { label: "Dividendes / Action", val: keyMetrics[0].dividendPerShare, fmt: ratioFmt, color: "#f59e0b" },
-              ] : []),
-            ]} />
-          </div>
-        )}
-
-        {/* FCF Evolution area chart */}
-        {cf.length > 1 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">📈 ÉVOLUTION DU FREE CASH FLOW</div>
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={[...cf].reverse().map(s => ({
-                year: s.calendarYear || s.date?.substring(0, 4),
-                FCF: s.freeCashFlow ? +(s.freeCashFlow / 1e9).toFixed(2) : 0,
-              }))} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} formatter={v => `${v} Md`} />
-                <Area type="monotone" dataKey="FCF" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2.5} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
 
         <FmpTable data={cfEnriched} rows={rows} exportFilename={`${symbol}_tresorerie`} />
         <div style={{ textAlign: "center", marginTop: 14, color: "var(--muted)", fontSize: 11 }}>
@@ -1281,37 +1205,6 @@ export function TresorerieTab({ data, symbol }) {
 
   return (
     <div>
-      {cfChart.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="chart-label">🔄 FLUX DE TRÉSORERIE — EN MILLIARDS ({data?.price?.currency})</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={cfChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Flux Op." fill="#4f46e5" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="FCF" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="CAPEX" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Métriques Yahoo */}
-      {fin3 && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>💰 Métriques de trésorerie</div>
-          <MetricGrid items={[
-            { label: "Free Cash Flow", val: fin3.freeCashflow?.raw, fmt: fmpFmt, color: "#10b981" },
-            { label: "Flux opérationnels", val: fin3.operatingCashflow?.raw, fmt: fmpFmt, color: "#4f46e5" },
-            { label: "Chiffre d'affaires", val: fin3.totalRevenue?.raw, fmt: fmpFmt, color: "#7c3aed" },
-            { label: "Marge FCF", val: fin3.freeCashflow?.raw && fin3.totalRevenue?.raw ? fin3.freeCashflow.raw / fin3.totalRevenue.raw : null, fmt: pctFmt, color: "#0891b2" },
-          ]} />
-        </div>
-      )}
-
       <YahooTable
         headers={cfArr.map(s => new Date((s.endDate?.raw || 0) * 1000).getFullYear())}
         rows={yahooRows}
