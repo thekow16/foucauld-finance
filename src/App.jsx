@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
@@ -64,7 +64,12 @@ export default function Alphaview() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [activeTab, setActiveTab] = useState("bilan");
+  const [activeTab, _setActiveTab] = useState("bilan");
+  const switchTab = useCallback((tab) => {
+    const scrollY = window.scrollY;
+    _setActiveTab(tab);
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+  }, []);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -238,7 +243,7 @@ export default function Alphaview() {
 
   const handleSearch = (sym) => {
     setSymbol(sym);
-    setActiveTab("bilan");
+    _setActiveTab("bilan");
     setShowWatchlist(false);
     setShowInvestors(false);
     addToHistory(sym);
@@ -402,13 +407,13 @@ export default function Alphaview() {
                   <button
                     key={t.id}
                     className={`tab-btn${activeTab === t.id ? " active" : ""}`}
-                    onClick={() => setActiveTab(t.id)}
+                    onClick={() => switchTab(t.id)}
                   >
                     {t.label}
                   </button>
                 ))}
               </div>
-              <div style={{ padding: 24 }}>
+              <div style={{ padding: 24, minHeight: 400 }}>
                 {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
