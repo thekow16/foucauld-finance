@@ -230,66 +230,9 @@ export default function EarningsTab({ data, symbol }) {
   const [subTab, setSubTab] = useState("overview");
   const hasFmp = hasFmpApiKey();
 
-  const tabs = [
-    { id: "overview", label: "Vue d'ensemble" },
-    { id: "history", label: "Historique" },
-    { id: "press", label: "Communiqués" },
-    { id: "filings", label: "Publications SEC" },
-  ];
-
   return (
     <div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            className={`period-btn ${subTab === t.id ? "active" : ""}`}
-            onClick={() => setSubTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {subTab === "overview" && (
-        <>
-          <NextEarnings data={data} />
-          {!hasFmp && (
-            <div style={{ background: "var(--highlight-row)", borderRadius: 12, padding: "16px 20px", border: "1px solid var(--border)", marginTop: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 6 }}>
-                Données supplémentaires avec FMP
-              </div>
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                Ajoutez une clé API Financial Modeling Prep pour accéder à l'historique des résultats trimestriels, aux communiqués de presse et aux publications SEC.
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {subTab === "history" && (
-        hasFmp ? <EarningsHistory symbol={symbol} /> : (
-          <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
-            Clé API FMP requise pour l'historique des résultats
-          </div>
-        )
-      )}
-
-      {subTab === "press" && (
-        hasFmp ? <PressReleasesList symbol={symbol} /> : (
-          <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
-            Clé API FMP requise pour les communiqués
-          </div>
-        )
-      )}
-
-      {subTab === "filings" && (
-        hasFmp ? <SecFilingsList symbol={symbol} /> : (
-          <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
-            Clé API FMP requise pour les publications SEC
-          </div>
-        )
-      )}
+      <NextEarnings data={data} />
     </div>
   );
 }
