@@ -494,17 +494,12 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
 
   // Convert Yahoo balance sheet entries not already in FMP
   const yahooBs = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
-  // Debug: show which Yahoo years have data vs not
-  for (const entry of yahooBs) {
-    const y = entry.endDate?.fmt?.substring(0, 4);
-    console.log(`[FF]   BS ${y}: totalAssets=${entry.totalAssets?.raw}, cash=${entry.cash?.raw}, totalLiab=${entry.totalLiab?.raw}`);
-  }
   const extraBalance = yahooBs
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
       const hasData = s.totalAssets?.raw != null || s.cash?.raw != null || s.totalLiab?.raw != null;
       if (year && !fmpYears.has(year) && !hasData) {
-        console.warn(`[FF] extendFmpWithYahoo: skipping BS year ${year} — no financial data`);
+        console.log(`[FF] extendFmpWithYahoo: skipping BS year ${year} — no financial data`);
       }
       return year && !fmpYears.has(year) && hasData;
     })
@@ -543,7 +538,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
       const year = s.endDate?.fmt?.substring(0, 4);
       const hasData = s.totalRevenue?.raw != null || s.netIncome?.raw != null || s.operatingIncome?.raw != null;
       if (year && !fmpYears.has(year) && !hasData) {
-        console.warn(`[FF] extendFmpWithYahoo: skipping IS year ${year} — no financial data`);
+        console.log(`[FF] extendFmpWithYahoo: skipping IS year ${year} — no financial data`);
       }
       return year && !fmpYears.has(year) && hasData;
     })
@@ -587,7 +582,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
       const year = s.endDate?.fmt?.substring(0, 4);
       const hasData = s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null || s.dividendsPaid?.raw != null;
       if (year && !fmpYears.has(year) && !hasData) {
-        console.warn(`[FF] extendFmpWithYahoo: skipping CF year ${year} — no financial data`);
+        console.log(`[FF] extendFmpWithYahoo: skipping CF year ${year} — no financial data`);
       }
       return year && !fmpYears.has(year) && hasData;
     })
@@ -635,7 +630,7 @@ function yahooToFmpData(yahooResult) {
 
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 6; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 7; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
@@ -780,17 +775,23 @@ export async function fetchStockData(sym) {
             return [...dateMap.values()].sort((a, b) => (b.endDate?.raw || 0) - (a.endDate?.raw || 0));
           };
 
+          // Filter out ghost entries (date present but no financial data)
+          const hasAnyData = (s, ...keys) => keys.some(k => s[k]?.raw != null);
+
           if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements.some(s => s.totalAssets?.raw != null)) {
             const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
-            yahooResult.balanceSheetHistory = { balanceSheetStatements: mergeByDate(ts.balanceSheetStatements, existing) };
+            const merged = mergeByDate(ts.balanceSheetStatements, existing);
+            yahooResult.balanceSheetHistory = { balanceSheetStatements: merged.filter(s => hasAnyData(s, "totalAssets", "cash", "totalLiab")) };
           }
           if (ts.incomeStatements?.length > 0 && ts.incomeStatements.some(s => s.totalRevenue?.raw != null)) {
             const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
-            yahooResult.incomeStatementHistory = { incomeStatementHistory: mergeByDate(ts.incomeStatements, existing) };
+            const merged = mergeByDate(ts.incomeStatements, existing);
+            yahooResult.incomeStatementHistory = { incomeStatementHistory: merged.filter(s => hasAnyData(s, "totalRevenue", "netIncome", "operatingIncome")) };
           }
           if (ts.cashflowStatements?.length > 0) {
             const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
-            yahooResult.cashflowStatementHistory = { cashflowStatements: mergeByDate(ts.cashflowStatements, existing) };
+            const merged = mergeByDate(ts.cashflowStatements, existing);
+            yahooResult.cashflowStatementHistory = { cashflowStatements: merged.filter(s => hasAnyData(s, "totalCashFromOperatingActivities", "freeCashFlow", "dividendsPaid")) };
           }
           // Enrich financialData from timeseries if needed
           const fd = yahooResult.financialData || {};
