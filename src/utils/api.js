@@ -489,16 +489,16 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const yahooIsCount = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
   const yahooCfCount = (yahooResult.cashflowStatementHistory?.cashflowStatements || []).length;
   console.log(`[FF] extendFmpWithYahoo: FMP years: [${[...fmpYears].sort().join(",")}], Yahoo BS: ${yahooBsCount}, IS: ${yahooIsCount}, CF: ${yahooCfCount}`);
-  // Debug: show which Yahoo years have data vs not
-  for (const s of yahooBs) {
-    const y = s.endDate?.fmt?.substring(0, 4);
-    console.log(`[FF]   BS ${y}: totalAssets=${s.totalAssets?.raw}, cash=${s.cash?.raw}, totalLiab=${s.totalLiab?.raw}`);
-  }
 
   const r = (obj) => obj?.raw; // extract raw value from Yahoo {raw} format
 
   // Convert Yahoo balance sheet entries not already in FMP
   const yahooBs = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
+  // Debug: show which Yahoo years have data vs not
+  for (const entry of yahooBs) {
+    const y = entry.endDate?.fmt?.substring(0, 4);
+    console.log(`[FF]   BS ${y}: totalAssets=${entry.totalAssets?.raw}, cash=${entry.cash?.raw}, totalLiab=${entry.totalLiab?.raw}`);
+  }
   const extraBalance = yahooBs
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
