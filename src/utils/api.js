@@ -489,6 +489,11 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const yahooIsCount = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
   const yahooCfCount = (yahooResult.cashflowStatementHistory?.cashflowStatements || []).length;
   console.log(`[FF] extendFmpWithYahoo: FMP years: [${[...fmpYears].sort().join(",")}], Yahoo BS: ${yahooBsCount}, IS: ${yahooIsCount}, CF: ${yahooCfCount}`);
+  // Debug: show which Yahoo years have data vs not
+  for (const s of yahooBs) {
+    const y = s.endDate?.fmt?.substring(0, 4);
+    console.log(`[FF]   BS ${y}: totalAssets=${s.totalAssets?.raw}, cash=${s.cash?.raw}, totalLiab=${s.totalLiab?.raw}`);
+  }
 
   const r = (obj) => obj?.raw; // extract raw value from Yahoo {raw} format
 
@@ -497,7 +502,11 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const extraBalance = yahooBs
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
-      return year && !fmpYears.has(year) && s.totalAssets?.raw != null;
+      const hasData = s.totalAssets?.raw != null || s.cash?.raw != null || s.totalLiab?.raw != null;
+      if (year && !fmpYears.has(year) && !hasData) {
+        console.warn(`[FF] extendFmpWithYahoo: skipping BS year ${year} — no financial data`);
+      }
+      return year && !fmpYears.has(year) && hasData;
     })
     .map(s => ({
       date: s.endDate?.fmt,
@@ -532,7 +541,11 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const extraIncome = yahooIs
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
-      return year && !fmpYears.has(year) && s.totalRevenue?.raw != null;
+      const hasData = s.totalRevenue?.raw != null || s.netIncome?.raw != null || s.operatingIncome?.raw != null;
+      if (year && !fmpYears.has(year) && !hasData) {
+        console.warn(`[FF] extendFmpWithYahoo: skipping IS year ${year} — no financial data`);
+      }
+      return year && !fmpYears.has(year) && hasData;
     })
     .map(s => {
       const rev = r(s.totalRevenue);
@@ -572,7 +585,11 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const extraCashflow = yahooCf
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
-      return year && !fmpYears.has(year) && (s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null);
+      const hasData = s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null || s.dividendsPaid?.raw != null;
+      if (year && !fmpYears.has(year) && !hasData) {
+        console.warn(`[FF] extendFmpWithYahoo: skipping CF year ${year} — no financial data`);
+      }
+      return year && !fmpYears.has(year) && hasData;
     })
     .map(s => ({
       date: s.endDate?.fmt,
@@ -618,7 +635,7 @@ function yahooToFmpData(yahooResult) {
 
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 5; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 6; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
