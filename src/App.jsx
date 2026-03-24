@@ -5,6 +5,9 @@ import AuthModal from "./components/AuthModal";
 import SettingsModal from "./components/SettingsModal";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
+const LandingPage = lazy(() => import("./components/LandingPage"));
+const ScoreCard = lazy(() => import("./components/ScoreCard"));
+const MetricCards = lazy(() => import("./components/MetricCards"));h
 
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
@@ -364,40 +367,9 @@ export default function Alphaview() {
           </div>
         )}
 
-        {!loading && !error && !data && (
-          <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
-            <div style={{ fontSize: 64, marginBottom: 18 }}>
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                <circle cx="40" cy="40" r="38" stroke="#4f46e5" strokeWidth="2" opacity=".2" />
-                <path d="M20 50 L32 38 L42 46 L60 25" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="60" cy="25" r="4" fill="#4f46e5" />
-              </svg>
-            </div>
-            <h2 style={{ color: "var(--text)", fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
-              Analysez n'importe quelle action mondiale
-            </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7 }}>
-              Cours en temps réel · Ratios financiers · Bilan · Compte de résultats · Trésorerie · Comparaison
-            </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 24, flexWrap: "wrap" }}>
-              {[
-                { icon: "📊", title: "30+ ratios", desc: "P/E, ROE, marges..." },
-                { icon: "📈", title: "Graphiques", desc: "Cours & états financiers" },
-                { icon: "⚖️", title: "Comparer", desc: "2 actions côte à côte" },
-                { icon: "★", title: "Favoris", desc: "Sauvegardez vos actions" },
-              ].map(f => (
-                <div key={f.title} style={{ textAlign: "center", minWidth: 100 }}>
-                  <div style={{ fontSize: 28, marginBottom: 6 }}>{f.icon}</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{f.title}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{f.desc}</div>
-                </div>
-              ))}
-            </div>
-            <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 24 }}>
-              Tapez un symbole ou cliquez sur une suggestion pour commencer
-            </p>
-          </div>
-        )}
+          {!loading && !error && !data && (
+                    <LandingPage onSearch={handleSearch} onShowAuth={() => setShowAuth(true)} />
+                  )}
 
         {!loading && !error && data && (
           <ErrorBoundary>
@@ -409,6 +381,7 @@ export default function Alphaview() {
               onToggleWatchlist={handleToggleWatchlist}
             />
 
+                            <ScoreCard data={data} />
             <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
 
             <RevenueBreakdown data={data} symbol={symbol} />
