@@ -1,4 +1,5 @@
 import { fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
+import { fetchEdgarFinancials } from "./secEdgar";
 
 // ──────────────────────────────────────────────
 // Cloudflare Worker URL
@@ -658,9 +659,40 @@ function yahooToFmpData(yahooResult) {
   return extendFmpWithYahoo(fmpData, yahooResult);
 }
 
+// ── Merge EDGAR data into existing _fmpData (add years not already present) ──
+function mergeEdgarIntoFmpData(fmpData, edgarData) {
+  if (!edgarData) return fmpData;
+  if (!fmpData) return edgarData;
+
+  const sortDesc = (a, b) => (b.date || "").localeCompare(a.date || "");
+
+  for (const key of ["income", "balance", "cashflow"]) {
+    const existing = fmpData[key] || [];
+    const edgarArr = edgarData[key] || [];
+    if (edgarArr.length === 0) continue;
+
+    // Collect years already in fmpData
+    const existingYears = new Set(existing.map(d => d.calendarYear || d.date?.substring(0, 4)));
+
+    // Add EDGAR years not already present
+    const extra = edgarArr.filter(d => {
+      const year = d.calendarYear || d.date?.substring(0, 4);
+      return year && !existingYears.has(year);
+    });
+
+    if (extra.length > 0) {
+      fmpData[key] = [...existing, ...extra].sort(sortDesc);
+    }
+  }
+
+  const totalYears = Math.max(fmpData.income?.length || 0, fmpData.balance?.length || 0, fmpData.cashflow?.length || 0);
+  console.log(`[FF] mergeEdgarIntoFmpData: added EDGAR years → ${totalYears} total`);
+  return fmpData;
+}
+
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 9; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 10; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
@@ -763,16 +795,19 @@ export async function fetchStockData(sym) {
           "bs:", bsCount, "is:", isCount, "cf:", cfCount,
           "hasValues:", qsHasValues, "revenue[0]:", qsIs0?.totalRevenue?.raw);
 
-        // Fetch timeseries AND FMP in parallel for speed
-        // (don't wait for timeseries to fail before starting FMP)
-        console.log("[FF] Fetch timeseries + FMP en parallèle…");
-        const [ts, fmpResult] = await Promise.all([
+        // Fetch timeseries, FMP, and SEC EDGAR all in parallel for speed
+        console.log("[FF] Fetch timeseries + FMP + EDGAR en parallèle…");
+        const [ts, fmpResult, edgarResult] = await Promise.all([
           fetchYahooTimeseries(sym).catch(e => {
             console.warn("[FF] timeseries échoué:", e.message);
             return null;
           }),
           fetchAllFinancials(sym).catch(e => {
             console.warn("[FF] FMP fetch échoué:", e.message);
+            return null;
+          }),
+          fetchEdgarFinancials(sym).catch(e => {
+            console.warn("[FF] EDGAR fetch échoué:", e.message);
             return null;
           }),
         ]);
@@ -857,18 +892,31 @@ export async function fetchStockData(sym) {
           }
         }
 
-        // Build _fmpData: extend FMP with Yahoo for maximum year coverage
+        // Build _fmpData: combine FMP + Yahoo + EDGAR for maximum year coverage
+        let baseFmpData = null;
         if (fmpResult?.income?.length > 0 || fmpResult?.balance?.length > 0) {
           extendFmpWithYahoo(fmpResult, yahooResult);
-          yahooResult._fmpData = fmpResult;
-          console.log("[FF] _fmpData OK —", fmpResult.income?.length || 0, "IS,", fmpResult.balance?.length || 0, "BS ans");
+          baseFmpData = fmpResult;
+          console.log("[FF] _fmpData base: FMP+Yahoo —", fmpResult.income?.length || 0, "IS,", fmpResult.balance?.length || 0, "BS");
         } else {
-          // FMP empty or failed — build _fmpData entirely from Yahoo
-          const converted = yahooToFmpData(yahooResult);
-          if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
-            yahooResult._fmpData = converted;
-            console.log("[FF] _fmpData construit depuis Yahoo:", converted.income?.length || 0, "ans");
+          // FMP empty or failed — build _fmpData from Yahoo
+          baseFmpData = yahooToFmpData(yahooResult);
+          if (baseFmpData) {
+            console.log("[FF] _fmpData base: Yahoo only —", baseFmpData.income?.length || 0, "ans");
           }
+        }
+        // Merge SEC EDGAR data for deeper history (20+ years for US stocks)
+        if (edgarResult) {
+          if (baseFmpData) {
+            mergeEdgarIntoFmpData(baseFmpData, edgarResult);
+          } else {
+            baseFmpData = edgarResult;
+            console.log("[FF] _fmpData base: EDGAR only —", edgarResult.income?.length || 0, "ans");
+          }
+        }
+        if (baseFmpData && (baseFmpData.income?.length > 0 || baseFmpData.balance?.length > 0)) {
+          yahooResult._fmpData = baseFmpData;
+          console.log("[FF] _fmpData final:", baseFmpData.income?.length || 0, "IS,", baseFmpData.balance?.length || 0, "BS,", baseFmpData.cashflow?.length || 0, "CF ans");
         }
 
         // Quarterly data fallback from FMP if needed
