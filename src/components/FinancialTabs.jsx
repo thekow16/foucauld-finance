@@ -410,42 +410,6 @@ export function BilanTab({ data, symbol }) {
       <div>
         {loading && <div style={{ textAlign: "center", padding: 20 }}><div className="spinner" /></div>}
 
-        {bsChart.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">📊 BILAN — EN MILLIARDS ({pr?.currency})</div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={bsChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Actifs" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Dettes" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Capitaux" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Graphique dette nette vs trésorerie */}
-        {debtChart.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">🏦 DETTE & TRÉSORERIE — EN MILLIARDS ({pr?.currency})</div>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={debtChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Dette totale" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Trésorerie" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Dette nette" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
 
         {/* Ratios de solvabilité */}
         {ratios.length > 0 && (
@@ -605,24 +569,6 @@ export function BilanTab({ data, symbol }) {
 
   return (
     <div>
-      {bsChart.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="chart-label">📊 BILAN — EN MILLIARDS ({pr?.currency})</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={bsChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Actifs" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Dettes" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Capitaux" fill="#10b981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
       {/* Ratios Yahoo */}
       {fin && (
         <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
