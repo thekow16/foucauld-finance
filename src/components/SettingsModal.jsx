@@ -50,9 +50,9 @@ export default function SettingsModal({ onClose, onFmpKeyChange }) {
   };
 
   return (
-    <div className="auth-overlay" onClick={onClose}>
+    <div className="auth-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Paramètres">
       <div className="auth-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-        <button className="auth-close" onClick={onClose}>&#10005;</button>
+        <button className="auth-close" onClick={onClose} aria-label="Fermer">&#10005;</button>
 
         <div style={{ padding: "8px 0 0" }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>

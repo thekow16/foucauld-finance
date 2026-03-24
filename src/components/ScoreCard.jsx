@@ -23,7 +23,7 @@ export default function ScoreCard({ data }) {
 
   return (
     <div className="card" style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
-      <svg width="90" height="90" viewBox="0 0 90 90">
+      <svg width="90" height="90" viewBox="0 0 90 90" role="img" aria-label={`Score santé financière : ${score} sur 100 — ${label}`}>
         <circle cx="45" cy="45" r="32" fill="none" stroke="var(--border)" strokeWidth="9" />
         <circle cx="45" cy="45" r="32" fill="none" stroke={color} strokeWidth="9"
           strokeDasharray={`${(score / 100) * circ} ${circ}`} strokeLinecap="round"

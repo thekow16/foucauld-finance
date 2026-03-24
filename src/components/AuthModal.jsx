@@ -30,9 +30,9 @@ export default function AuthModal({ onClose, onAuth }) {
   };
 
   return (
-    <div className="auth-overlay" onClick={onClose}>
+    <div className="auth-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={mode === "login" ? "Connexion" : "Inscription"}>
       <div className="auth-modal" onClick={e => e.stopPropagation()}>
-        <button className="auth-close" onClick={onClose}>✕</button>
+        <button className="auth-close" onClick={onClose} aria-label="Fermer">✕</button>
 
         <div className="auth-tabs">
           <button
@@ -52,8 +52,9 @@ export default function AuthModal({ onClose, onAuth }) {
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === "signup" && (
             <div className="auth-field">
-              <label>Prénom / Pseudo</label>
+              <label htmlFor="auth-name">Prénom / Pseudo</label>
               <input
+                id="auth-name"
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -64,8 +65,9 @@ export default function AuthModal({ onClose, onAuth }) {
           )}
 
           <div className="auth-field">
-            <label>Email</label>
+            <label htmlFor="auth-email">Email</label>
             <input
+              id="auth-email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -76,8 +78,9 @@ export default function AuthModal({ onClose, onAuth }) {
           </div>
 
           <div className="auth-field">
-            <label>Mot de passe</label>
+            <label htmlFor="auth-password">Mot de passe</label>
             <input
+              id="auth-password"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -88,7 +91,7 @@ export default function AuthModal({ onClose, onAuth }) {
             />
           </div>
 
-          {error && <div className="auth-error">{error}</div>}
+          {error && <div className="auth-error" role="alert">{error}</div>}
 
           <button type="submit" className="auth-submit" disabled={loading}>
             {loading ? "Chargement…" : mode === "login" ? "Se connecter" : "Créer mon compte"}
