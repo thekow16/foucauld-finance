@@ -1,291 +1,42 @@
-import { useState } from "react";
+import { useState, createElement as h } from "react";
 
 const FEATURES = [
-  {
-        icon: "📊",
-        title: "50+ Ratios Financiers",
-        desc: "P/E, EV/EBITDA, ROE, ROA, marges, dette nette, ROIC et bien plus. Tout ce dont un analyste a besoin.",
-  },
-  {
-        icon: "📈",
-        title: "Graphiques Interactifs",
-        desc: "Chandeliers japonais, moyennes mobiles, Bollinger, mesures personnalisées sur graphiques temps réel.",
-  },
-  {
-        icon: "🏦",
-        title: "États Financiers Complets",
-        desc: "Bilan, compte de résultats et flux de trésorerie sur 10 ans. Export CSV inclus.",
-  },
-  {
-        icon: "⚖️",
-        title: "Comparaison d'Actions",
-        desc: "Comparez 2 entreprises côte à côte : ratios, marges, croissance et plus.",
-  },
-  {
-        icon: "🏆",
-        title: "Top Investisseurs",
-        desc: "Suivez les portefeuilles de Warren Buffett, Cathie Wood, Michael Burry et d'autres légendes.",
-  },
-  {
-        icon: "⭐",
-        title: "Watchlist & Alertes",
-        desc: "Sauvegardez vos actions favorites et recevez des alertes sur les moyennes mobiles.",
-  },
-  {
-        icon: "🎯",
-        title: "Score Santé Financière",
-        desc: "Score propriétaire sur 100 basé sur 6 critères clés : croissance, ROIC, dette, dilution, marge FCF.",
-  },
-  {
-        icon: "🌍",
-        title: "Couverture Mondiale",
-        desc: "Toutes les bourses : NYSE, NASDAQ, Euronext Paris, Londres, Tokyo, Hong Kong et plus.",
-  },
-  ];
+  { icon: "\ud83d\udcca", title: "50+ Ratios Financiers", desc: "P/E, EV/EBITDA, ROE, ROA, marges, dette nette, ROIC et bien plus." },
+  { icon: "\ud83d\udcc8", title: "Graphiques Interactifs", desc: "Chandeliers japonais, moyennes mobiles, Bollinger." },
+  { icon: "\ud83c\udfe6", title: "\u00c9tats Financiers Complets", desc: "Bilan, r\u00e9sultats et tr\u00e9sorerie sur 10 ans. Export CSV." },
+  { icon: "\u2696\ufe0f", title: "Comparaison", desc: "Comparez 2 entreprises c\u00f4te \u00e0 c\u00f4te." },
+  { icon: "\ud83c\udfc6", title: "Top Investisseurs", desc: "Portefeuilles de Buffett, Wood, Burry." },
+  { icon: "\u2b50", title: "Watchlist & Alertes", desc: "Favoris et alertes moyennes mobiles." },
+  { icon: "\ud83c\udfaf", title: "Score Sant\u00e9", desc: "Score 0-100 sur 6 crit\u00e8res cl\u00e9s." },
+  { icon: "\ud83c\udf0d", title: "Couverture Mondiale", desc: "NYSE, NASDAQ, Euronext, Tokyo et plus." },
+];
 
 const TESTIMONIALS = [
-  {
-        name: "Thomas D.",
-        role: "Investisseur particulier",
-        text: "Alphaview m'a permis de remplacer 3 outils payants. L'analyse fondamentale est incroyablement complète et gratuite.",
-        stars: 5,
-  },
-  {
-        name: "Marie L.",
-        role: "Étudiante en finance",
-        text: "Parfait pour mes études ! Les données sont claires et les graphiques sont magnifiques. Je recommande à 100%.",
-        stars: 5,
-  },
-  {
-        name: "Pierre K.",
-        role: "Analyste financier",
-        text: "Le score santé financière et les 50+ ratios en font un outil sérieux. Impressionnant pour un outil gratuit.",
-        stars: 5,
-  },
-  ];
+  { name: "Thomas D.", role: "Investisseur", text: "Alphaview remplace 3 outils payants.", stars: 5 },
+  { name: "Marie L.", role: "\u00c9tudiante", text: "Parfait pour mes \u00e9tudes !", stars: 5 },
+  { name: "Pierre K.", role: "Analyste", text: "Un outil s\u00e9rieux, impressionnant.", stars: 5 },
+];
 
-const POPULAR_STOCKS = [
-  { symbol: "AAPL", name: "Apple" },
-  { symbol: "MSFT", name: "Microsoft" },
-  { symbol: "GOOGL", name: "Alphabet" },
-  { symbol: "NVDA", name: "NVIDIA" },
-  { symbol: "TSLA", name: "Tesla" },
-  { symbol: "AMZN", name: "Amazon" },
-  { symbol: "MC.PA", name: "LVMH" },
-  { symbol: "OR.PA", name: "L'Oréal" },
-  { symbol: "AI.PA", name: "Air Liquide" },
-  { symbol: "SAN.PA", name: "Sanofi" },
-  ];
+const POPULAR = [
+  { symbol: "AAPL", name: "Apple" }, { symbol: "MSFT", name: "Microsoft" },
+  { symbol: "GOOGL", name: "Alphabet" }, { symbol: "NVDA", name: "NVIDIA" },
+  { symbol: "TSLA", name: "Tesla" }, { symbol: "AMZN", name: "Amazon" },
+  { symbol: "MC.PA", name: "LVMH" }, { symbol: "OR.PA", name: "L'Or\u00e9al" },
+  { symbol: "AI.PA", name: "Air Liquide" }, { symbol: "SAN.PA", name: "Sanofi" },
+];
 
 export default function LandingPage({ onSearch, onShowAuth }) {
-    const [email, setEmail] = useState("");
-    const [subscribed, setSubscribed] = useState(false);
-
-  const handleNewsletterSubmit = (e) => {
-        e.preventDefault();
-        if (email.trim()) {
-                try {
-                          const list = JSON.parse(localStorage.getItem("av_newsletter") || "[]");
-                          if (!list.includes(email.trim())) {
-                                      list.push(email.trim());
-                                      localStorage.setItem("av_newsletter", JSON.stringify(list));
-                          }
-                } catch {}
-                setSubscribed(true);
-                setEmail("");
-        }
-  };
-
-  return (
-        <div className="landing">
-          {/* ── HERO SECTION ── */}
-              <section className="landing-hero">
-                      <div className="landing-hero-bg" />
-                      <div className="landing-hero-content">
-                                <div className="landing-badge">🚀 100% Gratuit · Aucune carte requise</div>div>
-                                <h1 className="landing-h1">
-                                            L'outil <span className="landing-gradient">n°1</span>span> d'analyse<br />
-                                            fondamentale boursière
-                                </h1>h1>
-                                <p className="landing-subtitle">
-                                            Analysez n'importe quelle action mondiale en quelques secondes. Cours temps réel,
-                                            50+ ratios financiers, états financiers sur 10 ans, graphiques interactifs et score de santé financière.
-                                </p>p>
-                                <div className="landing-cta-group">
-                                            <button className="landing-cta-primary" onClick={() => onSearch("AAPL")}>
-                                                          Essayer gratuitement →
-                                            </button>button>
-                                            <button className="landing-cta-secondary" onClick={onShowAuth}>
-                                                          Créer un compte
-                                            </button>button>
-                                </div>div>
-                                <div className="landing-stats">
-                                            <div className="landing-stat">
-                                                          <span className="landing-stat-value">50+</span>span>
-                                                          <span className="landing-stat-label">Ratios financiers</span>span>
-                                            </div>div>
-                                            <div className="landing-stat-divider" />
-                                            <div className="landing-stat">
-                                                          <span className="landing-stat-value">70K+</span>span>
-                                                          <span className="landing-stat-label">Actions mondiales</span>span>
-                                            </div>div>
-                                            <div className="landing-stat-divider" />
-                                            <div className="landing-stat">
-                                                          <span className="landing-stat-value">10 ans</span>span>
-                                                          <span className="landing-stat-label">d'historique</span>span>
-                                            </div>div>
-                                            <div className="landing-stat-divider" />
-                                            <div className="landing-stat">
-                                                          <span className="landing-stat-value">100%</span>span>
-                                                          <span className="landing-stat-label">Gratuit</span>span>
-                                            </div>div>
-                                </div>div>
-                      </div>div>
-              </section>section>
-        
-          {/* ── POPULAR STOCKS ── */}
-              <section className="landing-section">
-                      <h2 className="landing-section-title">Actions populaires</h2>h2>
-                      <p className="landing-section-desc">Cliquez sur une action pour commencer votre analyse</p>p>
-                      <div className="landing-stocks-grid">
-                        {POPULAR_STOCKS.map(s => (
-                      <button key={s.symbol} className="landing-stock-chip" onClick={() => onSearch(s.symbol)}>
-                                    <span className="landing-stock-symbol">{s.symbol}</span>span>
-                                    <span className="landing-stock-name">{s.name}</span>span>
-                      </button>button>
-                    ))}
-                      </div>div>
-              </section>section>
-        
-          {/* ── FEATURES ── */}
-              <section className="landing-section">
-                      <h2 className="landing-section-title">Tout ce dont vous avez besoin</h2>h2>
-                      <p className="landing-section-desc">Des fonctionnalités professionnelles, accessibles à tous</p>p>
-                      <div className="landing-features-grid">
-                        {FEATURES.map(f => (
-                      <div key={f.title} className="landing-feature-card">
-                                    <div className="landing-feature-icon">{f.icon}</div>div>
-                                    <h3 className="landing-feature-title">{f.title}</h3>h3>
-                                    <p className="landing-feature-desc">{f.desc}</p>p>
-                      </div>div>
-                    ))}
-                      </div>div>
-              </section>section>
-        
-          {/* ── PRICING ── */}
-              <section className="landing-section landing-pricing-section">
-                      <h2 className="landing-section-title">Un outil puissant, un prix simple</h2>h2>
-                      <p className="landing-section-desc">Commencez gratuitement, passez Pro quand vous êtes prêt</p>p>
-                      <div className="landing-pricing-grid">
-                        {/* Free tier */}
-                                <div className="landing-price-card">
-                                            <div className="landing-price-badge">Gratuit</div>div>
-                                            <div className="landing-price-amount">0€<span>/mois</span>span></div>div>
-                                            <p className="landing-price-desc">Parfait pour découvrir</p>p>
-                                            <ul className="landing-price-features">
-                                                          <li>✓ 10 analyses / jour</li>li>
-                                                          <li>✓ Cours temps réel</li>li>
-                                                          <li>✓ 30+ ratios financiers</li>li>
-                                                          <li>✓ Bilan, résultats, trésorerie</li>li>
-                                                          <li>✓ Graphiques chandeliers</li>li>
-                                                          <li>✓ Watchlist (5 actions max)</li>li>
-                                                          <li className="landing-price-disabled">✗ Comparaison d'actions</li>li>
-                                                          <li className="landing-price-disabled">✗ Export CSV</li>li>
-                                                          <li className="landing-price-disabled">✗ Score santé financière</li>li>
-                                                          <li className="landing-price-disabled">✗ Top investisseurs</li>li>
-                                            </ul>ul>
-                                            <button className="landing-price-btn" onClick={() => onSearch("AAPL")}>
-                                                          Commencer gratuitement
-                                            </button>button>
-                                </div>div>
-                        {/* Pro tier */}
-                                <div className="landing-price-card landing-price-pro">
-                                            <div className="landing-price-popular">⭐ Plus populaire</div>div>
-                                            <div className="landing-price-badge">Pro</div>div>
-                                            <div className="landing-price-amount">9.99€<span>/mois</span>span></div>div>
-                                            <p className="landing-price-desc">Pour les investisseurs sérieux</p>p>
-                                            <ul className="landing-price-features">
-                                                          <li>✓ Analyses illimitées</li>li>
-                                                          <li>✓ Cours temps réel</li>li>
-                                                          <li>✓ 50+ ratios financiers</li>li>
-                                                          <li>✓ États financiers complets</li>li>
-                                                          <li>✓ Graphiques avancés + Bollinger</li>li>
-                                                          <li>✓ Watchlist illimitée + alertes MA</li>li>
-                                                          <li>✓ Comparaison d'actions</li>li>
-                                                          <li>✓ Export CSV illimité</li>li>
-                                                          <li>✓ Score santé financière</li>li>
-                                                          <li>✓ Top investisseurs (Buffett, etc.)</li>li>
-                                            </ul>ul>
-                                            <button className="landing-price-btn landing-price-btn-pro" onClick={onShowAuth}>
-                                                          Essai gratuit 14 jours →
-                                            </button>button>
-                                </div>div>
-                      </div>div>
-              </section>section>
-        
-          {/* ── TESTIMONIALS ── */}
-              <section className="landing-section">
-                      <h2 className="landing-section-title">Ils nous font confiance</h2>h2>
-                      <div className="landing-testimonials-grid">
-                        {TESTIMONIALS.map(t => (
-                      <div key={t.name} className="landing-testimonial-card">
-                                    <div className="landing-testimonial-stars">
-                                      {"★".repeat(t.stars)}
-                                    </div>div>
-                                    <p className="landing-testimonial-text">"{t.text}"</p>p>
-                                    <div className="landing-testimonial-author">
-                                                    <strong>{t.name}</strong>strong>
-                                                    <span>{t.role}</span>span>
-                                    </div>div>
-                      </div>div>
-                    ))}
-                      </div>div>
-              </section>section>
-        
-          {/* ── NEWSLETTER CTA ── */}
-              <section className="landing-section landing-newsletter-section">
-                      <div className="landing-newsletter-card">
-                                <h2 className="landing-newsletter-title">Restez informé</h2>h2>
-                                <p className="landing-newsletter-desc">
-                                            Recevez nos analyses hebdomadaires et les nouvelles fonctionnalités d'Alphaview.
-                                </p>p>
-                        {subscribed ? (
-                      <div className="landing-newsletter-success">
-                                    ✅ Merci ! Vous êtes inscrit à notre newsletter.
-                      </div>div>
-                    ) : (
-                      <form className="landing-newsletter-form" onSubmit={handleNewsletterSubmit}>
-                                    <input
-                                                      type="email"
-                                                      placeholder="votre@email.com"
-                                                      value={email}
-                                                      onChange={e => setEmail(e.target.value)}
-                                                      className="landing-newsletter-input"
-                                                      required
-                                                    />
-                                    <button type="submit" className="landing-newsletter-btn">
-                                                    S'inscrire →
-                                    </button>button>
-                      </form>form>
-                                )}
-                                <p className="landing-newsletter-privacy">
-                                            Pas de spam. Désinscription en un clic.
-                                </p>p>
-                      </div>div>
-              </section>section>
-        
-          {/* ── FINAL CTA ── */}
-              <section className="landing-section landing-final-cta">
-                      <h2 className="landing-final-title">
-                                Prêt à analyser comme un pro ?
-                      </h2>h2>
-                      <p className="landing-final-desc">
-                                Rejoignez des milliers d'investisseurs qui utilisent Alphaview pour prendre de meilleures décisions.
-                      </p>p>
-                      <button className="landing-cta-primary landing-cta-large" onClick={() => onSearch("AAPL")}>
-                                Commencer maintenant — C'est gratuit →
-                      </button>button>
-              </section>section>
-        </div>div>
-      );
-}</div>
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const handleNL = (e) => { e.preventDefault(); if (!email.trim()) return; try { const l = JSON.parse(localStorage.getItem("av_newsletter") || "[]"); if (!l.includes(email.trim())) { l.push(email.trim()); localStorage.setItem("av_newsletter", JSON.stringify(l)); } } catch {} setSubscribed(true); setEmail(""); };
+  const S = (tag, props, ...kids) => h(tag, props, ...kids);
+  return S("div", { className: "landing" },
+    S("section", { className: "landing-hero" }, S("div", { className: "landing-hero-bg" }), S("div", { className: "landing-hero-content" }, S("div", { className: "landing-badge" }, "\ud83d\ude80 100% Gratuit \u00b7 Aucune carte requise"), S("h1", { className: "landing-h1" }, "L'outil ", S("span", { className: "landing-gradient" }, "n\u00b01"), " d'analyse", S("br"), "fondamentale boursi\u00e8re"), S("p", { className: "landing-subtitle" }, "Analysez n'importe quelle action mondiale. Cours temps r\u00e9el, 50+ ratios, \u00e9tats financiers sur 10 ans."), S("div", { className: "landing-cta-group" }, S("button", { className: "landing-cta-primary", onClick: () => onSearch("AAPL") }, "Essayer gratuitement \u2192"), S("button", { className: "landing-cta-secondary", onClick: onShowAuth }, "Cr\u00e9er un compte")), S("div", { className: "landing-stats" }, S("div", { className: "landing-stat" }, S("span", { className: "landing-stat-value" }, "50+"), S("span", { className: "landing-stat-label" }, "Ratios")), S("div", { className: "landing-stat-divider" }), S("div", { className: "landing-stat" }, S("span", { className: "landing-stat-value" }, "70K+"), S("span", { className: "landing-stat-label" }, "Actions")), S("div", { className: "landing-stat-divider" }), S("div", { className: "landing-stat" }, S("span", { className: "landing-stat-value" }, "10 ans"), S("span", { className: "landing-stat-label" }, "Historique")), S("div", { className: "landing-stat-divider" }), S("div", { className: "landing-stat" }, S("span", { className: "landing-stat-value" }, "100%"), S("span", { className: "landing-stat-label" }, "Gratuit"))))),
+    S("section", { className: "landing-section" }, S("h2", { className: "landing-section-title" }, "Actions populaires"), S("p", { className: "landing-section-desc" }, "Cliquez sur une action pour commencer"), S("div", { className: "landing-stocks-grid" }, POPULAR.map(s => S("button", { key: s.symbol, className: "landing-stock-chip", onClick: () => onSearch(s.symbol) }, S("span", { className: "landing-stock-symbol" }, s.symbol), S("span", { className: "landing-stock-name" }, s.name))))),
+    S("section", { className: "landing-section" }, S("h2", { className: "landing-section-title" }, "Tout ce dont vous avez besoin"), S("p", { className: "landing-section-desc" }, "Des fonctionnalit\u00e9s pro, accessibles \u00e0 tous"), S("div", { className: "landing-features-grid" }, FEATURES.map(f => S("div", { key: f.title, className: "landing-feature-card" }, S("div", { className: "landing-feature-icon" }, f.icon), S("h3", { className: "landing-feature-title" }, f.title), S("p", { className: "landing-feature-desc" }, f.desc))))),
+    S("section", { className: "landing-section landing-pricing-section" }, S("h2", { className: "landing-section-title" }, "Un prix simple"), S("p", { className: "landing-section-desc" }, "Gratuit ou Pro"), S("div", { className: "landing-pricing-grid" }, S("div", { className: "landing-price-card" }, S("div", { className: "landing-price-badge" }, "Gratuit"), S("div", { className: "landing-price-amount" }, "0\u20ac", S("span", null, "/mois")), S("p", { className: "landing-price-desc" }, "Pour d\u00e9couvrir"), S("ul", { className: "landing-price-features" }, S("li", null, "\u2713 10 analyses/jour"), S("li", null, "\u2713 30+ ratios"), S("li", null, "\u2713 Bilan, r\u00e9sultats"), S("li", null, "\u2713 Graphiques"), S("li", null, "\u2713 Watchlist 5 max"), S("li", { className: "landing-price-disabled" }, "\u2717 Comparaison"), S("li", { className: "landing-price-disabled" }, "\u2717 Export CSV"), S("li", { className: "landing-price-disabled" }, "\u2717 Score sant\u00e9")), S("button", { className: "landing-price-btn", onClick: () => onSearch("AAPL") }, "Commencer")), S("div", { className: "landing-price-card landing-price-pro" }, S("div", { className: "landing-price-popular" }, "\u2b50 Plus populaire"), S("div", { className: "landing-price-badge" }, "Pro"), S("div", { className: "landing-price-amount" }, "9.99\u20ac", S("span", null, "/mois")), S("p", { className: "landing-price-desc" }, "Pour investisseurs s\u00e9rieux"), S("ul", { className: "landing-price-features" }, S("li", null, "\u2713 Illimit\u00e9"), S("li", null, "\u2713 50+ ratios"), S("li", null, "\u2713 Comparaison"), S("li", null, "\u2713 Export CSV"), S("li", null, "\u2713 Score sant\u00e9"), S("li", null, "\u2713 Top investisseurs"), S("li", null, "\u2713 Alertes MA")), S("button", { className: "landing-price-btn landing-price-btn-pro", onClick: onShowAuth }, "Essai 14 jours \u2192")))),
+    S("section", { className: "landing-section" }, S("h2", { className: "landing-section-title" }, "Ils nous font confiance"), S("div", { className: "landing-testimonials-grid" }, TESTIMONIALS.map(t => S("div", { key: t.name, className: "landing-testimonial-card" }, S("div", { className: "landing-testimonial-stars" }, "\u2605".repeat(t.stars)), S("p", { className: "landing-testimonial-text" }, t.text), S("div", { className: "landing-testimonial-author" }, S("strong", null, t.name), S("span", null, t.role)))))),
+    S("section", { className: "landing-section landing-newsletter-section" }, S("div", { className: "landing-newsletter-card" }, S("h2", { className: "landing-newsletter-title" }, "Restez inform\u00e9"), S("p", { className: "landing-newsletter-desc" }, "Analyses hebdomadaires et nouveaut\u00e9s Alphaview."), subscribed ? S("div", { className: "landing-newsletter-success" }, "\u2705 Inscrit !") : S("form", { className: "landing-newsletter-form", onSubmit: handleNL }, S("input", { type: "email", placeholder: "votre@email.com", value: email, onChange: e => setEmail(e.target.value), className: "landing-newsletter-input", required: true }), S("button", { type: "submit", className: "landing-newsletter-btn" }, "S'inscrire \u2192")), S("p", { className: "landing-newsletter-privacy" }, "Pas de spam."))),
+    S("section", { className: "landing-section landing-final-cta" }, S("h2", { className: "landing-final-title" }, "Pr\u00eat \u00e0 analyser comme un pro ?"), S("p", { className: "landing-final-desc" }, "Rejoignez des milliers d'investisseurs."), S("button", { className: "landing-cta-primary landing-cta-large", onClick: () => onSearch("AAPL") }, "Commencer \u2014 C'est gratuit \u2192"))
+  );
+                  }
