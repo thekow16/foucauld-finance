@@ -1,4 +1,4 @@
-import { hasFmpApiKey, fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
+import { fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
 
 // ──────────────────────────────────────────────
 // Cloudflare Worker URL
@@ -630,7 +630,7 @@ function yahooToFmpData(yahooResult) {
 
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 7; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 8; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
@@ -814,53 +814,50 @@ export async function fetchStockData(sym) {
             console.log(`[FF] quarterly data stored: ${ts.quarterlyData.length} quarters`);
           }
 
-          // Also fetch FMP for charts + quarterly fallback if key available
-          if (hasFmpApiKey()) {
-            try {
-              const [fins, qFins] = await Promise.all([
-                fetchAllFinancials(sym).catch(() => null),
-                // FMP quarterly fallback if Yahoo quarterly data is missing
-                (!yahooResult._quarterlyData || yahooResult._quarterlyData.length === 0)
-                  ? fetchAllQuarterlyFinancials(sym).catch(() => null)
-                  : Promise.resolve(null),
-              ]);
-              if (fins?.income?.length > 0 || fins?.balance?.length > 0) {
-                // Extend FMP with older Yahoo Timeseries years for deeper history
-                extendFmpWithYahoo(fins, yahooResult);
-                yahooResult._fmpData = fins;
-                console.log("[FF] FMP charts data OK —", fins.income?.length || 0, "ans (extended with Yahoo)");
-              } else {
-                // FMP returned nothing usable — build _fmpData entirely from Yahoo
-                const converted = yahooToFmpData(yahooResult);
-                if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
-                  yahooResult._fmpData = converted;
-                  console.log("[FF] FMP vide, _fmpData construit depuis Yahoo:", converted.income?.length || 0, "ans");
-                }
+          // Fetch FMP for 20+ years of data (proxied via Worker, key server-side)
+          try {
+            const [fins, qFins] = await Promise.all([
+              fetchAllFinancials(sym).catch(() => null),
+              // FMP quarterly fallback if Yahoo quarterly data is missing
+              (!yahooResult._quarterlyData || yahooResult._quarterlyData.length === 0)
+                ? fetchAllQuarterlyFinancials(sym).catch(() => null)
+                : Promise.resolve(null),
+            ]);
+            if (fins?.income?.length > 0 || fins?.balance?.length > 0) {
+              // Extend FMP with older Yahoo Timeseries years for deeper history
+              extendFmpWithYahoo(fins, yahooResult);
+              yahooResult._fmpData = fins;
+              console.log("[FF] FMP data OK —", fins.income?.length || 0, "ans (extended with Yahoo)");
+            } else {
+              // FMP returned nothing usable — build _fmpData entirely from Yahoo
+              const converted = yahooToFmpData(yahooResult);
+              if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
+                yahooResult._fmpData = converted;
+                console.log("[FF] FMP vide, _fmpData construit depuis Yahoo:", converted.income?.length || 0, "ans");
               }
-              // Build quarterly data from FMP if Yahoo didn't provide it
-              if (qFins && !yahooResult._quarterlyData?.length) {
-                const fmpQuarterly = buildFmpQuarterlyData(qFins);
-                if (fmpQuarterly.length > 0) {
-                  yahooResult._quarterlyData = fmpQuarterly;
-                  console.log(`[FF] FMP quarterly fallback: ${fmpQuarterly.length} quarters`);
-                }
-              }
-            } catch (e) {
-              console.warn("[FF] FMP charts fetch échoué:", e.message);
             }
-          } else {
-            // No FMP key — build _fmpData from Yahoo Timeseries for rich table display
+            // Build quarterly data from FMP if Yahoo didn't provide it
+            if (qFins && !yahooResult._quarterlyData?.length) {
+              const fmpQuarterly = buildFmpQuarterlyData(qFins);
+              if (fmpQuarterly.length > 0) {
+                yahooResult._quarterlyData = fmpQuarterly;
+                console.log(`[FF] FMP quarterly fallback: ${fmpQuarterly.length} quarters`);
+              }
+            }
+          } catch (e) {
+            console.warn("[FF] FMP fetch échoué, fallback Yahoo:", e.message);
+            // Fallback: build _fmpData from Yahoo if FMP fails
             const converted = yahooToFmpData(yahooResult);
             if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
               yahooResult._fmpData = converted;
-              console.log("[FF] Pas de clé FMP, _fmpData construit depuis Yahoo:", converted.income?.length || 0, "ans");
+              console.log("[FF] _fmpData construit depuis Yahoo (FMP indispo):", converted.income?.length || 0, "ans");
             }
           }
         } else {
 
-          // Try FMP as last resort if timeseries also failed AND FMP key available
+          // Try FMP as last resort if timeseries also failed
           const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
-          if (stillNoBs && hasFmpApiKey()) {
+          if (stillNoBs) {
             console.log("[FF] timeseries insuffisant, tentative FMP…");
             try {
               const [prof, fins] = await Promise.all([
@@ -920,9 +917,9 @@ export async function fetchStockData(sym) {
   // Helper: wrap raw value for Yahoo-compatible format
   const w = (v) => v != null && v !== 0 ? { raw: v } : undefined;
 
-  // Essai 3 : enrichir avec FMP si clé disponible
+  // Essai 3 : enrichir avec FMP (proxied via Worker)
   let fmpProfile = null, fmpFinancials = null;
-  if (hasFmpApiKey()) {
+  {
     try {
       const [prof, fins] = await Promise.all([
         fetchProfile(sym).catch(() => null),
@@ -1041,7 +1038,7 @@ export async function fetchStockData(sym) {
   };
 
   // Fetch FMP quarterly data for chart fallback path
-  if (hasFmpApiKey()) {
+  {
     try {
       const qFins = await fetchAllQuarterlyFinancials(sym).catch(() => null);
       if (qFins) {

@@ -22,6 +22,7 @@ const ALLOWED_HOSTS = [
   "www.sec.gov",
   "efts.sec.gov",
   "api.anthropic.com",
+  "financialmodelingprep.com",
 ];
 
 // ── Rate limiter par IP (en mémoire, reset au redéploiement) ──
@@ -106,7 +107,7 @@ function getCorsHeaders(request) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: { ...getCorsHeaders(request), "Access-Control-Max-Age": "86400" } });
     }
@@ -213,6 +214,27 @@ export default {
             "User-Agent": "FoucauldFinance admin@foucauld.finance",
             "Accept": "application/json",
           },
+        });
+        const body = await resp.text();
+        return new Response(body, {
+          status: resp.status,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=300" },
+        });
+      }
+
+      // ── FMP (Financial Modeling Prep) : injection clé API côté serveur ──
+      if (targetUrl.hostname === "financialmodelingprep.com") {
+        const fmpKey = env?.FMP_API_KEY;
+        if (!fmpKey) {
+          return new Response(JSON.stringify({ error: "FMP API key not configured on server" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
+          });
+        }
+        // Inject API key server-side (never exposed to client)
+        targetUrl.searchParams.set("apikey", fmpKey);
+        const resp = await fetch(targetUrl.toString(), {
+          headers: { "Accept": "application/json" },
         });
         const body = await resp.text();
         return new Response(body, {

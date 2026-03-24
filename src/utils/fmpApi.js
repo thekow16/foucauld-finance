@@ -1,36 +1,29 @@
 // ──────────────────────────────────────────────
-// Financial Modeling Prep API
-// Clé gratuite : 250 requêtes/jour sur financialmodelingprep.com
+// Financial Modeling Prep API — proxied through Cloudflare Worker
+// La clé API est injectée côté serveur (jamais exposée au client)
 // ──────────────────────────────────────────────
 
 const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 const FMP_V4 = "https://financialmodelingprep.com/api/v4";
+const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
 
-// Clé FMP — stockée uniquement en localStorage (jamais dans le build)
+// ── Legacy: support clé locale (migration) ──
 const STORAGE_KEY = "fmp_api_key";
-
-// Migration: si une clé env existe au build, on la persiste en localStorage puis on l'oublie
-const _envKey = import.meta.env.VITE_FMP_API_KEY || "";
-if (_envKey && !localStorage.getItem(STORAGE_KEY)) {
-  localStorage.setItem(STORAGE_KEY, _envKey);
-}
 
 export function getFmpApiKey() {
   return localStorage.getItem(STORAGE_KEY) || "";
 }
 
 export function setFmpApiKey(key) {
-  if (key) {
-    console.warn("[FF] Clé FMP stockée en localStorage (visible dans DevTools). Pour un usage en production, utilisez un backend sécurisé.");
-  }
-  localStorage.setItem(STORAGE_KEY, key);
+  localStorage.setItem(STORAGE_KEY, key || "");
 }
 
+// FMP est toujours disponible via le Worker (clé serveur)
 export function hasFmpApiKey() {
-  return !!getFmpApiKey();
+  return true;
 }
 
-// ── Compteur journalier FMP (protection 250 req/jour) ──
+// ── Compteur journalier FMP (protection 250 req/jour partagées) ──
 const FMP_COUNTER_KEY = "fmp_daily_count";
 const FMP_DAILY_LIMIT = 230; // marge de sécurité (limite réelle 250)
 
@@ -57,10 +50,7 @@ export function getFmpUsage() {
 }
 
 async function fmpFetch(endpoint, base = FMP_BASE) {
-  const key = getFmpApiKey();
-  if (!key) throw new Error("Clé API FMP manquante");
-
-  // Vérif quota journalier
+  // Vérif quota journalier (client-side, approximatif)
   const today = new Date().toISOString().slice(0, 10);
   const stored = getFmpDailyCount();
   if (stored.date === today && stored.count >= FMP_DAILY_LIMIT) {
@@ -68,10 +58,15 @@ async function fmpFetch(endpoint, base = FMP_BASE) {
     throw new Error("Limite FMP atteinte pour aujourd'hui (250 req/jour). Les données Yahoo Finance restent disponibles.");
   }
   incrementFmpCount();
-  const url = `${base}${endpoint}${endpoint.includes("?") ? "&" : "?"}apikey=${key}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+
+  // Build FMP URL without API key (Worker injects it server-side)
+  const fmpUrl = `${base}${endpoint}`;
+  const proxyUrl = `${WORKER_URL}?url=${encodeURIComponent(fmpUrl)}`;
+
+  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new Error("Clé API FMP invalide");
+    if (res.status === 401 || res.status === 403) throw new Error("Clé API FMP invalide côté serveur");
+    if (res.status === 500) throw new Error("FMP API key not configured on server");
     throw new Error(`FMP HTTP ${res.status}`);
   }
   const data = await res.json();
