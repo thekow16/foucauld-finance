@@ -266,7 +266,7 @@ export function BilanTab({ data, symbol }) {
   });
 
   // FMP balance sheet data
-  if (hasKey && fmpData?.balance?.length > 0) {
+  if (fmpData?.balance?.length > 0) {
     const bs = fmpData.balance;
     const ratios = fmpData.ratios || [];
     const keyMetrics = fmpData.keyMetrics || [];
@@ -672,7 +672,7 @@ export function ResultatsTab({ data, symbol }) {
     return () => { cancelled = true; };
   }, [data?._fmpData, symbol, hasKey]);
 
-  if (hasKey && fmpData?.income?.length > 0) {
+  if (fmpData?.income?.length > 0) {
     const inc = fmpData.income;
     const ratios = fmpData.ratios || [];
     const keyMetrics = fmpData.keyMetrics || [];
@@ -1105,7 +1105,7 @@ export function TresorerieTab({ data, symbol }) {
     return () => { cancelled = true; };
   }, [data?._fmpData, symbol, hasKey]);
 
-  if (hasKey && fmpData?.cashflow?.length > 0) {
+  if (fmpData?.cashflow?.length > 0) {
     const cf = fmpData.cashflow;
     const keyMetrics = fmpData.keyMetrics || [];
     const inc2 = fmpData.income || [];

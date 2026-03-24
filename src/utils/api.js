@@ -213,6 +213,7 @@ async function fetchYahooTimeseries(sym) {
     }
 
     const dates = Object.keys(dateMap).sort().reverse();
+    console.log(`[FF] timeseries dates (${dates.length} years):`, dates.join(", "));
     if (dates.length === 0) return null;
 
     const w = (v) => v != null ? { raw: v } : undefined;
@@ -603,9 +604,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
 
   const totalYears = Math.max(fmpData.income?.length || 0, fmpData.balance?.length || 0, fmpData.cashflow?.length || 0);
   const extraYears = Math.max(extraBalance.length, extraIncome.length, extraCashflow.length);
-  if (extraYears > 0) {
-    console.log(`[FF] FMP extended with ${extraYears} Yahoo years → ${totalYears} total years`);
-  }
+  console.log(`[FF] extendFmpWithYahoo result: +${extraBalance.length} BS, +${extraIncome.length} IS, +${extraCashflow.length} CF → ${totalYears} total years (FMP had [${[...fmpYears].sort().join(",")}])`);
 
   return fmpData;
 }
@@ -619,7 +618,7 @@ function yahooToFmpData(yahooResult) {
 
 // ── Cache sessionStorage (15 min TTL, versionné) ──
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 4; // Incrémenter pour invalider le cache après un fix
+const CACHE_VERSION = 5; // Incrémenter pour invalider le cache après un fix
 
 function getCachedData(sym) {
   try {
