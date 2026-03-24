@@ -34,6 +34,7 @@ export default function CandlestickChart({ symbol, dark, currency }) {
   const candleSeriesRef = useRef(null);
   const [candleData, setCandleData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[0]);
   const [showMA50, setShowMA50] = useState(true);
   const [showMA200, setShowMA200] = useState(true);
@@ -50,12 +51,13 @@ export default function CandlestickChart({ symbol, dark, currency }) {
     if (!symbol) return;
     let cancelled = false;
     setLoading(true);
+    setFetchError(null);
     setMeasureStart(null);
     setMeasureEnd(null);
     setMeasureHover(null);
     fetchCandleData(symbol, timeframe.interval, timeframe.range)
       .then(d => { if (!cancelled) setCandleData(timeframe.aggregate === "quarter" ? aggregateToQuarters(d) : d); })
-      .catch(() => { if (!cancelled) setCandleData([]); })
+      .catch((err) => { if (!cancelled) { setCandleData([]); setFetchError(err.message || "Erreur de chargement"); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [symbol, timeframe]);
@@ -289,8 +291,9 @@ export default function CandlestickChart({ symbol, dark, currency }) {
       ) : candleData.length > 0 ? (
         <div ref={chartContainerRef} style={{ cursor: measureMode ? "crosshair" : "default" }} />
       ) : (
-        <div style={{ height: 420, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 14 }}>
-          Données chandeliers indisponibles
+        <div style={{ height: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 14, gap: 8 }}>
+          <span>{fetchError ? "Erreur de chargement des chandeliers" : "Données chandeliers indisponibles"}</span>
+          {fetchError && <span style={{ fontSize: 12 }}>{fetchError}</span>}
         </div>
       )}
     </div>

@@ -251,20 +251,6 @@ export function BilanTab({ data, symbol }) {
 
   const pr = data?.price;
 
-  // Debug: log data sources
-  const _bsArr = data?.balanceSheetHistory?.balanceSheetStatements || [];
-  const _isArr = data?.incomeStatementHistory?.incomeStatementHistory || [];
-  console.log("[BilanTab] sources:", {
-    fmpBal: fmpData?.balance?.length || 0,
-    yahooBs: _bsArr.length,
-    yahooInc: _isArr.length,
-    fromChart: !!data?._fromChart,
-    hasFmpData: !!data?._fmpData,
-    fmpErr: fmpError,
-    yahooBs0Keys: _bsArr[0] ? Object.keys(_bsArr[0]).slice(0, 10) : "none",
-    yahooBs0Sample: _bsArr[0] ? { totalAssets: _bsArr[0].totalAssets, cash: _bsArr[0].cash, endDate: _bsArr[0].endDate } : "none",
-  });
-
   // FMP balance sheet data
   if (fmpData?.balance?.length > 0) {
     const bs = fmpData.balance;

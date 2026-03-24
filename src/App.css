@@ -1515,4 +1515,13 @@
   .card { padding: 14px; }
   .ff-table { font-size: 10px; }
   .ff-table th:first-child, .ff-table td:first-child { min-width: 90px; max-width: 120px; }
+  .autocomplete-dropdown { right: 0; }
+  .tab-btn { padding: 8px 10px; font-size: 11px; }
+  .compare-table th, .compare-table td { font-size: 11px; padding: 6px 8px; }
+}
+
+/* ── Recharts / radar responsive ── */
+@media (max-width: 640px) {
+  .recharts-wrapper { font-size: 10px; }
+  .recharts-legend-wrapper { font-size: 10px !important; }
 }

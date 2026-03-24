@@ -165,11 +165,5 @@ export async function fetchAllFinancials(symbol) {
     fetchRevenueProductSegmentation(symbol).catch(e => { console.warn("[FMP] productSeg err:", e.message); return []; }),
     fetchRevenueGeoSegmentation(symbol).catch(e => { console.warn("[FMP] geoSeg err:", e.message); return []; }),
   ]);
-  console.log("[FMP] fetchAllFinancials result:", symbol,
-    "income:", income?.length || 0,
-    "balance:", balance?.length || 0,
-    "cashflow:", cashflow?.length || 0,
-    "productSeg:", productSegments?.length || 0,
-    "geoSeg:", geoSegments?.length || 0);
   return { income, balance, cashflow, ratios, keyMetrics, productSegments, geoSegments };
 }
