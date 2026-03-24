@@ -255,7 +255,6 @@ export function edgarToFmpData(facts) {
       };
     });
 
-  console.log(`[EDGAR] Parsed: ${income.length} IS, ${balance.length} BS, ${cashflow.length} CF years (${years[years.length - 1]}-${years[0]})`);
 
   return {
     income,
@@ -270,17 +269,14 @@ export function edgarToFmpData(facts) {
 export async function fetchEdgarFinancials(ticker) {
   // Only works for US stocks (no exchange suffix like .PA)
   if (ticker.includes(".")) {
-    console.log("[EDGAR] Skipping non-US ticker:", ticker);
     return null;
   }
 
   try {
     const cik = await lookupCik(ticker);
     if (!cik) {
-      console.log("[EDGAR] CIK not found for:", ticker);
       return null;
     }
-    console.log(`[EDGAR] CIK for ${ticker}: ${cik}`);
 
     const facts = await fetchCompanyFacts(cik);
     return edgarToFmpData(facts);

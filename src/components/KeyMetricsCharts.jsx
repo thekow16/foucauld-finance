@@ -82,9 +82,6 @@ export function buildSeries(data) {
   const cfArr = data?.cashflowStatementHistory?.cashflowStatements || [];
   const bsDates = bsArr.map(s => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0,10) : '?'));
   const isDates = isArr.map(s => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0,10) : '?'));
-  console.log("[FF][Charts] _fmpData?", !!fmp, "fmp.income:", fmp?.income?.length, "fmp.balance:", fmp?.balance?.length, "fmp.cashflow:", fmp?.cashflow?.length);
-  console.log("[FF][Charts] Yahoo BS dates:", bsDates.join(", "));
-  console.log("[FF][Charts] Yahoo IS dates:", isDates.join(", "));
 
   if (fmp?.income?.length && fmp?.cashflow?.length && fmp?.balance?.length) {
     const byYear = new Map();
@@ -127,7 +124,6 @@ export function buildSeries(data) {
       .map((d) => enrich(d))
       .filter((d) => d.year && hasFinancialData(d))
       .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-    console.log("[FF][Charts] FMP rows with data:", fmpRows.length);
     return fmpRows;
   }
 
@@ -176,7 +172,6 @@ export function buildSeries(data) {
     .map((d) => enrich(d))
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-  console.log("[FF][Charts] Yahoo rows with data:", yahooRows.length, "/ total years:", byYear.size);
   if (yahooRows.length === 0 && byYear.size > 0) {
     // Log sample row to help debug
     const sample = [...byYear.values()][0];

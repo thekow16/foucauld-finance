@@ -118,9 +118,17 @@ export default function Alphaview() {
       if (!el) { el = document.createElement("meta"); el.setAttribute("property", prop); document.head.appendChild(el); }
       el.setAttribute("content", content);
     };
+    const setLink = (rel, href) => {
+      let el = document.querySelector(`link[rel="${rel}"]`);
+      if (!el) { el = document.createElement("link"); el.setAttribute("rel", rel); document.head.appendChild(el); }
+      el.setAttribute("href", href);
+    };
+    const baseUrl = "https://thekow16.github.io/foucauld-finance";
     if (!data || !symbol) {
       document.title = "Alphaview";
       setMeta("og:title", "Alphaview — Analyse boursière");
+      setMeta("og:url", baseUrl);
+      setLink("canonical", baseUrl);
       return;
     }
     const pr = data.price;
@@ -130,9 +138,12 @@ export default function Alphaview() {
     const title = price != null
       ? `${symbol} — ${price.toFixed(2)} ${currency} | Alphaview`
       : `${name} | Alphaview`;
+    const pageUrl = `${baseUrl}?s=${encodeURIComponent(symbol)}`;
     document.title = title;
     setMeta("og:title", title);
     setMeta("og:description", `Analyse financière de ${name} (${symbol}) — cours, ratios, bilan, résultats et trésorerie.`);
+    setMeta("og:url", pageUrl);
+    setLink("canonical", pageUrl);
   }, [data, symbol]);
 
   const doFetchStock = async (sym, { silent = false } = {}) => {

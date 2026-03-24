@@ -87,7 +87,6 @@ async function secFetch(url) {
 
   for (const s of strategies) {
     try {
-      console.log(`[SEC] Trying ${s.label}…`);
       const res = await fetch(s.build(), {
         signal: AbortSignal.timeout(25000),
         headers: { Accept: "application/json" },
@@ -97,12 +96,10 @@ async function secFetch(url) {
         const wrapper = await res.json();
         if (wrapper?.contents) {
           const data = JSON.parse(wrapper.contents);
-          console.log(`[SEC] OK via ${s.label}`);
           return data;
         }
       } else {
         const data = await res.json();
-        console.log(`[SEC] OK via ${s.label}`);
         return data;
       }
     } catch (e) {
@@ -196,7 +193,6 @@ async function fetchSecSegments(symbol) {
   try {
     const cik = await getCik(symbol);
     if (!cik) {
-      console.log("[SEC] No CIK found for", symbol);
       return { product: null, geo: null };
     }
 
@@ -217,15 +213,12 @@ async function fetchSecSegments(symbol) {
         const segmented = data.units.USD.filter(e => e.segment);
         if (segmented.length > 0) {
           revenueData = data.units.USD;
-          console.log(`[SEC] Found revenue data via ${concept}: ${revenueData.length} entries (${segmented.length} segmented)`);
           break;
         }
-        console.log(`[SEC] ${concept}: ${data.units.USD.length} entries but 0 segmented — trying next`);
       }
     }
 
     if (!revenueData) {
-      console.log("[SEC] No segmented revenue data for", symbol);
       return { product: null, geo: null };
     }
 
@@ -233,12 +226,10 @@ async function fetchSecSegments(symbol) {
       e.form === "10-K" && e.fp === "FY" && e.val > 0 && e.segment
     );
 
-    console.log(`[SEC] ${annualEntries.length} segmented annual entries found`);
     if (annualEntries.length < 2) return { product: null, geo: null };
 
     const maxFy = Math.max(...annualEntries.map(e => e.fy));
     const latestEntries = annualEntries.filter(e => e.fy === maxFy);
-    console.log(`[SEC] FY${maxFy}: ${latestEntries.length} segments`);
 
     const geoKeywords = /geograph|region|country|americas|europe|china|japan|asia|pacific|emea|africa|middle.east|united.states|north.america|latin|international|domestic/i;
     const productEntries = [];
@@ -423,7 +414,6 @@ export default function RevenueBreakdown({ data, symbol }) {
       // 2) Hardcoded database (instant — covers 70+ tickers incl. CAC 40, major EU, S&P 500)
       const hardcoded = lookupSegments(symbol);
       if (hardcoded && !cancelled) {
-        console.log(`[Segments] Using hardcoded data for ${symbol}`);
         setProductData(hardcoded.product);
         setGeoData(hardcoded.geo);
         setSource("10-K");
