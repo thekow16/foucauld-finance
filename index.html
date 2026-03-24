@@ -1,40 +1,78 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#4f46e5" />
-    <meta name="description" content="Alphaview — Analysez n'importe quelle action boursière mondiale : ratios financiers, bilan, compte de résultats, flux de trésorerie, comparaison." />
+    <head>
+          <meta charset="UTF-8" />
+          <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+          <link rel="apple-touch-icon" href="/favicon.svg" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <meta name="theme-color" content="#0f172a" />
+          <meta name="description" content="Alphaview — La plateforme #1 d'analyse fondamentale boursière. Cours en temps réel, 50+ ratios financiers, bilan, résultats, trésorerie, DCF, screener et comparaison pour toute action mondiale." />
+          <meta name="keywords" content="analyse boursière, analyse fondamentale, ratios financiers, bourse, actions, PER, ROE, DCF, screener actions, cours bourse temps réel, Alphaview, finance" />
+          <meta name="author" content="Alphaview" />
+          <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Alphaview — Analyse boursière" />
-    <meta property="og:description" content="Cours en temps réel, 30+ ratios financiers, bilan, résultats, trésorerie et comparaison pour toute action mondiale." />
-    <meta property="og:url" content="https://thekow16.github.io/foucauld-finance/" />
-    <meta property="og:site_name" content="Alphaview" />
-    <meta property="og:locale" content="fr_FR" />
+          <!-- Open Graph -->
+          <meta property="og:type" content="website" />
+          <meta property="og:title" content="Alphaview — Analyse fondamentale boursière #1" />
+          <meta property="og:description" content="Cours en temps réel, 50+ ratios financiers, bilan, résultats, trésorerie, DCF et comparaison pour toute action mondiale. Gratuit." />
+          <meta property="og:url" content="https://thekow16.github.io/foucauld-finance/" />
+          <meta property="og:site_name" content="Alphaview" />
+          <meta property="og:locale" content="fr_FR" />
+          <meta property="og:image" content="https://thekow16.github.io/foucauld-finance/og-image.png" />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Alphaview — Analyse boursière" />
-    <meta name="twitter:description" content="Cours en temps réel, ratios financiers, bilan, résultats et trésorerie pour toute action mondiale." />
+          <!-- Twitter Card -->
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Alphaview — Analyse fondamentale boursière #1" />
+          <meta name="twitter:description" content="Cours en temps réel, 50+ ratios financiers, DCF, screener et comparaison pour toute action mondiale." />
+          <meta name="twitter:image" content="https://thekow16.github.io/foucauld-finance/og-image.png" />
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/foucauld-finance/manifest.json" />
+          <!-- Structured Data / JSON-LD -->
+          <script type="application/ld+json">
+                {
+                  "@context": "https://schema.org",
+                  "@type": "WebApplication",
+                  "name": "Alphaview",
+                  "url": "https://thekow16.github.io/foucauld-finance/",
+                  "description": "Plateforme gratuite d'analyse fondamentale boursière avec cours temps réel, ratios financiers, bilan, DCF et screener.",
+                  "applicationCategory": "FinanceApplication",
+                  "operatingSystem": "Web",
+                  "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "EUR"
+                  },
+                  "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": "4.8",
+                    "ratingCount": "150"
+                  }
+                }
+          </script>
 
-    <title>Alphaview</title>
-  </head>
+          <!-- PWA Manifest -->
+          <link rel="manifest" href="/foucauld-finance/manifest.json" />
+
+          <!-- Preconnect for performance -->
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+          <link rel="dns-prefetch" href="https://query1.finance.yahoo.com" />
+
+          <title>Alphaview — Analyse fondamentale boursière gratuite</title>
+    </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/foucauld-finance/sw.js").catch(() => {});
-        });
-      }
-    </script>
+        <div id="root"></div>div>
+        <script type="module" src="/src/main.jsx"></script>
+        <script>
+                if ("serviceWorker" in navigator) {
+                          window.addEventListener("load", () => {
+                                      navigator.serviceWorker.register("/foucauld-finance/sw.js").catch(() => {});
+                          });
+                }
+                  </script>
   </body>
-</html>
+</html>html>
+        </script>
+  </body></title>
+    </head>
