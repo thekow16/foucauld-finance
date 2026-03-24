@@ -739,78 +739,6 @@ export function ResultatsTab({ data, symbol }) {
       <div>
         {loading && <div style={{ textAlign: "center", padding: 20 }}><div className="spinner" /></div>}
 
-        {chart.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">📊 COMPTE DE RÉSULTAT — EN MILLIARDS ({data?.price?.currency})</div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="CA" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="EBITDA" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Rés. Op." fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Rés. Net" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* BPA Evolution */}
-        {epsChart.length > 1 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">💰 BPA DILUÉ — ÉVOLUTION</div>
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={epsChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-                <Area type="monotone" dataKey="BPA" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2.5} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Marges visuelles */}
-        {latest && (
-          <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 14 }}>📐 Marges ({latest.calendarYear || latest.date?.substring(0, 4)})</div>
-            <MarginBar label="Marge brute" value={latest.grossProfitRatio} color="#4f46e5" />
-            <MarginBar label="Marge opérationnelle" value={latest.operatingIncomeRatio} color="#f59e0b" />
-            <MarginBar label="Marge EBITDA" value={latest.ebitdaratio} color="#7c3aed" />
-            <MarginBar label="Marge nette" value={latest.netIncomeRatio} color="#10b981" />
-            {cf[0] && latest.revenue && (
-              <MarginBar label="Marge FCF" value={cf[0].freeCashFlow / latest.revenue} color="#0891b2" />
-            )}
-          </div>
-        )}
-
-        {/* Évolution des marges en area chart */}
-        {inc.length > 1 && (
-          <div style={{ marginBottom: 28 }}>
-            <div className="chart-label">📈 ÉVOLUTION DES MARGES</div>
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={[...inc].reverse().map((s, i) => ({
-                year: s.calendarYear || s.date?.substring(0, 4),
-                "Marge brute": s.grossProfitRatio ? +(s.grossProfitRatio * 100).toFixed(1) : 0,
-                "Marge op.": s.operatingIncomeRatio ? +(s.operatingIncomeRatio * 100).toFixed(1) : 0,
-                "Marge nette": s.netIncomeRatio ? +(s.netIncomeRatio * 100).toFixed(1) : 0,
-              }))} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} unit="%" />
-                <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} formatter={v => `${v}%`} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="Marge brute" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.1} strokeWidth={2} />
-                <Area type="monotone" dataKey="Marge op." stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={2} />
-                <Area type="monotone" dataKey="Marge nette" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
 
         {/* Ratios de rentabilité */}
         {ratios.length > 0 && (
@@ -980,25 +908,6 @@ export function ResultatsTab({ data, symbol }) {
 
   return (
     <div>
-      {isChart.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="chart-label">📊 COMPTE DE RÉSULTAT — EN MILLIARDS ({data?.price?.currency})</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={isChart} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="year" tick={{ fontSize: 12, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: 12, color: "white", fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="CA" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Bén. brut" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Rés. Op." fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Rés. Net" fill="#10b981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
       {/* Ratios Yahoo */}
       {fin2 && (
         <div style={{ marginBottom: 24, padding: "16px 20px", background: "var(--highlight-row)", borderRadius: 14 }}>
