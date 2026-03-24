@@ -497,7 +497,10 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const extraBalance = yahooBs
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
-      const hasData = s.totalAssets?.raw != null || s.cash?.raw != null || s.totalLiab?.raw != null;
+      const hasData = s.totalAssets?.raw != null || s.cash?.raw != null || s.totalLiab?.raw != null
+        || s.totalCurrentAssets?.raw != null || s.totalStockholderEquity?.raw != null
+        || s.totalDebt?.raw != null || s.longTermDebt?.raw != null || s.netReceivables?.raw != null
+        || s.inventory?.raw != null || s.retainedEarnings?.raw != null || s.propertyPlantEquipment?.raw != null;
       if (year && !fmpYears.has(year) && !hasData) {
         console.log(`[FF] extendFmpWithYahoo: skipping BS year ${year} — no financial data`);
       }
@@ -536,7 +539,9 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const extraIncome = yahooIs
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
-      const hasData = s.totalRevenue?.raw != null || s.netIncome?.raw != null || s.operatingIncome?.raw != null;
+      const hasData = s.totalRevenue?.raw != null || s.netIncome?.raw != null || s.operatingIncome?.raw != null
+        || s.grossProfit?.raw != null || s.ebitda?.raw != null || s.costOfRevenue?.raw != null
+        || s.incomeBeforeTax?.raw != null || s.dilutedEPS?.raw != null || s.basicEPS?.raw != null;
       if (year && !fmpYears.has(year) && !hasData) {
         console.log(`[FF] extendFmpWithYahoo: skipping IS year ${year} — no financial data`);
       }
@@ -580,7 +585,10 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   const extraCashflow = yahooCf
     .filter(s => {
       const year = s.endDate?.fmt?.substring(0, 4);
-      const hasData = s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null || s.dividendsPaid?.raw != null;
+      const hasData = s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null || s.dividendsPaid?.raw != null
+        || s.capitalExpenditures?.raw != null || s.totalCashflowsFromInvestingActivities?.raw != null
+        || s.totalCashFromFinancingActivities?.raw != null || s.repurchaseOfStock?.raw != null
+        || s.changeInCash?.raw != null || s.stockBasedCompensation?.raw != null;
       if (year && !fmpYears.has(year) && !hasData) {
         console.log(`[FF] extendFmpWithYahoo: skipping CF year ${year} — no financial data`);
       }
@@ -776,22 +784,26 @@ export async function fetchStockData(sym) {
           };
 
           // Filter out ghost entries (date present but no financial data)
+          // Check many fields to avoid dropping years with sparse but valid data
           const hasAnyData = (s, ...keys) => keys.some(k => s[k]?.raw != null);
+          const BS_KEYS = ["totalAssets", "cash", "totalLiab", "totalCurrentAssets", "totalStockholderEquity", "totalDebt", "longTermDebt", "propertyPlantEquipment", "netReceivables", "inventory", "retainedEarnings", "shortTermInvestments", "totalCurrentLiabilities", "totalNonCurrentAssets", "nonCurrentLiabilities", "minorityInterest"];
+          const IS_KEYS = ["totalRevenue", "netIncome", "operatingIncome", "grossProfit", "ebitda", "costOfRevenue", "totalOperatingExpenses", "incomeBeforeTax", "incomeTaxExpense", "dilutedEPS", "basicEPS", "interestExpense", "researchDevelopment"];
+          const CF_KEYS = ["totalCashFromOperatingActivities", "freeCashFlow", "dividendsPaid", "capitalExpenditures", "totalCashflowsFromInvestingActivities", "totalCashFromFinancingActivities", "repurchaseOfStock", "changeInCash", "stockBasedCompensation"];
 
-          if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements.some(s => s.totalAssets?.raw != null)) {
+          if (ts.balanceSheetStatements?.length > 0 && ts.balanceSheetStatements.some(s => hasAnyData(s, ...BS_KEYS))) {
             const existing = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
             const merged = mergeByDate(ts.balanceSheetStatements, existing);
-            yahooResult.balanceSheetHistory = { balanceSheetStatements: merged.filter(s => hasAnyData(s, "totalAssets", "cash", "totalLiab")) };
+            yahooResult.balanceSheetHistory = { balanceSheetStatements: merged.filter(s => hasAnyData(s, ...BS_KEYS)) };
           }
-          if (ts.incomeStatements?.length > 0 && ts.incomeStatements.some(s => s.totalRevenue?.raw != null)) {
+          if (ts.incomeStatements?.length > 0 && ts.incomeStatements.some(s => hasAnyData(s, ...IS_KEYS))) {
             const existing = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
             const merged = mergeByDate(ts.incomeStatements, existing);
-            yahooResult.incomeStatementHistory = { incomeStatementHistory: merged.filter(s => hasAnyData(s, "totalRevenue", "netIncome", "operatingIncome")) };
+            yahooResult.incomeStatementHistory = { incomeStatementHistory: merged.filter(s => hasAnyData(s, ...IS_KEYS)) };
           }
           if (ts.cashflowStatements?.length > 0) {
             const existing = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
             const merged = mergeByDate(ts.cashflowStatements, existing);
-            yahooResult.cashflowStatementHistory = { cashflowStatements: merged.filter(s => hasAnyData(s, "totalCashFromOperatingActivities", "freeCashFlow", "dividendsPaid")) };
+            yahooResult.cashflowStatementHistory = { cashflowStatements: merged.filter(s => hasAnyData(s, ...CF_KEYS)) };
           }
           // Enrich financialData from timeseries if needed
           const fd = yahooResult.financialData || {};
@@ -854,32 +866,53 @@ export async function fetchStockData(sym) {
             }
           }
         } else {
-
-          // Try FMP as last resort if timeseries also failed
-          const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
-          if (stillNoBs) {
-            console.log("[FF] timeseries insuffisant, tentative FMP…");
-            try {
-              const [prof, fins] = await Promise.all([
-                fetchProfile(sym).catch(() => null),
-                fetchAllFinancials(sym).catch(() => null),
-              ]);
-              const fp = Array.isArray(prof) ? prof[0] : prof;
-              if (fins?.balance?.length > 0) {
+          // Timeseries failed — always try FMP to get as many years as possible
+          console.log("[FF] timeseries échoué, tentative FMP pour enrichir les données…");
+          try {
+            const [fins, qFins] = await Promise.all([
+              fetchAllFinancials(sym).catch(() => null),
+              fetchAllQuarterlyFinancials(sym).catch(() => null),
+            ]);
+            const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
+            if (stillNoBs && fins) {
+              // No Yahoo BS data at all — use FMP as primary source for Yahoo format
+              if (fins.balance?.length > 0) {
                 yahooResult.balanceSheetHistory = { balanceSheetStatements: fmpToYahooBalance(fins.balance) };
               }
-              if (fins?.income?.length > 0) {
+              if (fins.income?.length > 0) {
                 yahooResult.incomeStatementHistory = { incomeStatementHistory: fmpToYahooIncome(fins.income) };
               }
-              if (fins?.cashflow?.length > 0) {
+              if (fins.cashflow?.length > 0) {
                 yahooResult.cashflowStatementHistory = { cashflowStatements: fmpToYahooCashflow(fins.cashflow) };
               }
-              if (fins?.balance?.length > 0 || fins?.income?.length > 0) {
-                yahooResult._fmpData = fins;
-                console.log("[FF] FMP enrichissement OK");
+            }
+            if (fins?.income?.length > 0 || fins?.balance?.length > 0) {
+              // Extend FMP with whatever Yahoo data we do have (quoteSummary ~4 years)
+              extendFmpWithYahoo(fins, yahooResult);
+              yahooResult._fmpData = fins;
+              console.log("[FF] FMP enrichissement OK (sans timeseries):", fins.income?.length || 0, "ans");
+            } else {
+              // FMP also failed — build _fmpData from quoteSummary alone
+              const converted = yahooToFmpData(yahooResult);
+              if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
+                yahooResult._fmpData = converted;
+                console.log("[FF] _fmpData depuis quoteSummary seul:", converted.income?.length || 0, "ans");
               }
-            } catch (e) {
-              console.warn("[FF] FMP échoué:", e.message);
+            }
+            // Build quarterly data from FMP if Yahoo didn't provide it
+            if (qFins && !yahooResult._quarterlyData?.length) {
+              const fmpQuarterly = buildFmpQuarterlyData(qFins);
+              if (fmpQuarterly.length > 0) {
+                yahooResult._quarterlyData = fmpQuarterly;
+                console.log(`[FF] FMP quarterly fallback (no timeseries): ${fmpQuarterly.length} quarters`);
+              }
+            }
+          } catch (e) {
+            console.warn("[FF] FMP échoué:", e.message);
+            // Last resort: build _fmpData from quoteSummary
+            const converted = yahooToFmpData(yahooResult);
+            if (converted && (converted.income?.length > 0 || converted.balance?.length > 0)) {
+              yahooResult._fmpData = converted;
             }
           }
         }
