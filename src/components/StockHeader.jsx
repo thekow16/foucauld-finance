@@ -36,7 +36,7 @@ export default function StockHeader({ data, symbol, fetchedAt, isInWatchlist, on
             <span className="badge badge-primary">{symbol}</span>
             {prof?.sector && <span className="badge badge-green">{prof.sector}</span>}
             {pr?.exchangeName && <span className="badge badge-orange">{pr.exchangeName}</span>}
-            <button className="watchlist-btn" onClick={() => onToggleWatchlist(symbol, pr?.shortName || symbol)} title={inWl ? "Retirer des favoris" : "Ajouter aux favoris"}>
+            <button className="watchlist-btn" onClick={() => onToggleWatchlist(symbol, pr?.shortName || symbol)} title={inWl ? "Retirer des favoris" : "Ajouter aux favoris"} aria-label={inWl ? `Retirer ${symbol} des favoris` : `Ajouter ${symbol} aux favoris`} aria-pressed={inWl}>
               {inWl ? "★" : "☆"}
             </button>
           </div>

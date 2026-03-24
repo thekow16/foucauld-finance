@@ -1,5 +1,6 @@
 import { fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
 import { fetchEdgarFinancials } from "./secEdgar";
+import { rateLimited } from "./rateLimiter";
 
 // ──────────────────────────────────────────────
 // Cloudflare Worker URL
@@ -44,29 +45,31 @@ async function tryFetch(url, unwrap = false) {
 }
 
 export async function proxyFetch(targetUrl) {
-  // 1) Cloudflare Worker (gère le crumb automatiquement)
-  if (WORKER_URL) {
-    try {
-      const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`);
-      return data;
-    } catch (e) {
-      console.warn("[FF] Worker échoué:", e.message);
+  return rateLimited(async () => {
+    // 1) Cloudflare Worker (gère le crumb automatiquement)
+    if (WORKER_URL) {
+      try {
+        const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`);
+        return data;
+      } catch (e) {
+        console.warn("[FF] Worker échoué:", e.message);
+      }
     }
-  }
 
-  // 2) Fallback proxies gratuits
-  for (let i = 0; i < FREE_PROXIES.length; i++) {
-    const { url, unwrap } = FREE_PROXIES[i](targetUrl);
-    const label = new URL(url).hostname;
-    try {
-      const data = await tryFetch(url, unwrap);
-      return data;
-    } catch (e) {
-      console.warn(`[FF] ${label} → ${e.message}`);
+    // 2) Fallback proxies gratuits
+    for (let i = 0; i < FREE_PROXIES.length; i++) {
+      const { url, unwrap } = FREE_PROXIES[i](targetUrl);
+      const label = new URL(url).hostname;
+      try {
+        const data = await tryFetch(url, unwrap);
+        return data;
+      } catch (e) {
+        console.warn(`[FF] ${label} → ${e.message}`);
+      }
     }
-  }
 
-  throw new Error("Impossible de contacter Yahoo Finance.");
+    throw new Error("Impossible de contacter Yahoo Finance.");
+  });
 }
 
 // ── Fetch Yahoo Finance (essaie query2 puis query1) ──

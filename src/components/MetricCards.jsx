@@ -25,7 +25,7 @@ function Sparkline({ values, color }) {
   const trendColor = last > first ? "#10b981" : last < first ? "#ef4444" : color;
 
   return (
-    <svg width={w} height={h} style={{ display: "block", marginTop: 6, opacity: 0.85 }}>
+    <svg width={w} height={h} style={{ display: "block", marginTop: 6, opacity: 0.85 }} aria-hidden="true">
       <polyline
         points={points.join(" ")}
         fill="none"

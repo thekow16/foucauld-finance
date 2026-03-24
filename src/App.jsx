@@ -273,19 +273,23 @@ export default function Alphaview() {
   return (
     <div className={`app ${dark ? "dark" : "light"}`}>
       {/* CSS extracted to App.css */}
+      <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
       <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} onShowSettings={() => setShowSettings(true)} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
 
       {workerDown && (
-        <div className="worker-banner">
+        <div className="worker-banner" role="alert">
           Service dégradé — le serveur proxy est temporairement indisponible. Les données peuvent être incomplètes.
         </div>
       )}
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(u) => setUser(u)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onFmpKeyChange={() => { if (symbol) handleSearch(symbol); }} />}
+      <div aria-live="polite" aria-atomic="true" className="sr-only" id="loading-status">
+        {loading ? `Analyse de ${symbol} en cours` : ""}
+      </div>
 
-      <div className="main">
+      <main className="main" id="main-content" role="main">
         <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
         {legalPage === "mentions" ? (
           <MentionsLegales onBack={() => setLegalPage(null)} />
@@ -327,7 +331,7 @@ export default function Alphaview() {
         )}
 
         {!loading && error && (
-          <div className="card" style={{ textAlign: "center", padding: "52px 24px" }}>
+          <div className="card" role="alert" style={{ textAlign: "center", padding: "52px 24px" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>
               <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
                 <circle cx="28" cy="28" r="26" stroke="#ef4444" strokeWidth="2" opacity=".3" />
@@ -413,10 +417,13 @@ export default function Alphaview() {
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div className="tab-bar">
+              <div className="tab-bar" role="tablist" aria-label="Onglets financiers">
                 {TABS.map(t => (
                   <button
                     key={t.id}
+                    role="tab"
+                    aria-selected={activeTab === t.id}
+                    aria-controls={`tabpanel-${t.id}`}
                     className={`tab-btn${activeTab === t.id ? " active" : ""}`}
                     onClick={() => switchTab(t.id)}
                   >
@@ -424,7 +431,7 @@ export default function Alphaview() {
                   </button>
                 ))}
               </div>
-              <div style={{ padding: 24, minHeight: 400 }}>
+              <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
                 {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
@@ -433,7 +440,7 @@ export default function Alphaview() {
               </div>
             </div>
 
-            <div className="footer">
+            <footer className="footer" role="contentinfo">
               Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
               <strong style={{ color: "#4f46e5" }}>Alphaview</strong>
               <div className="footer-links">
@@ -442,7 +449,7 @@ export default function Alphaview() {
                 <button className="footer-link" onClick={() => setLegalPage("cgu")}>CGU</button>
                 <button className="footer-link" onClick={() => setLegalPage("cgv")}>CGV</button>
               </div>
-            </div>
+            </footer>
           </ErrorBoundary>
         )}
         </>)}
@@ -459,11 +466,11 @@ export default function Alphaview() {
           </div>
         )}
         </Suspense>
-      </div>
+      </main>
 
       {/* Toast notifications pour alertes MA */}
       {toasts.length > 0 && (
-        <div className="toast-container">
+        <div className="toast-container" role="status" aria-live="assertive">
           {toasts.map(t => (
             <div key={t.id} className={`toast-alert ${t.direction}`}>
               <div className="toast-icon">{t.direction === "above" ? "📈" : "📉"}</div>
@@ -471,7 +478,7 @@ export default function Alphaview() {
                 <strong>{t.symbol}</strong> a croisé {t.direction === "above" ? "au-dessus" : "en dessous"} de {t.ma}
                 <div className="toast-detail">Prix: {t.price.toFixed(2)} | {t.ma}: {t.maValue.toFixed(2)}</div>
               </div>
-              <button className="toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}>×</button>
+              <button className="toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} aria-label="Fermer la notification">×</button>
             </div>
           ))}
         </div>

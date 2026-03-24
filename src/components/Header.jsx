@@ -65,17 +65,17 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
 
   const navActions = (
     <>
-      <button onClick={() => { onShowInvestors(); setMenuOpen(false); }} className="watchlist-header-btn" title="Investisseurs" style={{ fontSize: 15, color: "#f59e0b" }}>
-        🏆
+      <button onClick={() => { onShowInvestors(); setMenuOpen(false); }} className="watchlist-header-btn" title="Investisseurs" aria-label="Voir les top investisseurs" style={{ fontSize: 15, color: "#f59e0b" }}>
+        <span aria-hidden="true">🏆</span>
       </button>
-      <button onClick={() => { onShowWatchlist(); setMenuOpen(false); }} className="watchlist-header-btn" title="Ma Watchlist">
-        ★{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
+      <button onClick={() => { onShowWatchlist(); setMenuOpen(false); }} className="watchlist-header-btn" title="Ma Watchlist" aria-label={`Ma watchlist (${watchlistCount} action${watchlistCount > 1 ? "s" : ""})`}>
+        <span aria-hidden="true">★</span>{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
       </button>
-      <button onClick={() => { onShowSettings?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Paramètres" style={{ fontSize: 15 }}>
-        &#9881;
+      <button onClick={() => { onShowSettings?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Paramètres" aria-label="Ouvrir les paramètres" style={{ fontSize: 15 }}>
+        <span aria-hidden="true">&#9881;</span>
       </button>
-      <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"}>
-        {dark ? "☀️" : "🌙"}
+      <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"} aria-label={dark ? "Activer le mode clair" : "Activer le mode sombre"}>
+        <span aria-hidden="true">{dark ? "☀️" : "🌙"}</span>
       </button>
       {user ? (
         <div className="auth-header-group">
@@ -93,9 +93,9 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
   );
 
   return (
-    <div className="hero">
+    <header className="hero" role="banner">
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
-        <div className="header-bar">
+        <nav className="header-bar" aria-label="Navigation principale">
           <div className="logo">
             <div className="logo-icon">📈</div>
             <span className="logo-text">Alphaview</span>
@@ -105,12 +105,12 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
             {navActions}
           </div>
           {/* Mobile hamburger */}
-          <button className="hamburger-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
+          <button className="hamburger-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" aria-expanded={menuOpen}>
             <span className={`hamburger-line ${menuOpen ? "open" : ""}`} />
             <span className={`hamburger-line ${menuOpen ? "open" : ""}`} />
             <span className={`hamburger-line ${menuOpen ? "open" : ""}`} />
           </button>
-        </div>
+        </nav>
         {/* Mobile dropdown menu */}
         {menuOpen && (
           <div className="mobile-nav">
@@ -126,13 +126,19 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
               onChange={e => handleInput(e.target.value)}
               onFocus={handleFocus}
               placeholder="Rechercher une action… ( / )"
+              aria-label="Rechercher une action par symbole"
+              aria-autocomplete="list"
+              aria-expanded={showSugg || showHistory}
+              aria-haspopup="listbox"
+              role="combobox"
+              autoComplete="off"
             />
-            <button type="submit" className="ff-btn">Analyser</button>
+            <button type="submit" className="ff-btn" aria-label="Lancer l'analyse">Analyser</button>
           </form>
           {showSugg && (
-            <div className="autocomplete-dropdown">
+            <div className="autocomplete-dropdown" role="listbox" aria-label="Suggestions de symboles">
               {suggestions.map(s => (
-                <button key={s.symbol} className="autocomplete-item" onClick={() => pickSuggestion(s.symbol)}>
+                <button key={s.symbol} role="option" className="autocomplete-item" onClick={() => pickSuggestion(s.symbol)}>
                   <span className="ac-symbol">{s.symbol}</span>
                   <span className="ac-name">{s.shortname || s.longname || ""}</span>
                   <span className="ac-exchange">{s.exchDisp || ""}</span>
@@ -141,10 +147,10 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
             </div>
           )}
           {showHistory && (
-            <div className="autocomplete-dropdown">
+            <div className="autocomplete-dropdown" role="listbox" aria-label="Recherches récentes">
               <div className="history-label">Recherches récentes</div>
               {searchHistory.map(sym => (
-                <button key={sym} className="autocomplete-item" onClick={() => pickSuggestion(sym)}>
+                <button key={sym} role="option" className="autocomplete-item" onClick={() => pickSuggestion(sym)}>
                   <span className="ac-symbol">{sym}</span>
                 </button>
               ))}
@@ -152,6 +158,6 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
           )}
         </div>
       </div>
-    </div>
+    </header>
   );
 });
