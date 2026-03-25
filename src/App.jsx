@@ -7,7 +7,7 @@ const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 const LandingPage = lazy(() => import("./components/LandingPage"));
 const ScoreCard = lazy(() => import("./components/ScoreCard"));
-const MetricCards = lazy(() => import("./components/MetricCards"));h
+const MetricCards = lazy(() => import("./components/MetricCards"));
 
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
