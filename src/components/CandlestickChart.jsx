@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createChart, ColorType, LineStyle, CandlestickSeries, LineSeries } from "lightweight-charts";
 import { fetchCandleData } from "../utils/api";
-import { computeSMA, computeBollingerBands, computeRSI, computeMACD } from "../utils/indicators";
+import { computeSMA, computeBollingerBands } from "../utils/indicators";
 
 const TIMEFRAMES = [
   { id: "monthly", label: "Mensuel", interval: "1mo", range: "max" },
@@ -39,8 +39,6 @@ export default function CandlestickChart({ symbol, dark, currency }) {
   const [showMA50, setShowMA50] = useState(true);
   const [showMA200, setShowMA200] = useState(true);
   const [showBollinger, setShowBollinger] = useState(true);
-  const [showRSI, setShowRSI] = useState(false);
-  const [showMACD, setShowMACD] = useState(false);
 
   // Measure tool state
   const [measureMode, setMeasureMode] = useState(false);
@@ -68,8 +66,6 @@ export default function CandlestickChart({ symbol, dark, currency }) {
   const ma50Data = useMemo(() => showMA50 ? computeSMA(candleData, 50) : [], [candleData, showMA50]);
   const ma200Data = useMemo(() => showMA200 ? computeSMA(candleData, 200) : [], [candleData, showMA200]);
   const bollinger = useMemo(() => showBollinger ? computeBollingerBands(candleData) : { upper: [], middle: [], lower: [] }, [candleData, showBollinger]);
-  const rsiData = useMemo(() => showRSI ? computeRSI(candleData) : [], [candleData, showRSI]);
-  const macdData = useMemo(() => showMACD ? computeMACD(candleData) : { macd: [], signal: [], histogram: [] }, [candleData, showMACD]);
 
   // Handle chart click for measure tool
   const handleChartClick = useCallback((param) => {
@@ -258,14 +254,6 @@ export default function CandlestickChart({ symbol, dark, currency }) {
           <input type="checkbox" checked={showBollinger} onChange={() => setShowBollinger(v => !v)} />
           <span style={{ color: "#8b5cf6", fontWeight: 700 }}>Bollinger</span>
         </label>
-        <label style={toggleStyle}>
-          <input type="checkbox" checked={showRSI} onChange={() => setShowRSI(v => !v)} />
-          <span style={{ color: "#06b6d4", fontWeight: 700 }}>RSI</span>
-        </label>
-        <label style={toggleStyle}>
-          <input type="checkbox" checked={showMACD} onChange={() => setShowMACD(v => !v)} />
-          <span style={{ color: "#ec4899", fontWeight: 700 }}>MACD</span>
-        </label>
       </div>
 
       {measureMode && (
@@ -306,78 +294,6 @@ export default function CandlestickChart({ symbol, dark, currency }) {
         <div style={{ height: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 14, gap: 8 }}>
           <span>{fetchError ? "Erreur de chargement des chandeliers" : "Données chandeliers indisponibles"}</span>
           {fetchError && <span style={{ fontSize: 12 }}>{fetchError}</span>}
-        </div>
-      )}
-
-      {/* RSI Sub-chart */}
-      {showRSI && rsiData.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#06b6d4", marginBottom: 8 }}>RSI (14)</div>
-          <div style={{ position: "relative", height: 100, background: "var(--highlight-row)", borderRadius: 8, overflow: "hidden" }}>
-            {/* Overbought/Oversold zones */}
-            <div style={{ position: "absolute", top: `${(100 - 70)}%`, left: 0, right: 0, height: 1, background: "#ef4444", opacity: 0.3 }} />
-            <div style={{ position: "absolute", top: `${(100 - 30)}%`, left: 0, right: 0, height: 1, background: "#10b981", opacity: 0.3 }} />
-            <div style={{ position: "absolute", top: 0, right: 4, fontSize: 9, color: "#ef4444", opacity: 0.6 }}>70</div>
-            <div style={{ position: "absolute", bottom: 0, right: 4, fontSize: 9, color: "#10b981", opacity: 0.6 }}>30</div>
-            <svg width="100%" height="100%" viewBox={`0 0 ${rsiData.length} 100`} preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="#06b6d4"
-                strokeWidth="1.5"
-                points={rsiData.map((d, i) => `${i},${100 - d.value}`).join(" ")}
-              />
-            </svg>
-            {/* Current RSI value */}
-            <div style={{
-              position: "absolute", bottom: 4, left: 4,
-              fontSize: 11, fontWeight: 700,
-              color: rsiData[rsiData.length - 1]?.value > 70 ? "#ef4444" : rsiData[rsiData.length - 1]?.value < 30 ? "#10b981" : "#06b6d4",
-            }}>
-              {rsiData[rsiData.length - 1]?.value}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MACD Sub-chart */}
-      {showMACD && macdData.histogram.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#ec4899", marginBottom: 8 }}>MACD (12, 26, 9)</div>
-          <div style={{ position: "relative", height: 100, background: "var(--highlight-row)", borderRadius: 8, overflow: "hidden" }}>
-            {(() => {
-              const allVals = [...macdData.macd.map(d => d.value), ...macdData.signal.map(d => d.value), ...macdData.histogram.map(d => d.value)];
-              const maxVal = Math.max(...allVals.map(Math.abs)) || 1;
-              const toY = (v) => 50 - (v / maxVal) * 45;
-              const len = macdData.histogram.length;
-              const barW = 100 / len;
-              return (
-                <svg width="100%" height="100%" viewBox={`0 0 ${len} 100`} preserveAspectRatio="none">
-                  {/* Zero line */}
-                  <line x1="0" y1="50" x2={len} y2="50" stroke="var(--muted)" strokeWidth="0.3" />
-                  {/* Histogram bars */}
-                  {macdData.histogram.map((d, i) => (
-                    <rect key={i} x={i} y={d.value >= 0 ? toY(d.value) : 50} width={0.8}
-                      height={Math.abs(toY(d.value) - 50)} fill={d.value >= 0 ? "#10b981" : "#ef4444"} opacity="0.6" />
-                  ))}
-                  {/* MACD line - align to histogram length */}
-                  {macdData.macd.length > 0 && (
-                    <polyline fill="none" stroke="#3b82f6" strokeWidth="1"
-                      points={macdData.macd.slice(-len).map((d, i) => `${i},${toY(d.value)}`).join(" ")} />
-                  )}
-                  {/* Signal line */}
-                  {macdData.signal.length > 0 && (
-                    <polyline fill="none" stroke="#f97316" strokeWidth="1"
-                      points={macdData.signal.map((d, i) => `${i},${toY(d.value)}`).join(" ")} />
-                  )}
-                </svg>
-              );
-            })()}
-            <div style={{ position: "absolute", top: 4, left: 4, display: "flex", gap: 10, fontSize: 10, fontWeight: 600 }}>
-              <span style={{ color: "#3b82f6" }}>MACD</span>
-              <span style={{ color: "#f97316" }}>Signal</span>
-              <span style={{ color: "var(--muted)" }}>Histogramme</span>
-            </div>
-          </div>
         </div>
       )}
     </div>

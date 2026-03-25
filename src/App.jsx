@@ -3,12 +3,13 @@ import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
 import SettingsModal from "./components/SettingsModal";
+const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
+const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
+
 // Lazy-loaded components (code splitting)
-const OverviewTab = lazy(() => import("./components/OverviewTab"));
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 const CompareMode = lazy(() => import("./components/CompareMode"));
 const EarningsTab = lazy(() => import("./components/EarningsTab"));
-const RatiosTab = lazy(() => import("./components/RatiosTab"));
 const InvestorsTab = lazy(() => import("./components/InvestorsTab"));
 const Watchlist = lazy(() => import("./components/Watchlist"));
 const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
@@ -45,11 +46,9 @@ class ErrorBoundary extends Component {
 }
 
 const TABS = [
-  { id: "overview", label: "Vue d'ensemble" },
   { id: "bilan", label: "Bilan" },
   { id: "resultats", label: "Résultats" },
   { id: "tresorerie", label: "Trésorerie" },
-  { id: "ratios", label: "Ratios" },
   { id: "publications", label: "Publications" },
   { id: "compare", label: "Comparer" },
 ];
@@ -65,7 +64,7 @@ export default function Alphaview() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [activeTab, _setActiveTab] = useState("overview");
+  const [activeTab, _setActiveTab] = useState("bilan");
   const switchTab = useCallback((tab) => {
     const scrollY = window.scrollY;
     _setActiveTab(tab);
@@ -255,7 +254,7 @@ export default function Alphaview() {
 
   const handleSearch = (sym) => {
     setSymbol(sym);
-    _setActiveTab("overview");
+    _setActiveTab("bilan");
     setShowWatchlist(false);
     setShowInvestors(false);
     addToHistory(sym);
@@ -366,63 +365,37 @@ export default function Alphaview() {
         )}
 
         {!loading && !error && !data && (
-          <div className="landing-container">
-            <div className="card landing-hero-card">
-              <div className="landing-hero-icon">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                  <circle cx="40" cy="40" r="38" stroke="var(--accent)" strokeWidth="2" opacity=".15" />
-                  <path d="M20 50 L32 38 L42 46 L60 25" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="60" cy="25" r="4" fill="var(--accent)" />
-                </svg>
-              </div>
-              <h2 className="landing-title">
-                L'analyse fondamentale, simplifiée.
-              </h2>
-              <p className="landing-subtitle">
-                Analysez n'importe quelle action cotée dans le monde en quelques secondes.
-                <br />Données financières, ratios, graphiques et comparaisons — le tout gratuitement.
-              </p>
-              <div className="landing-features">
-                {[
-                  { icon: "📊", title: "70+ ratios", desc: "Valorisation, rentabilité, solidité" },
-                  { icon: "📈", title: "Graphiques avancés", desc: "Chandeliers, MA, Bollinger, RSI, MACD" },
-                  { icon: "🏢", title: "États financiers", desc: "Bilan, résultats, trésorerie sur 20+ ans" },
-                  { icon: "⚖️", title: "Comparer", desc: "2 actions côte à côte" },
-                  { icon: "🎯", title: "Score santé", desc: "Évaluation 0-100 automatique" },
-                  { icon: "★", title: "Watchlist", desc: "Favoris + alertes MA50/MA200" },
-                ].map(f => (
-                  <div key={f.title} className="landing-feature-card">
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>{f.icon}</div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{f.title}</div>
-                    <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>{f.desc}</div>
-                  </div>
-                ))}
-              </div>
+          <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
+            <div style={{ fontSize: 64, marginBottom: 18 }}>
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <circle cx="40" cy="40" r="38" stroke="#4f46e5" strokeWidth="2" opacity=".2" />
+                <path d="M20 50 L32 38 L42 46 L60 25" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="60" cy="25" r="4" fill="#4f46e5" />
+              </svg>
             </div>
-            <div className="landing-quick-access">
-              <div className="section-title" style={{ marginBottom: 12 }}>Actions populaires</div>
-              <div className="landing-chips">
-                {[
-                  { sym: "AAPL", name: "Apple" },
-                  { sym: "MSFT", name: "Microsoft" },
-                  { sym: "NVDA", name: "Nvidia" },
-                  { sym: "GOOGL", name: "Alphabet" },
-                  { sym: "AMZN", name: "Amazon" },
-                  { sym: "TSLA", name: "Tesla" },
-                  { sym: "MC.PA", name: "LVMH" },
-                  { sym: "TTE.PA", name: "TotalEnergies" },
-                  { sym: "AIR.PA", name: "Airbus" },
-                  { sym: "BNP.PA", name: "BNP Paribas" },
-                  { sym: "SAN.PA", name: "Sanofi" },
-                  { sym: "OR.PA", name: "L'Oréal" },
-                ].map(s => (
-                  <button key={s.sym} className="landing-chip" onClick={() => handleSearch(s.sym)}>
-                    <span className="landing-chip-sym">{s.sym}</span>
-                    <span className="landing-chip-name">{s.name}</span>
-                  </button>
-                ))}
-              </div>
+            <h2 style={{ color: "var(--text)", fontSize: 22, fontWeight: 800, marginBottom: 10 }}>
+              Analysez n'importe quelle action mondiale
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7 }}>
+              Cours en temps réel · Ratios financiers · Bilan · Compte de résultats · Trésorerie · Comparaison
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 24, flexWrap: "wrap" }}>
+              {[
+                { icon: "📊", title: "30+ ratios", desc: "P/E, ROE, marges..." },
+                { icon: "📈", title: "Graphiques", desc: "Cours & états financiers" },
+                { icon: "⚖️", title: "Comparer", desc: "2 actions côte à côte" },
+                { icon: "★", title: "Favoris", desc: "Sauvegardez vos actions" },
+              ].map(f => (
+                <div key={f.title} style={{ textAlign: "center", minWidth: 100 }}>
+                  <div style={{ fontSize: 28, marginBottom: 6 }}>{f.icon}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{f.title}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{f.desc}</div>
+                </div>
+              ))}
             </div>
+            <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 24 }}>
+              Tapez un symbole ou cliquez sur une suggestion pour commencer
+            </p>
           </div>
         )}
 
@@ -435,6 +408,13 @@ export default function Alphaview() {
               isInWatchlist={isInWatchlist}
               onToggleWatchlist={handleToggleWatchlist}
             />
+
+            <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
+
+            <RevenueBreakdown data={data} symbol={symbol} />
+
+
+            <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
               <div className="tab-bar" role="tablist" aria-label="Onglets financiers">
@@ -452,11 +432,9 @@ export default function Alphaview() {
                 ))}
               </div>
               <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
-                {activeTab === "overview" && <OverviewTab data={data} symbol={symbol} dark={dark} />}
                 {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
-                {activeTab === "ratios" && <RatiosTab data={data} />}
                 {activeTab === "publications" && <EarningsTab data={data} symbol={symbol} />}
                 {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
               </div>
