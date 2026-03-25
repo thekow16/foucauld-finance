@@ -66,12 +66,17 @@ export default function Alphaview() {
   const [fetchedAt, setFetchedAt] = useState(null);
   const [activeTab, _setActiveTab] = useState("bilan");
   const tabBarRef = useRef(null);
+  const tabPanelRef = useRef(null);
   const switchTab = useCallback((tab) => {
+    // Lock the tabpanel height before switching to prevent layout shift
+    const panel = tabPanelRef.current;
+    if (panel) {
+      panel.style.minHeight = panel.offsetHeight + "px";
+    }
     _setActiveTab(tab);
     requestAnimationFrame(() => {
-      if (tabBarRef.current) {
-        tabBarRef.current.scrollIntoView({ block: "nearest" });
-      }
+      // Release height lock after new content renders
+      if (panel) panel.style.minHeight = "";
     });
   }, []);
   const [showWatchlist, setShowWatchlist] = useState(false);
@@ -435,7 +440,7 @@ export default function Alphaview() {
                   </button>
                 ))}
               </div>
-              <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
+              <div ref={tabPanelRef} role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
                 {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
                 {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
                 {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
