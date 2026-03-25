@@ -1527,8 +1527,239 @@
   .compare-table th, .compare-table td { font-size: 11px; padding: 6px 8px; }
 }
 
+/* ── Landing page ── */
+.landing-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.landing-hero-card {
+  text-align: center;
+  padding: 48px 24px 40px;
+}
+.landing-hero-icon {
+  margin-bottom: 20px;
+}
+.landing-title {
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -.5px;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+.landing-subtitle {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 520px;
+  margin: 0 auto 28px;
+}
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+.landing-feature-card {
+  text-align: center;
+  padding: 16px 12px;
+  border-radius: 12px;
+  background: var(--highlight-row);
+  border: 1px solid var(--border);
+  transition: transform .15s, box-shadow .15s;
+}
+.landing-feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+.landing-quick-access {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px var(--shadow);
+}
+.dark .landing-quick-access { border-color: transparent }
+.landing-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.landing-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--highlight-row);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all .18s;
+  color: var(--text);
+}
+.landing-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.landing-chip-sym {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--accent);
+}
+.landing-chip-name {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ── Overview tab ── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.overview-section {
+  background: var(--highlight-row);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.overview-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.overview-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.overview-metric-row:last-child { border-bottom: none }
+.overview-metric-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.overview-metric-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.overview-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-height: 80px;
+  overflow: hidden;
+  position: relative;
+}
+.overview-desc.expanded { max-height: none }
+.overview-desc-toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.overview-desc-toggle:hover { text-decoration: underline }
+
+/* Analyst consensus */
+.analyst-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0 8px;
+}
+.analyst-bar-segment {
+  transition: width .3s ease;
+}
+.analyst-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.analyst-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.analyst-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Target price gauge */
+.target-gauge {
+  position: relative;
+  height: 36px;
+  background: var(--border);
+  border-radius: 8px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.target-gauge-fill {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  border-radius: 8px;
+  transition: width .5s ease;
+}
+.target-gauge-marker {
+  position: absolute;
+  top: -4px; bottom: -4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--text);
+  z-index: 2;
+}
+.target-gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Score description ── */
+.score-desc {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 /* ── Recharts / radar responsive ── */
 @media (max-width: 640px) {
   .recharts-wrapper { font-size: 10px; }
   .recharts-legend-wrapper { font-size: 10px !important; }
+  .landing-features { grid-template-columns: repeat(2, 1fr); }
+  .landing-title { font-size: 22px; }
+  .overview-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .landing-features { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .landing-hero-card { padding: 32px 16px 28px; }
 }
