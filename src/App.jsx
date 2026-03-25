@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
 import SettingsModal from "./components/SettingsModal";
+import ScoreCard from "./components/ScoreCard";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 
@@ -13,6 +14,9 @@ const EarningsTab = lazy(() => import("./components/EarningsTab"));
 const InvestorsTab = lazy(() => import("./components/InvestorsTab"));
 const Watchlist = lazy(() => import("./components/Watchlist"));
 const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
+const PortfolioTab = lazy(() => import("./components/PortfolioTab"));
+const ScreenerView = lazy(() => import("./components/ScreenerView"));
+const HeatmapView = lazy(() => import("./components/HeatmapView"));
 const BilanTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.BilanTab })));
 const ResultatsTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.ResultatsTab })));
 const TresorerieTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.TresorerieTab })));
@@ -22,6 +26,7 @@ const CGU = lazy(() => import("./components/LegalPages").then(m => ({ default: m
 const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGV })));
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
+import { usePortfolio } from "./hooks/usePortfolio";
 import { useDarkMode } from "./hooks/useDarkMode";
 import "./App.css";
 import { fetchStockData, classifyError, checkWorkerHealth } from "./utils/api";
@@ -89,6 +94,9 @@ export default function Alphaview() {
   }, [activeTab]);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const [showScreener, setShowScreener] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
@@ -102,7 +110,8 @@ export default function Alphaview() {
 
   const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
-  const { toggleAlert, getAlerts, triggered, dismissTriggered, maData, checking } = useAlerts(watchlist);
+  const { toggleAlert, getAlerts, triggered, dismissTriggered, maData, checking, priceAlerts, setPriceAlert, removePriceAlert } = useAlerts(watchlist);
+  const { positions, addPosition, removePosition } = usePortfolio();
   const [toasts, setToasts] = useState([]);
 
   // Toast notifications quand de nouvelles alertes sont déclenchées
@@ -274,6 +283,9 @@ export default function Alphaview() {
     _setActiveTab("bilan");
     setShowWatchlist(false);
     setShowInvestors(false);
+    setShowPortfolio(false);
+    setShowScreener(false);
+    setShowHeatmap(false);
     addToHistory(sym);
     // Push state for back/forward navigation
     const url = new URL(window.location);
@@ -292,7 +304,7 @@ export default function Alphaview() {
       {/* CSS extracted to App.css */}
       <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
-      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => setShowWatchlist(true)} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} onShowSettings={() => setShowSettings(true)} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
+      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => { setShowWatchlist(true); setShowPortfolio(false); setShowScreener(false); setShowHeatmap(false); setShowInvestors(false); }} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); setShowPortfolio(false); setShowScreener(false); setShowHeatmap(false); }} onShowPortfolio={() => { setShowPortfolio(true); setShowWatchlist(false); setShowInvestors(false); setShowScreener(false); setShowHeatmap(false); }} onShowScreener={() => { setShowScreener(true); setShowWatchlist(false); setShowInvestors(false); setShowPortfolio(false); setShowHeatmap(false); }} onShowHeatmap={() => { setShowHeatmap(true); setShowWatchlist(false); setShowInvestors(false); setShowPortfolio(false); setShowScreener(false); }} onShowSettings={() => setShowSettings(true)} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} portfolioCount={positions.length} />
 
       {workerDown && (
         <div className="worker-banner" role="alert">
@@ -335,6 +347,27 @@ export default function Alphaview() {
             onDismissAlert={dismissTriggered}
             maData={maData}
             checking={checking}
+            priceAlerts={priceAlerts}
+            onSetPriceAlert={setPriceAlert}
+            onRemovePriceAlert={removePriceAlert}
+          />
+        ) : showPortfolio ? (
+          <PortfolioTab
+            positions={positions}
+            onAdd={addPosition}
+            onRemove={removePosition}
+            onSelect={handleSearch}
+            onBack={() => setShowPortfolio(false)}
+          />
+        ) : showScreener ? (
+          <ScreenerView
+            onSelect={handleSearch}
+            onBack={() => setShowScreener(false)}
+          />
+        ) : showHeatmap ? (
+          <HeatmapView
+            onSelect={handleSearch}
+            onBack={() => setShowHeatmap(false)}
           />
         ) : (<>
         <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
@@ -426,6 +459,8 @@ export default function Alphaview() {
               onToggleWatchlist={handleToggleWatchlist}
             />
 
+            <ScoreCard data={data} />
+
             <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
 
             <RevenueBreakdown data={data} symbol={symbol} />
@@ -474,7 +509,7 @@ export default function Alphaview() {
         </>)}
 
         {/* Footer global visible partout */}
-        {!legalPage && !showInvestors && !showWatchlist && (!data || loading) && (
+        {!legalPage && !showInvestors && !showWatchlist && !showPortfolio && !showScreener && !showHeatmap && (!data || loading) && (
           <div className="footer" style={{ marginTop: 24 }}>
             <div className="footer-links">
               <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
