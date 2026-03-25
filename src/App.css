@@ -1586,3 +1586,36 @@
   .recharts-wrapper { font-size: 10px; }
   .recharts-legend-wrapper { font-size: 10px !important; }
 }
+
+/* ── Portfolio ── */
+.portfolio-form { display: flex; flex-direction: column; gap: 10px; }
+.portfolio-form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  transition: border-color .2s;
+}
+.pf-input:focus { outline: none; border-color: var(--accent); }
+.portfolio-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  text-align: center;
+}
+.pf-summary-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.pf-summary-value { font-size: 18px; font-weight: 800; }
+
+/* ── Screener ── */
+.screener-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.screener-filter { display: flex; flex-direction: column; gap: 4px; }
+.screener-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.screener-filters select.pf-input { cursor: pointer; }

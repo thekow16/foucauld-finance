@@ -35,7 +35,7 @@ function AlertToggle({ label, active, onClick, dist }) {
   );
 }
 
-function WatchlistCard({ item, onSelect, onRemove, alertState, onToggleAlert, maInfo }) {
+function WatchlistCard({ item, onSelect, onRemove, alertState, onToggleAlert, maInfo, priceAlerts, onSetPriceAlert, onRemovePriceAlert }) {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,6 +85,10 @@ function WatchlistCard({ item, onSelect, onRemove, alertState, onToggleAlert, ma
         <AlertToggle label="MA50" active={alertState.ma50} onClick={() => onToggleAlert(item.symbol, "ma50")} dist={maInfo?.dist50} />
         <AlertToggle label="MA200" active={alertState.ma200} onClick={() => onToggleAlert(item.symbol, "ma200")} dist={maInfo?.dist200} />
       </div>
+      <div style={{ padding: "0 10px 10px" }}>
+        <PriceAlertList alerts={priceAlerts} onRemove={onRemovePriceAlert} />
+        <PriceAlertForm symbol={item.symbol} onAdd={onSetPriceAlert} />
+      </div>
     </div>
   );
 }
@@ -114,7 +118,61 @@ function TriggeredAlerts({ triggered, onDismiss, onSelect }) {
   );
 }
 
-export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, alertState, onToggleAlert, triggered, onDismissAlert, maData, checking }) {
+function PriceAlertForm({ symbol, onAdd }) {
+  const [type, setType] = useState("above");
+  const [target, setTarget] = useState("");
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        style={{ background: "none", border: "1px dashed var(--border)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "var(--muted)", cursor: "pointer", width: "100%" }}
+      >
+        + Alerte prix
+      </button>
+    );
+  }
+
+  return (
+    <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+      <select value={type} onChange={e => setType(e.target.value)} style={{ padding: "4px 6px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 11 }}>
+        <option value="above">Prix ≥</option>
+        <option value="below">Prix ≤</option>
+      </select>
+      <input
+        type="number" step="any" min="0" value={target} onChange={e => setTarget(e.target.value)}
+        placeholder="Prix cible"
+        style={{ width: 80, padding: "4px 6px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 11 }}
+      />
+      <button
+        onClick={() => { if (target) { onAdd(symbol, type, Number(target)); setTarget(""); setOpen(false); } }}
+        style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+      >
+        OK
+      </button>
+      <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 13 }}>×</button>
+    </div>
+  );
+}
+
+function PriceAlertList({ alerts, onRemove }) {
+  if (!alerts || alerts.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+      {alerts.map(a => (
+        <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+          <span style={{ color: a.triggered ? "var(--green)" : "var(--muted)", fontWeight: 600 }}>
+            {a.triggered ? "✓ " : ""}{a.type === "above" ? "≥" : "≤"} {a.target.toFixed(2)}
+          </span>
+          <button onClick={(e) => { e.stopPropagation(); onRemove(a.id); }} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 11, padding: 0 }}>×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, alertState, onToggleAlert, triggered, onDismissAlert, maData, checking, priceAlerts = [], onSetPriceAlert, onRemovePriceAlert }) {
   if (watchlist.length === 0) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
@@ -161,6 +219,9 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, al
             alertState={alertState?.(item.symbol) || { ma50: false, ma200: false }}
             onToggleAlert={onToggleAlert}
             maInfo={maData?.[item.symbol]}
+            priceAlerts={priceAlerts?.filter(a => a.symbol === item.symbol) || []}
+            onSetPriceAlert={onSetPriceAlert}
+            onRemovePriceAlert={onRemovePriceAlert}
           />
         ))}
       </div>

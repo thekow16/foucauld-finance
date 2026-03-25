@@ -3,6 +3,7 @@ import { fetchCandleData } from "../utils/api";
 import { computeSMA } from "../utils/indicators";
 
 const STORAGE_KEY = "ff_ma_alerts";
+const PRICE_ALERTS_KEY = "ff_price_alerts";
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 min
 
 function loadAlerts() {
@@ -13,6 +14,16 @@ function loadAlerts() {
 
 function saveAlerts(alerts) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+}
+
+function loadPriceAlerts() {
+  try {
+    return JSON.parse(localStorage.getItem(PRICE_ALERTS_KEY) || "[]");
+  } catch { return []; }
+}
+
+function savePriceAlerts(alerts) {
+  localStorage.setItem(PRICE_ALERTS_KEY, JSON.stringify(alerts));
 }
 
 /**
@@ -52,9 +63,12 @@ export function useAlerts(watchlist) {
   const [maData, setMaData] = useState({});
   const [checking, setChecking] = useState(false);
   const intervalRef = useRef(null);
+  // Price threshold alerts: [{ id, symbol, type: "above"|"below", target, triggered: bool }]
+  const [priceAlerts, setPriceAlertsState] = useState(loadPriceAlerts);
 
   // Persister les alertes
   useEffect(() => { saveAlerts(alerts); }, [alerts]);
+  useEffect(() => { savePriceAlerts(priceAlerts); }, [priceAlerts]);
 
   const toggleAlert = useCallback((symbol, ma) => {
     setAlerts(prev => {
@@ -71,7 +85,23 @@ export function useAlerts(watchlist) {
     setTriggered(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  // Price alert CRUD
+  const setPriceAlert = useCallback((symbol, type, target) => {
+    setPriceAlertsState(prev => [...prev, {
+      id: Date.now() + Math.random(),
+      symbol: symbol.toUpperCase(),
+      type, // "above" | "below"
+      target: Number(target),
+      triggered: false,
+    }]);
+  }, []);
+
+  const removePriceAlert = useCallback((id) => {
+    setPriceAlertsState(prev => prev.filter(a => a.id !== id));
+  }, []);
+
   const checkAlerts = useCallback(async () => {
+    // MA alerts: check symbols with active MA alerts
     const symbolsToCheck = watchlist
       .map(w => w.symbol)
       .filter(sym => {
@@ -79,13 +109,18 @@ export function useAlerts(watchlist) {
         return a && (a.ma50 || a.ma200);
       });
 
-    if (symbolsToCheck.length === 0) return;
+    // Price alerts: also check symbols with active price alerts
+    const priceAlertSymbols = priceAlerts.filter(a => !a.triggered).map(a => a.symbol);
+    const allSymbols = [...new Set([...symbolsToCheck, ...priceAlertSymbols])];
+
+    if (allSymbols.length === 0) return;
     setChecking(true);
 
     const newTriggered = [];
     const newMaData = {};
+    const priceAlertUpdates = [];
 
-    await Promise.allSettled(symbolsToCheck.map(async (sym) => {
+    await Promise.allSettled(allSymbols.map(async (sym) => {
       try {
         const candles = await fetchCandleData(sym, "1d", "1y");
         if (candles.length < 10) return;
@@ -104,8 +139,9 @@ export function useAlerts(watchlist) {
           dist200: distanceToMA(candles, 200),
         };
 
+        // MA alerts
         const a = alerts[sym];
-        if (a.ma50) {
+        if (a?.ma50) {
           const cross = detectCross(candles, 50);
           if (cross) {
             newTriggered.push({
@@ -114,7 +150,7 @@ export function useAlerts(watchlist) {
             });
           }
         }
-        if (a.ma200) {
+        if (a?.ma200) {
           const cross = detectCross(candles, 200);
           if (cross) {
             newTriggered.push({
@@ -123,6 +159,23 @@ export function useAlerts(watchlist) {
             });
           }
         }
+
+        // Price threshold alerts
+        priceAlerts.filter(pa => pa.symbol === sym && !pa.triggered).forEach(pa => {
+          const hit = (pa.type === "above" && lastClose >= pa.target) ||
+                      (pa.type === "below" && lastClose <= pa.target);
+          if (hit) {
+            priceAlertUpdates.push(pa.id);
+            newTriggered.push({
+              symbol: sym,
+              ma: `Prix ${pa.type === "above" ? "≥" : "≤"} ${pa.target.toFixed(2)}`,
+              direction: pa.type,
+              price: lastClose,
+              maValue: pa.target,
+              time: Date.now(),
+            });
+          }
+        });
       } catch (e) {
         console.warn(`[FF] Alert check failed for ${sym}:`, e.message);
       }
@@ -132,8 +185,14 @@ export function useAlerts(watchlist) {
     if (newTriggered.length > 0) {
       setTriggered(prev => [...newTriggered, ...prev]);
     }
+    // Mark triggered price alerts
+    if (priceAlertUpdates.length > 0) {
+      setPriceAlertsState(prev => prev.map(a =>
+        priceAlertUpdates.includes(a.id) ? { ...a, triggered: true } : a
+      ));
+    }
     setChecking(false);
-  }, [watchlist, alerts]);
+  }, [watchlist, alerts, priceAlerts]);
 
   // Vérification périodique
   useEffect(() => {
@@ -158,5 +217,6 @@ export function useAlerts(watchlist) {
     alerts, toggleAlert, getAlerts,
     triggered, dismissTriggered,
     maData, checking, checkAlerts,
+    priceAlerts, setPriceAlert, removePriceAlert,
   };
 }
