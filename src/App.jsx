@@ -5,13 +5,6 @@ import AuthModal from "./components/AuthModal";
 import SettingsModal from "./components/SettingsModal";
 // Lazy-loaded components (code splitting)
 const OverviewTab = lazy(() => import("./components/OverviewTab"));
-const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
-const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
-const LandingPage = lazy(() => import("./components/LandingPage"));
-const ScoreCard = lazy(() => import("./components/ScoreCard"));
-const MetricCards = lazy(() => import("./components/MetricCards"));
-
-// Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 const CompareMode = lazy(() => import("./components/CompareMode"));
 const EarningsTab = lazy(() => import("./components/EarningsTab"));
@@ -432,9 +425,6 @@ export default function Alphaview() {
             </div>
           </div>
         )}
-          {!loading && !error && !data && (
-                    <LandingPage onSearch={handleSearch} onShowAuth={() => setShowAuth(true)} />
-                  )}
 
         {!loading && !error && data && (
           <ErrorBoundary>
@@ -445,14 +435,6 @@ export default function Alphaview() {
               isInWatchlist={isInWatchlist}
               onToggleWatchlist={handleToggleWatchlist}
             />
-
-                            <ScoreCard data={data} />
-            <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
-
-            <RevenueBreakdown data={data} symbol={symbol} />
-
-
-            <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
               <div className="tab-bar" role="tablist" aria-label="Onglets financiers">
