@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Component, lazy, Suspense } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
@@ -65,20 +65,28 @@ export default function Alphaview() {
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
   const [activeTab, _setActiveTab] = useState("bilan");
-  const tabBarRef = useRef(null);
   const tabPanelRef = useRef(null);
+  const savedScrollRef = useRef(null);
   const switchTab = useCallback((tab) => {
-    // Lock the tabpanel height before switching to prevent layout shift
+    // Save scroll position and lock panel height before React re-renders
+    savedScrollRef.current = window.scrollY;
     const panel = tabPanelRef.current;
     if (panel) {
       panel.style.minHeight = panel.offsetHeight + "px";
     }
     _setActiveTab(tab);
-    requestAnimationFrame(() => {
-      // Release height lock after new content renders
-      if (panel) panel.style.minHeight = "";
-    });
   }, []);
+
+  // Restore scroll synchronously after DOM update, before browser paint
+  useLayoutEffect(() => {
+    if (savedScrollRef.current != null) {
+      window.scrollTo(0, savedScrollRef.current);
+      savedScrollRef.current = null;
+    }
+    // Release height lock after content is rendered
+    const panel = tabPanelRef.current;
+    if (panel) panel.style.minHeight = "";
+  }, [activeTab]);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -426,7 +434,7 @@ export default function Alphaview() {
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div className="tab-bar" ref={tabBarRef} role="tablist" aria-label="Onglets financiers">
+              <div className="tab-bar" role="tablist" aria-label="Onglets financiers">
                 {TABS.map(t => (
                   <button
                     key={t.id}
@@ -441,11 +449,13 @@ export default function Alphaview() {
                 ))}
               </div>
               <div ref={tabPanelRef} role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
-                {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
-                {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
-                {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
-                {activeTab === "publications" && <EarningsTab data={data} symbol={symbol} />}
-                {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
+                <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
+                  {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
+                  {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
+                  {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
+                  {activeTab === "publications" && <EarningsTab data={data} symbol={symbol} />}
+                  {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
+                </Suspense>
               </div>
             </div>
 
