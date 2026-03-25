@@ -65,10 +65,14 @@ export default function Alphaview() {
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
   const [activeTab, _setActiveTab] = useState("bilan");
+  const tabBarRef = useRef(null);
   const switchTab = useCallback((tab) => {
-    const scrollY = window.scrollY;
     _setActiveTab(tab);
-    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    requestAnimationFrame(() => {
+      if (tabBarRef.current) {
+        tabBarRef.current.scrollIntoView({ block: "nearest" });
+      }
+    });
   }, []);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
@@ -417,7 +421,7 @@ export default function Alphaview() {
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div className="tab-bar" role="tablist" aria-label="Onglets financiers">
+              <div className="tab-bar" ref={tabBarRef} role="tablist" aria-label="Onglets financiers">
                 {TABS.map(t => (
                   <button
                     key={t.id}
