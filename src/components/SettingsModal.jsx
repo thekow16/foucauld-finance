@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getFmpApiKey, setFmpApiKey, hasFmpApiKey, getFmpUsage } from "../utils/fmpApi";
+import { getAiApiKey, setAiApiKey, hasAiApiKey, getAiProvider, setAiProvider } from "../utils/aiAnalysis";
 
 export default function SettingsModal({ onClose, onFmpKeyChange }) {
   const [fmpKey, setFmpKey] = useState(getFmpApiKey());
@@ -7,6 +8,11 @@ export default function SettingsModal({ onClose, onFmpKeyChange }) {
   const [status, setStatus] = useState(hasFmpApiKey() ? "saved" : "empty");
   const [errorMsg, setErrorMsg] = useState("");
   const usage = getFmpUsage();
+
+  // AI settings
+  const [aiKey, setAiKey] = useState(getAiApiKey());
+  const [aiProvider, setAiProviderState] = useState(getAiProvider());
+  const [aiStatus, setAiStatus] = useState(hasAiApiKey() ? "saved" : "empty");
 
   const maskedKey = fmpKey && fmpKey.length > 8
     ? fmpKey.slice(0, 4) + "••••••••" + fmpKey.slice(-4)
@@ -165,6 +171,110 @@ export default function SettingsModal({ onClose, onFmpKeyChange }) {
                     </div>
                   )}
                 </form>
+              )}
+            </div>
+          </div>
+
+          {/* Agent IA */}
+          <div style={{
+            background: "var(--bg)", borderRadius: 12, padding: 16,
+            border: "1px solid var(--border)", marginBottom: 16,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 10 }}>
+              Agent IA
+            </div>
+
+            <div style={{
+              background: "var(--card)", borderRadius: 10, padding: "10px 14px",
+              border: "1px solid var(--border)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>
+                    Clé API IA
+                    <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500, marginLeft: 6 }}>optionnel</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+                    3 analyses gratuites/mois. Clé API = illimité.
+                  </div>
+                </div>
+                <div style={{
+                  padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                  background: aiStatus === "saved" ? "rgba(16,185,129,0.12)" : "rgba(107,114,128,0.12)",
+                  color: aiStatus === "saved" ? "#10b981" : "var(--muted)",
+                }}>
+                  {aiStatus === "saved" ? "Actif" : "Gratuit"}
+                </div>
+              </div>
+
+              {/* Provider selector */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                {[
+                  { id: "openai", label: "OpenAI" },
+                  { id: "anthropic", label: "Anthropic" },
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setAiProviderState(p.id); setAiProvider(p.id); }}
+                    style={{
+                      padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                      border: `1px solid ${aiProvider === p.id ? "var(--accent)" : "var(--border)"}`,
+                      background: aiProvider === p.id ? "rgba(79,70,229,0.1)" : "transparent",
+                      color: aiProvider === p.id ? "var(--accent)" : "var(--muted)",
+                      cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {aiStatus === "saved" ? (
+                <div>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: "var(--bg)", borderRadius: 8, padding: "6px 10px",
+                    border: "1px solid var(--border)",
+                  }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--muted)", flex: 1 }}>
+                      {aiKey.length > 8 ? aiKey.slice(0, 4) + "••••••••" + aiKey.slice(-4) : "••••"}
+                    </span>
+                    <button
+                      onClick={() => { setAiApiKey(""); setAiKey(""); setAiStatus("empty"); }}
+                      style={{
+                        background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none",
+                        borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 700,
+                        cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                      }}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    className="compare-input"
+                    value={aiKey}
+                    onChange={(e) => { setAiKey(e.target.value); setAiStatus("empty"); }}
+                    placeholder={aiProvider === "openai" ? "sk-..." : "sk-ant-..."}
+                    style={{ flex: 1, fontSize: 12, padding: "7px 12px" }}
+                  />
+                  <button
+                    className="compare-btn"
+                    disabled={!aiKey.trim()}
+                    onClick={() => {
+                      const trimmed = aiKey.trim();
+                      if (trimmed) {
+                        setAiApiKey(trimmed);
+                        setAiStatus("saved");
+                      }
+                    }}
+                    style={{ fontSize: 12, padding: "7px 14px" }}
+                  >
+                    OK
+                  </button>
+                </div>
               )}
             </div>
           </div>
