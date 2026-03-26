@@ -6,6 +6,7 @@ import SettingsModal from "./components/SettingsModal";
 import ScoreCard from "./components/ScoreCard";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
+const AIAnalysis = lazy(() => import("./components/AIAnalysis"));
 
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
@@ -460,6 +461,8 @@ export default function Alphaview() {
             />
 
             <ScoreCard data={data} />
+
+            <AIAnalysis data={data} symbol={symbol} onShowSettings={() => setShowSettings(true)} />
 
             <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
 
