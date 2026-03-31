@@ -192,17 +192,17 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, al
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+      <div className="wl-tab-header">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5 }}>
+          <h2 className="wl-tab-title">
             ★ Ma Watchlist
           </h2>
-          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>
+          <p className="wl-tab-subtitle">
             {watchlist.length} action{watchlist.length > 1 ? "s" : ""} suivie{watchlist.length > 1 ? "s" : ""}
             {checking && <span style={{ marginLeft: 8, opacity: 0.6 }}>— vérification des alertes…</span>}
           </p>
         </div>
-        <button className="ff-btn" style={{ background: "#4f46e5", color: "white", padding: "10px 20px", fontSize: 13 }} onClick={onBack}>
+        <button className="ff-btn wl-tab-back" onClick={onBack}>
           Retour
         </button>
       </div>
