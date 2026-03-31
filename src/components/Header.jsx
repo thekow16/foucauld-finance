@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, onShowPortfolio, onShowScreener, onShowHeatmap, user, onShowAuth, onLogout, searchHistory = [], portfolioCount = 0 }, ref) {
+export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, onShowPortfolio, onShowScreener, user, onShowAuth, onLogout, searchHistory = [], portfolioCount = 0 }, ref) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
@@ -65,10 +65,7 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
 
   const navActions = (
     <>
-      <button onClick={() => { onShowHeatmap?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Carte des marchés" aria-label="Carte sectorielle des marchés">
-        <span aria-hidden="true" style={{ fontSize: 15 }}>🗺️</span>
-      </button>
-      <button onClick={() => { onShowScreener?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Screener" aria-label="Screener d'actions">
+<button onClick={() => { onShowScreener?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Screener" aria-label="Screener d'actions">
         <span aria-hidden="true" style={{ fontSize: 15 }}>🔍</span>
       </button>
       <button onClick={() => { onShowPortfolio?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Mon Portefeuille" aria-label={`Mon portefeuille (${portfolioCount} position${portfolioCount > 1 ? "s" : ""})`}>

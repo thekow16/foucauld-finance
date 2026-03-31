@@ -16,7 +16,6 @@ const Watchlist = lazy(() => import("./components/Watchlist"));
 const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
 const PortfolioTab = lazy(() => import("./components/PortfolioTab"));
 const ScreenerView = lazy(() => import("./components/ScreenerView"));
-const HeatmapView = lazy(() => import("./components/HeatmapView"));
 const BilanTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.BilanTab })));
 const ResultatsTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.ResultatsTab })));
 const TresorerieTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.TresorerieTab })));
@@ -96,7 +95,6 @@ export default function Alphaview() {
   const [showInvestors, setShowInvestors] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
   const [showScreener, setShowScreener] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
   const [legalPage, setLegalPage] = useState(null); // "mentions" | "confidentialite" | "cgu" | "cgv"
@@ -284,7 +282,6 @@ export default function Alphaview() {
     setShowInvestors(false);
     setShowPortfolio(false);
     setShowScreener(false);
-    setShowHeatmap(false);
     addToHistory(sym);
     // Push state for back/forward navigation
     const url = new URL(window.location);
@@ -303,7 +300,7 @@ export default function Alphaview() {
       {/* CSS extracted to App.css */}
       <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
-      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => { setShowWatchlist(true); setShowPortfolio(false); setShowScreener(false); setShowHeatmap(false); setShowInvestors(false); }} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); setShowPortfolio(false); setShowScreener(false); setShowHeatmap(false); }} onShowPortfolio={() => { setShowPortfolio(true); setShowWatchlist(false); setShowInvestors(false); setShowScreener(false); setShowHeatmap(false); }} onShowScreener={() => { setShowScreener(true); setShowWatchlist(false); setShowInvestors(false); setShowPortfolio(false); setShowHeatmap(false); }} onShowHeatmap={() => { setShowHeatmap(true); setShowWatchlist(false); setShowInvestors(false); setShowPortfolio(false); setShowScreener(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} portfolioCount={positions.length} />
+      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => { setShowWatchlist(true); setShowPortfolio(false); setShowScreener(false); setShowInvestors(false); }} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); setShowPortfolio(false); setShowScreener(false); }} onShowPortfolio={() => { setShowPortfolio(true); setShowWatchlist(false); setShowInvestors(false); setShowScreener(false); }} onShowScreener={() => { setShowScreener(true); setShowWatchlist(false); setShowInvestors(false); setShowPortfolio(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} portfolioCount={positions.length} />
 
       {workerDown && (
         <div className="worker-banner" role="alert">
@@ -361,11 +358,6 @@ export default function Alphaview() {
           <ScreenerView
             onSelect={handleSearch}
             onBack={() => setShowScreener(false)}
-          />
-        ) : showHeatmap ? (
-          <HeatmapView
-            onSelect={handleSearch}
-            onBack={() => setShowHeatmap(false)}
           />
         ) : (<>
         <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
@@ -509,7 +501,7 @@ export default function Alphaview() {
         </>)}
 
         {/* Footer global visible partout */}
-        {!legalPage && !showInvestors && !showWatchlist && !showPortfolio && !showScreener && !showHeatmap && (!data || loading) && (
+        {!legalPage && !showInvestors && !showWatchlist && !showPortfolio && !showScreener && (!data || loading) && (
           <div className="footer" style={{ marginTop: 24 }}>
             <div className="footer-links">
               <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
