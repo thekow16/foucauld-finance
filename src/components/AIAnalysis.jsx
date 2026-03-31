@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { callAiAnalysis, canAnalyze, consumeQuota, getQuotaInfo, hasAiApiKey } from "../utils/aiAnalysis";
 
-export default function AIAnalysis({ data, symbol, onShowSettings }) {
+export default function AIAnalysis({ data, symbol }) {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -77,11 +77,6 @@ export default function AIAnalysis({ data, symbol, onShowSettings }) {
             </svg>
             Analyser avec l'IA
           </button>
-          {!hasKey && (
-            <button className="ai-settings-link" onClick={onShowSettings}>
-              Ajouter une clé API pour un accès illimité
-            </button>
-          )}
         </div>
       )}
 
@@ -95,11 +90,6 @@ export default function AIAnalysis({ data, symbol, onShowSettings }) {
       {error && (
         <div className="ai-analysis-error">
           <p>{error}</p>
-          {error.includes("clé API") && (
-            <button className="ai-settings-link" onClick={onShowSettings} style={{ marginTop: 8 }}>
-              Configurer la clé API
-            </button>
-          )}
           <button className="ff-btn" onClick={handleAnalyze} style={{ marginTop: 10, fontSize: 12, padding: "6px 16px" }}>
             Réessayer
           </button>
