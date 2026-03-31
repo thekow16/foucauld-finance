@@ -112,16 +112,16 @@ export default function PortfolioTab({ positions, onAdd, onRemove, onSelect, onB
     return (
       <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
         <div style={{ fontSize: 56, marginBottom: 16, opacity: 0.3 }}>💼</div>
-        <h2 style={{ color: "var(--text)", fontSize: 20, fontWeight: 800, marginBottom: 10 }}>
+        <h2 className="empty-state-title">
           Portefeuille vide
         </h2>
-        <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.7, maxWidth: 400, margin: "0 auto" }}>
+        <p className="empty-state-text">
           Ajoutez des positions pour suivre la performance de votre portefeuille virtuel.
         </p>
-        <button className="ff-btn" style={{ marginTop: 24, background: "#4f46e5", color: "white" }} onClick={() => setShowForm(true)}>
+        <button className="ff-btn empty-state-btn" onClick={() => setShowForm(true)}>
           Ajouter une position
         </button>
-        <button className="ff-btn" style={{ marginTop: 12, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }} onClick={onBack}>
+        <button className="ff-btn empty-state-btn-secondary" onClick={onBack}>
           Retour
         </button>
       </div>
@@ -137,21 +137,21 @@ export default function PortfolioTab({ positions, onAdd, onRemove, onSelect, onB
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+      <div className="tab-header">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5 }}>
+          <h2 className="tab-title">
             💼 Mon Portefeuille
           </h2>
-          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>
+          <p className="tab-subtitle">
             {positions.length} position{positions.length > 1 ? "s" : ""} · {Object.keys(grouped).length} action{Object.keys(grouped).length > 1 ? "s" : ""}
             {loading && <span style={{ marginLeft: 8, opacity: 0.6 }}>— chargement des cours…</span>}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="ff-btn" style={{ background: "#4f46e5", color: "white", padding: "10px 16px", fontSize: 13 }} onClick={() => setShowForm(!showForm)}>
+        <div className="tab-actions">
+          <button className="ff-btn tab-btn-primary" onClick={() => setShowForm(!showForm)}>
             {showForm ? "Fermer" : "+ Ajouter"}
           </button>
-          <button className="ff-btn" style={{ background: "var(--bg)", color: "var(--text)", padding: "10px 16px", fontSize: 13, border: "1px solid var(--border)" }} onClick={onBack}>
+          <button className="ff-btn tab-btn-secondary" onClick={onBack}>
             Retour
           </button>
         </div>

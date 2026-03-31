@@ -177,13 +177,13 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, al
     return (
       <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
         <div style={{ fontSize: 56, marginBottom: 16, opacity: 0.3 }}>★</div>
-        <h2 style={{ color: "var(--text)", fontSize: 20, fontWeight: 800, marginBottom: 10 }}>
+        <h2 className="empty-state-title">
           Votre Watchlist est vide
         </h2>
-        <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.7, maxWidth: 400, margin: "0 auto" }}>
+        <p className="empty-state-text">
           Ajoutez des actions à votre watchlist en cliquant sur l'étoile ☆ lors de l'analyse d'une action.
         </p>
-        <button className="ff-btn" style={{ marginTop: 24, background: "#4f46e5", color: "white" }} onClick={onBack}>
+        <button className="ff-btn empty-state-btn" onClick={onBack}>
           Rechercher une action
         </button>
       </div>
@@ -192,17 +192,17 @@ export default function WatchlistTab({ watchlist, onSelect, onRemove, onBack, al
 
   return (
     <div>
-      <div className="wl-tab-header">
+      <div className="tab-header">
         <div>
-          <h2 className="wl-tab-title">
+          <h2 className="tab-title">
             ★ Ma Watchlist
           </h2>
-          <p className="wl-tab-subtitle">
+          <p className="tab-subtitle">
             {watchlist.length} action{watchlist.length > 1 ? "s" : ""} suivie{watchlist.length > 1 ? "s" : ""}
             {checking && <span style={{ marginLeft: 8, opacity: 0.6 }}>— vérification des alertes…</span>}
           </p>
         </div>
-        <button className="ff-btn wl-tab-back" onClick={onBack}>
+        <button className="ff-btn tab-btn-primary" onClick={onBack}>
           Retour
         </button>
       </div>

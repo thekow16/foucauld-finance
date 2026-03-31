@@ -284,13 +284,12 @@ export default function InvestorsTab({ onSymbolClick }) {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+        <div className="tab-header">
           <div>
-            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5 }}>
+            <h3 className="tab-title">
               🏆 Grands Investisseurs
             </h3>
-            <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>
+            <p className="tab-subtitle">
               Portefeuilles des légendes de la finance — Données SEC 13F
             </p>
           </div>
@@ -332,7 +331,6 @@ export default function InvestorsTab({ onSymbolClick }) {
             ))}
           </div>
         </div>
-      </div>
 
       {filteredInvestors.map(inv => (
         <InvestorCard
