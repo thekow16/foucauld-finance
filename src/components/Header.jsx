@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { searchSymbols } from "../utils/api";
 
-export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, onShowPortfolio, onShowScreener, onShowHeatmap, onShowSettings, user, onShowAuth, onLogout, searchHistory = [], portfolioCount = 0 }, ref) {
+export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWatchlist, watchlistCount, onShowInvestors, onShowPortfolio, onShowScreener, onShowHeatmap, user, onShowAuth, onLogout, searchHistory = [], portfolioCount = 0 }, ref) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg, setShowSugg] = useState(false);
@@ -79,9 +79,6 @@ export default forwardRef(function Header({ onSearch, dark, toggleDark, onShowWa
       </button>
       <button onClick={() => { onShowWatchlist(); setMenuOpen(false); }} className="watchlist-header-btn" title="Ma Watchlist" aria-label={`Ma watchlist (${watchlistCount} action${watchlistCount > 1 ? "s" : ""})`}>
         <span aria-hidden="true">★</span>{watchlistCount > 0 && <span className="wl-count">{watchlistCount}</span>}
-      </button>
-      <button onClick={() => { onShowSettings?.(); setMenuOpen(false); }} className="watchlist-header-btn" title="Paramètres" aria-label="Ouvrir les paramètres" style={{ fontSize: 15 }}>
-        <span aria-hidden="true">&#9881;</span>
       </button>
       <button onClick={toggleDark} className="dark-toggle" title={dark ? "Mode clair" : "Mode sombre"} aria-label={dark ? "Activer le mode clair" : "Activer le mode sombre"}>
         <span aria-hidden="true">{dark ? "☀️" : "🌙"}</span>
