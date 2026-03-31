@@ -650,6 +650,34 @@
 }
 .auth-switch button:hover { text-decoration: underline }
 
+.wl-tab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+}
+.wl-tab-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+.wl-tab-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.wl-tab-back {
+  background: #4f46e5;
+  color: white;
+  padding: 10px 20px;
+  font-size: 13px;
+}
+
 .wl-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
