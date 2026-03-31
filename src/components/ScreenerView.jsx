@@ -126,16 +126,16 @@ export default function ScreenerView({ onSelect, onBack }) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+      <div className="tab-header">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5 }}>
+          <h2 className="tab-title">
             Screener
           </h2>
-          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>
+          <p className="tab-subtitle">
             {sorted.length} résultat{sorted.length > 1 ? "s" : ""} sur {data.length} actions
           </p>
         </div>
-        <button className="ff-btn" style={{ background: "var(--bg)", color: "var(--text)", padding: "10px 20px", fontSize: 13, border: "1px solid var(--border)" }} onClick={onBack}>
+        <button className="ff-btn tab-btn-secondary" onClick={onBack}>
           Retour
         </button>
       </div>

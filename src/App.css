@@ -650,32 +650,69 @@
 }
 .auth-switch button:hover { text-decoration: underline }
 
-.wl-tab-header {
+.tab-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 18px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 18px 24px;
 }
-.wl-tab-title {
+.tab-title {
   font-size: 20px;
   font-weight: 900;
   color: var(--text);
   letter-spacing: -0.5px;
 }
-.wl-tab-subtitle {
+.tab-subtitle {
   color: var(--muted);
   font-size: 13px;
   margin-top: 4px;
 }
-.wl-tab-back {
+.tab-actions {
+  display: flex;
+  gap: 8px;
+}
+.tab-btn-primary {
   background: #4f46e5;
   color: white;
   padding: 10px 20px;
   font-size: 13px;
+}
+.tab-btn-secondary {
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 20px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+}
+.empty-state-title {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.empty-state-text {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 400px;
+  margin: 0 auto;
+}
+.empty-state-btn {
+  margin-top: 24px;
+  background: #4f46e5;
+  color: white;
+}
+.empty-state-btn-secondary {
+  margin-top: 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .wl-grid {
