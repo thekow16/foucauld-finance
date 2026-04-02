@@ -271,11 +271,12 @@ function BaggrTooltip({ active, payload, label, fmt }) {
         border: "1px solid var(--border)",
         borderRadius: 10,
         padding: "10px 14px",
-        boxShadow: "0 4px 16px rgba(0,0,0,.12)",
+        boxShadow: "0 8px 24px rgba(0,0,0,.15)",
         fontSize: 12,
+        backdropFilter: "blur(8px)",
       }}
     >
-      <div style={{ fontWeight: 800, marginBottom: 6, color: "var(--text)" }}>{displayLabel}</div>
+      <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--text)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" }}>{displayLabel}</div>
       {payload.map((p) => (
         <div key={p.name || p.dataKey} style={{ color: p.color, fontWeight: 600, marginBottom: 2 }}>
           {p.name || p.dataKey}: {fmt ? fmt(p.value) : compact(p.value)}
@@ -285,58 +286,67 @@ function BaggrTooltip({ active, payload, label, fmt }) {
   );
 }
 
-/* ── Chart card with Baggr-style header ── */
+/* ── Chart card ── */
 function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
+  const isPositive = cagrLabel && cagrLabel.includes("+");
   return (
     <div
       style={{
         background: "var(--card)",
-        borderRadius: 16,
-        padding: "20px 18px 16px",
-        boxShadow: "0 1px 4px var(--shadow)",
-        border: "1px solid var(--border)",
+        borderRadius: 14,
+        padding: "22px 20px 18px",
+        boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
         position: "relative",
-        overflow: "hidden",
+        transition: "box-shadow .2s, transform .2s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,.10), 0 0 0 1px ${accentColor}44`;
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)";
+        e.currentTarget.style.transform = "translateY(0)";
       }}
     >
-      {/* Accent bar top */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: accentColor,
-          borderRadius: "16px 16px 0 0",
-        }}
-      />
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", letterSpacing: "-0.2px" }}>
-            {title}
-          </div>
-          {cagrLabel && (
-            <div style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: cagrLabel.startsWith("CAGR") && cagrLabel.includes("+") ? "#10b981" : "#ef4444",
-              background: cagrLabel.startsWith("CAGR") && cagrLabel.includes("+") ? "#10b98118" : "#ef444418",
-              padding: "2px 7px",
-              borderRadius: 6,
-              whiteSpace: "nowrap",
-            }}>
-              {cagrLabel}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <div style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: accentColor,
+            flexShrink: 0,
+            boxShadow: `0 0 8px ${accentColor}66`,
+          }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
+              {title}
             </div>
-          )}
+            {subtitle && (
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1, fontWeight: 400, lineHeight: 1.3 }}>
+                {subtitle}
+              </div>
+            )}
+          </div>
         </div>
-        {subtitle && (
-          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontWeight: 500 }}>
-            {subtitle}
+        {cagrLabel && (
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: isPositive ? "#10b981" : "#ef4444",
+            background: isPositive ? "#10b98112" : "#ef444412",
+            border: `1px solid ${isPositive ? "#10b98130" : "#ef444430"}`,
+            padding: "3px 8px",
+            borderRadius: 20,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            letterSpacing: "0.01em",
+          }}>
+            {cagrLabel}
           </div>
         )}
       </div>
-      <div style={{ width: "100%", height: 240 }}>{children}</div>
+      <div style={{ width: "100%", height: 220 }}>{children}</div>
     </div>
   );
 }
@@ -386,10 +396,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   if (!annualRows.length) return (
     <div style={{
       background: "var(--card)",
-      borderRadius: 16,
+      borderRadius: 14,
       padding: "32px 24px",
       textAlign: "center",
-      border: "1px solid var(--border)",
+      boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
       marginBottom: 16,
     }}>
       <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
@@ -420,36 +430,45 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
-        gap: 16,
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))",
+        gap: 14,
         marginBottom: 16,
       }}
     >
       {/* Toggle annuel / trimestriel */}
       {hasQuarterly && (
-        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 4 }}>
-          {["Annuel", "Trimestriel"].map((label, i) => {
-            const isActive = i === 0 ? !quarterly : quarterly;
-            return (
-              <button
-                key={label}
-                onClick={() => setQuarterly(i === 1)}
-                style={{
-                  padding: "6px 14px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  borderRadius: 8,
-                  border: "1px solid var(--border)",
-                  background: isActive ? "var(--accent, #2563eb)" : "var(--card)",
-                  color: isActive ? "#fff" : "var(--muted)",
-                  cursor: "pointer",
-                  transition: "all .15s",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
+          <div style={{
+            display: "inline-flex",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: 3,
+            gap: 2,
+          }}>
+            {["Annuel", "Trimestriel"].map((label, i) => {
+              const isActive = i === 0 ? !quarterly : quarterly;
+              return (
+                <button
+                  key={label}
+                  onClick={() => setQuarterly(i === 1)}
+                  style={{
+                    padding: "5px 14px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 7,
+                    border: "none",
+                    background: isActive ? "var(--accent, #2563eb)" : "transparent",
+                    color: isActive ? "#fff" : "var(--muted)",
+                    cursor: "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       {shortHistory && (
@@ -457,8 +476,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
           style={{
             gridColumn: "1 / -1",
             background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
+            boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
+            borderRadius: 10,
             padding: "10px 16px",
             fontSize: 12,
             color: "var(--muted)",
@@ -501,9 +520,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 11, fontWeight: 600 }}
+              wrapperStyle={{ fontSize: 11, fontWeight: 500 }}
               iconType="circle"
-              iconSize={8}
+              iconSize={6}
             />
             <Bar dataKey="fcf" name="Free Cash Flow" shape={<RoundedBar />}>
               {rows.map((d) => (
@@ -627,9 +646,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 11, fontWeight: 600 }}
+              wrapperStyle={{ fontSize: 11, fontWeight: 500 }}
               iconType="circle"
-              iconSize={8}
+              iconSize={6}
             />
             <Bar dataKey="cash" name="Trésorerie" fill="#14b8a6" shape={<RoundedBar />} />
             <Bar dataKey="debt" name="Dette" fill="#ef4444" shape={<RoundedBar />} />
