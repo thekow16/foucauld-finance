@@ -2,7 +2,6 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, Component, l
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
-import ScoreCard from "./components/ScoreCard";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 
@@ -447,8 +446,6 @@ export default function Alphaview() {
               isInWatchlist={isInWatchlist}
               onToggleWatchlist={handleToggleWatchlist}
             />
-
-            <ScoreCard data={data} />
 
 
             <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
