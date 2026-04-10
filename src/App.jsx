@@ -4,7 +4,7 @@ import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
-const DcfCalculator = lazy(() => import("./components/DcfCalculator"));h
+const DcfCalculator = lazy(() => import("./components/DcfCalculator"));
 
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
