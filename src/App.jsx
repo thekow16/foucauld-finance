@@ -423,7 +423,7 @@ export default function Alphaview() {
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div className="tab-bar" role="tablist" aria-label="Onglets financiers">
+              <div className="tab-bar" role="tablist" aria-label="Onglets">
                 {TABS.map(t => (
                   <button
                     key={t.id}

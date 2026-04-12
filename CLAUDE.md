@@ -23,14 +23,12 @@ Alphaview est une SPA React d'analyse boursière déployée sur GitHub Pages.
 - `src/App.jsx` — Orchestration principale, routing, état global
 - `src/utils/api.js` — Fetching Yahoo Finance avec proxy CORS + fallbacks (~800 lignes)
 - `src/utils/fmpApi.js` — Wrapper FMP avec gestion de quota
-- `src/utils/secEdgar.js` — API SEC EDGAR pour données US longues
-- `src/components/FinancialTabs.jsx` — Bilan, Résultats, Trésorerie (le plus gros composant)
 - `worker/cors-proxy.js` — Cloudflare Worker proxy
 
 ## Conventions
 
 - Interface en **français** (textes hardcodés, pas d'i18n)
-- Logs console préfixés : `[FF]`, `[FMP]`, `[SEC]`, `[EDGAR]`
+- Logs console préfixés : `[FF]`, `[FMP]`, `[SEC]`
 - Données Yahoo au format `{ raw: number, fmt: string }`
 - Formatage via `fmt()` dans `utils/format.js`
 
