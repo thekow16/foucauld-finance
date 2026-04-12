@@ -4,6 +4,7 @@ import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
 const KeyMetricsCharts = lazy(() => import("./components/KeyMetricsCharts"));
 const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
+const DcfCalculator = lazy(() => import("./components/DcfCalculator"));
 
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
@@ -423,6 +424,8 @@ export default function Alphaview() {
             <RevenueBreakdown data={data} symbol={symbol} />
 
 
+
+                                   <DcfCalculator data={data} symbol={symbol} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
