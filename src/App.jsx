@@ -16,9 +16,6 @@ const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
 const PortfolioTab = lazy(() => import("./components/PortfolioTab"));
 const ScreenerView = lazy(() => import("./components/ScreenerView"));
 const LandingPage = lazy(() => import("./components/LandingPage"));
-const BilanTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.BilanTab })));
-const ResultatsTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.ResultatsTab })));
-const TresorerieTab = lazy(() => import("./components/FinancialTabs").then(m => ({ default: m.TresorerieTab })));
 const MentionsLegales = lazy(() => import("./components/LegalPages").then(m => ({ default: m.MentionsLegales })));
 const PolitiqueConfidentialite = lazy(() => import("./components/LegalPages").then(m => ({ default: m.PolitiqueConfidentialite })));
 const CGU = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGU })));
@@ -50,9 +47,6 @@ class ErrorBoundary extends Component {
 }
 
 const TABS = [
-  { id: "bilan", label: "Bilan" },
-  { id: "resultats", label: "Résultats" },
-  { id: "tresorerie", label: "Trésorerie" },
   { id: "publications", label: "Publications" },
   { id: "compare", label: "Comparer" },
 ];
@@ -68,7 +62,7 @@ export default function Alphaview() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [activeTab, _setActiveTab] = useState("bilan");
+  const [activeTab, _setActiveTab] = useState("publications");
   const tabPanelRef = useRef(null);
   const savedScrollRef = useRef(null);
   const switchTab = useCallback((tab) => {
@@ -445,9 +439,6 @@ export default function Alphaview() {
               </div>
               <div ref={tabPanelRef} role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
                 <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
-                  {activeTab === "bilan" && <BilanTab data={data} symbol={symbol} />}
-                  {activeTab === "resultats" && <ResultatsTab data={data} symbol={symbol} />}
-                  {activeTab === "tresorerie" && <TresorerieTab data={data} symbol={symbol} />}
                   {activeTab === "publications" && <EarningsTab data={data} symbol={symbol} />}
                   {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
                 </Suspense>
