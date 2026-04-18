@@ -25,7 +25,7 @@ import { useAlerts } from "./hooks/useAlerts";
 import { usePortfolio } from "./hooks/usePortfolio";
 import { useDarkMode } from "./hooks/useDarkMode";
 import "./App.css";
-import { fetchStockData, classifyError, checkWorkerHealth } from "./utils/api";
+import { fetchStockData, classifyError, checkWorkerHealth, peekCache } from "./utils/api";
 import { getCurrentUser, logoutUser } from "./utils/auth";
 
 class ErrorBoundary extends Component {
@@ -128,7 +128,8 @@ export default function Alphaview() {
     triggeredCountRef.current = triggered.length;
   }, [triggered]);
 
-  // ── Dynamic page title + OG meta tags ──
+  // ── Dynamic page title + OG meta tags + favicon ──
+  const defaultFaviconRef = useRef(null);
   useEffect(() => {
     const setMeta = (prop, content) => {
       let el = document.querySelector(`meta[property="${prop}"]`);
@@ -140,16 +141,29 @@ export default function Alphaview() {
       if (!el) { el = document.createElement("link"); el.setAttribute("rel", rel); document.head.appendChild(el); }
       el.setAttribute("href", href);
     };
+    const iconEl = document.querySelector('link[rel="icon"]');
+    if (iconEl && defaultFaviconRef.current == null) {
+      defaultFaviconRef.current = iconEl.getAttribute("href");
+    }
+    const buildTickerFavicon = (ticker, changePositive) => {
+      const text = (ticker || "").slice(0, 4).toUpperCase();
+      const fontSize = text.length <= 2 ? 62 : text.length === 3 ? 48 : 36;
+      const dotColor = changePositive == null ? "#a5b4fc" : changePositive ? "#34d399" : "#ef4444";
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="18" fill="#4f46e5"/><text x="50" y="54" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="800" text-anchor="middle" dominant-baseline="central">${text}</text><circle cx="84" cy="16" r="9" fill="${dotColor}"/></svg>`;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    };
     const baseUrl = "https://thekow16.github.io/foucauld-finance";
     if (!data || !symbol) {
       document.title = "Alphaview";
       setMeta("og:title", "Alphaview — Analyse boursière");
       setMeta("og:url", baseUrl);
       setLink("canonical", baseUrl);
+      if (defaultFaviconRef.current) setLink("icon", defaultFaviconRef.current);
       return;
     }
     const pr = data.price;
     const price = pr?.regularMarketPrice?.raw;
+    const change = pr?.regularMarketChange?.raw;
     const name = pr?.shortName || symbol;
     const currency = pr?.currencySymbol || pr?.currency || "";
     const title = price != null
@@ -161,9 +175,20 @@ export default function Alphaview() {
     setMeta("og:description", `Analyse financière de ${name} (${symbol}) — cours, ratios, bilan, résultats et trésorerie.`);
     setMeta("og:url", pageUrl);
     setLink("canonical", pageUrl);
+    const up = change == null ? null : change >= 0;
+    setLink("icon", buildTickerFavicon(symbol, up));
   }, [data, symbol]);
 
   const doFetchStock = async (sym, { silent = false } = {}) => {
+    // Cache hit synchronous → skip loading flash
+    const cached = !silent ? peekCache(sym) : null;
+    if (cached) {
+      setData(cached.data);
+      setFetchedAt(cached.fetchedAt);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     if (!silent) {
       setLoading(true);
       setError(null);

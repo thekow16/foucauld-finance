@@ -661,6 +661,10 @@ function getCachedData(sym) {
   }
 }
 
+export function peekCache(sym) {
+  return getCachedData(sym);
+}
+
 function setCachedData(sym, data) {
   try {
     sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now(), v: CACHE_VERSION }));
