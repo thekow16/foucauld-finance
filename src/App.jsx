@@ -379,7 +379,9 @@ export default function Alphaview() {
             onBack={() => setShowScreener(false)}
           />
         ) : (<>
-        <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
+        {!(user && watchlist.length > 0) && (
+          <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
+        )}
 
         {loading && (
           <div className="card" style={{ textAlign: "center", padding: "60px 24px" }}>
@@ -424,7 +426,7 @@ export default function Alphaview() {
         )}
 
         {!loading && !error && !data && (
-          <LandingPage onSearch={handleSearch} dark={dark} />
+          <LandingPage onSearch={handleSearch} dark={dark} user={user} watchlist={watchlist} />
         )}
 
         {!loading && !error && data && (

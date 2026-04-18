@@ -1058,3 +1058,15 @@ export async function searchSymbols(query) {
     return [];
   }
 }
+
+// ── Batch quotes (lightweight: price + daily change for N symbols) ──
+export async function fetchBatchQuotes(symbols) {
+  if (!Array.isArray(symbols) || symbols.length === 0) return [];
+  const syms = symbols.slice(0, 20).join(",");
+  try {
+    const json = await yfFetch(`/v7/finance/quote?symbols=${encodeURIComponent(syms)}`);
+    return json.quoteResponse?.result || [];
+  } catch (_) {
+    return [];
+  }
+}
