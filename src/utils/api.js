@@ -661,6 +661,10 @@ function getCachedData(sym) {
   }
 }
 
+export function peekCache(sym) {
+  return getCachedData(sym);
+}
+
 function setCachedData(sym, data) {
   try {
     sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now(), v: CACHE_VERSION }));
@@ -1050,6 +1054,18 @@ export async function searchSymbols(query) {
   try {
     const json = await yfFetch(`/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=6&newsCount=0`);
     return (json.quotes || []).filter(q => q.quoteType === "EQUITY").slice(0, 6);
+  } catch (_) {
+    return [];
+  }
+}
+
+// ── Batch quotes (lightweight: price + daily change for N symbols) ──
+export async function fetchBatchQuotes(symbols) {
+  if (!Array.isArray(symbols) || symbols.length === 0) return [];
+  const syms = symbols.slice(0, 20).join(",");
+  try {
+    const json = await yfFetch(`/v7/finance/quote?symbols=${encodeURIComponent(syms)}`);
+    return json.quoteResponse?.result || [];
   } catch (_) {
     return [];
   }

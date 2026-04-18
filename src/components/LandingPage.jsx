@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchGainers, fetchLosers, fetchSectorPerformance, fetchUpcomingEarnings } from "../utils/marketApi";
+import { fetchBatchQuotes } from "../utils/api";
 import { fmt } from "../utils/format";
 
 // ── Données investisseurs (résumé pour la landing) ──
@@ -99,6 +100,25 @@ function MoverRow({ item, isGainer, onSelect }) {
   );
 }
 
+// ── Watchlist Row (personalized with live quote) ──
+function WatchlistQuoteRow({ entry, quote, onSelect }) {
+  const price = quote?.regularMarketPrice;
+  const pct = quote?.regularMarketChangePercent;
+  const isGainer = pct != null ? pct >= 0 : null;
+  const currency = quote?.currencySymbol || quote?.currency || "";
+  const name = quote?.shortName || quote?.longName || entry.name || "";
+  return (
+    <button className="lp-mover-row" onClick={() => onSelect(entry.symbol)}>
+      <div className="lp-mover-symbol">{entry.symbol}</div>
+      <div className="lp-mover-name">{name}</div>
+      <div className="lp-mover-price">{price != null ? `${price.toFixed(2)} ${currency}` : "—"}</div>
+      <div className={`lp-mover-change ${isGainer == null ? "" : isGainer ? "up" : "down"}`}>
+        {pct != null ? `${isGainer ? "+" : ""}${pct.toFixed(2)}%` : ""}
+      </div>
+    </button>
+  );
+}
+
 // ── Earnings Row ──
 function EarningsRow({ item, onSelect }) {
   const d = new Date(item.date + "T00:00:00");
@@ -158,7 +178,7 @@ function SectorTile({ sector, dark }) {
 // ══════════════════════════════════════════════
 // Main Landing Page Component
 // ══════════════════════════════════════════════
-export default function LandingPage({ onSearch, dark }) {
+export default function LandingPage({ onSearch, dark, user, watchlist = [] }) {
   const [gainers, setGainers] = useState([]);
   const [losers, setLosers] = useState([]);
   const [sectors, setSectors] = useState([]);
@@ -167,6 +187,10 @@ export default function LandingPage({ onSearch, dark }) {
   const [loadingSectors, setLoadingSectors] = useState(true);
   const [loadingEarnings, setLoadingEarnings] = useState(true);
   const [moverTab, setMoverTab] = useState("gainers"); // gainers | losers
+  const [watchlistQuotes, setWatchlistQuotes] = useState({});
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+
+  const showPersonal = !!user && watchlist.length > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -195,20 +219,99 @@ export default function LandingPage({ onSearch, dark }) {
     return () => { cancelled = true; };
   }, []);
 
+  // Personal watchlist quotes
+  useEffect(() => {
+    if (!showPersonal) return;
+    let cancelled = false;
+    setLoadingQuotes(true);
+    fetchBatchQuotes(watchlist.map(w => w.symbol))
+      .then(quotes => {
+        if (cancelled) return;
+        const map = {};
+        for (const q of quotes) { if (q.symbol) map[q.symbol] = q; }
+        setWatchlistQuotes(map);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingQuotes(false); });
+    return () => { cancelled = true; };
+    // Re-fetch when watchlist symbols change
+  }, [showPersonal, watchlist.map(w => w.symbol).join(",")]);
+
   const movers = moverTab === "gainers" ? gainers : losers;
+  const firstName = user?.displayName?.split(" ")[0] || "";
+  const watchlistSymbols = new Set(watchlist.map(w => w.symbol));
+  const watchlistEarnings = earnings.filter(e => watchlistSymbols.has(e.symbol));
 
   return (
     <div className="lp-container">
-      {/* Hero Banner */}
-      <div className="lp-hero">
-        <svg className="lp-hero-icon" width="80" height="80" viewBox="0 0 80 80" fill="none">
-          <circle cx="40" cy="40" r="38" stroke="currentColor" strokeWidth="2" opacity=".2" />
-          <path d="M20 50 L32 38 L42 46 L60 25" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="60" cy="25" r="4" fill="currentColor" />
-        </svg>
-        <h2 className="lp-hero-title">Alphaview</h2>
-        <p className="lp-hero-subtitle">Analysez n'importe quelle action mondiale — Cours en temps réel, ratios financiers, bilans</p>
-      </div>
+      {showPersonal ? (
+        <div className="lp-hero" style={{ padding: "28px 20px" }}>
+          <h2 className="lp-hero-title" style={{ marginTop: 0 }}>
+            Bonjour{firstName ? `, ${firstName}` : ""} 👋
+          </h2>
+          <p className="lp-hero-subtitle">Voici les dernières nouvelles de votre watchlist</p>
+        </div>
+      ) : (
+        <div className="lp-hero">
+          <svg className="lp-hero-icon" width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <circle cx="40" cy="40" r="38" stroke="currentColor" strokeWidth="2" opacity=".2" />
+            <path d="M20 50 L32 38 L42 46 L60 25" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="60" cy="25" r="4" fill="currentColor" />
+          </svg>
+          <h2 className="lp-hero-title">Alphaview</h2>
+          <p className="lp-hero-subtitle">Analysez n'importe quelle action mondiale — Cours en temps réel, ratios financiers, bilans</p>
+        </div>
+      )}
+
+      {/* Personal watchlist + upcoming earnings filtered to watchlist */}
+      {showPersonal && (
+        <div className="lp-grid-2">
+          <div className="card lp-section">
+            <div className="lp-section-header">
+              <h3 className="lp-section-title">Ma watchlist</h3>
+              <span className="lp-section-badge">{watchlist.length} titre{watchlist.length > 1 ? "s" : ""}</span>
+            </div>
+            <div className="lp-mover-list">
+              {loadingQuotes && Object.keys(watchlistQuotes).length === 0 ? (
+                Array.from({ length: Math.min(watchlist.length, 6) }).map((_, i) => <SkeletonRow key={i} />)
+              ) : (
+                watchlist.slice(0, 8).map(entry => (
+                  <WatchlistQuoteRow
+                    key={entry.symbol}
+                    entry={entry}
+                    quote={watchlistQuotes[entry.symbol]}
+                    onSelect={onSearch}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="card lp-section">
+            <div className="lp-section-header">
+              <h3 className="lp-section-title">Earnings de ma watchlist</h3>
+              <span className="lp-section-badge">7 jours</span>
+            </div>
+            <div className="lp-earnings-header-row">
+              <span>Date</span>
+              <span>Symbole</span>
+              <span>EPS est.</span>
+              <span>CA est.</span>
+            </div>
+            <div className="lp-earnings-list">
+              {loadingEarnings ? (
+                Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : watchlistEarnings.length === 0 ? (
+                <p className="lp-empty">Aucun earnings de votre watchlist cette semaine</p>
+              ) : (
+                watchlistEarnings.slice(0, 8).map((item, i) => (
+                  <EarningsRow key={`${item.symbol}-${i}`} item={item} onSelect={onSearch} />
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid: Movers + Earnings */}
       <div className="lp-grid-2">
