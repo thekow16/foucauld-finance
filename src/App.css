@@ -240,27 +240,6 @@
   font-weight: 600;
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 14px;
-  position: relative;
-  z-index: 1;
-}
-.chip {
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.1);
-  color: rgba(255,255,255,.65);
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all .25s;
-}
-.chip:hover { background: rgba(129,140,248,.15); color: white; border-color: rgba(129,140,248,.3) }
 
 .main {
   max-width: 1000px;
@@ -335,12 +314,6 @@
 .dark .badge-green { background: #064e3b; color: #6ee7b7 }
 .dark .badge-orange { background: #78350f; color: #fcd34d }
 
-.stock-summary {
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
-  max-width: 480px;
-}
 .stock-meta {
   color: var(--muted);
   font-size: 12px;
@@ -800,12 +773,6 @@
   color: var(--text);
   letter-spacing: -.2px;
 }
-.indicator-label {
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 600;
-  margin-bottom: 3px;
-}
 .stag {
   font-size: 11px;
   font-weight: 700;
@@ -952,38 +919,6 @@
 .ff-table tr:hover td { background: var(--highlight-row) }
 .ff-table tr:last-child td { border-bottom: none }
 .ff-table td:first-child { font-weight: 500; color: var(--text-secondary) }
-
-.ratio-cat {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: .8px;
-  margin-bottom: 8px;
-  margin-top: 4px;
-}
-.ratio-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 4px;
-  border-bottom: 1px solid var(--border);
-}
-.ratio-row:last-child { border-bottom: none }
-.ratio-label { font-weight: 600; font-size: 13px; color: var(--text-secondary) }
-.ratio-hint { font-size: 11px; color: var(--muted) }
-.ratio-value { font-size: 14px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums }
-.ratio-value.muted { color: var(--muted) }
-
-.chart-label {
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 700;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
 
 .compare-input {
   flex: 1;
@@ -1614,7 +1549,6 @@
   .main { padding: 0 10px 40px; }
   .toast-container { left: 10px; right: 10px; max-width: none; }
   .legal-page section { padding: 16px 18px; }
-  .modal-content { margin: 10px; max-width: none; }
   /* Financial tables: sticky first column on mobile */
   .ff-table { font-size: 11px; }
   .ff-table th, .ff-table td { padding: 7px 8px; white-space: nowrap; }
@@ -1644,12 +1578,6 @@
   .autocomplete-dropdown { right: 0; }
   .tab-btn { padding: 8px 10px; font-size: 11px; }
   .compare-table th, .compare-table td { font-size: 11px; padding: 6px 8px; }
-}
-
-/* ── Recharts / radar responsive ── */
-@media (max-width: 640px) {
-  .recharts-wrapper { font-size: 10px; }
-  .recharts-legend-wrapper { font-size: 10px !important; }
 }
 
 /* ── Portfolio ── */
