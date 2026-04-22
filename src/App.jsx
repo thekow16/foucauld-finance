@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, Component, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StockHeader from "./components/StockHeader";
 import AuthModal from "./components/AuthModal";
@@ -45,11 +45,6 @@ class ErrorBoundary extends Component {
   }
 }
 
-const TABS = [
-  { id: "publications", label: "Publications" },
-  { id: "compare", label: "Comparer" },
-];
-
 function getInitialSymbol() {
   const params = new URLSearchParams(window.location.search);
   return params.get("s")?.toUpperCase() || null;
@@ -61,29 +56,6 @@ export default function Alphaview() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [activeTab, _setActiveTab] = useState("publications");
-  const tabPanelRef = useRef(null);
-  const savedScrollRef = useRef(null);
-  const switchTab = useCallback((tab) => {
-    // Save scroll position and lock panel height before React re-renders
-    savedScrollRef.current = window.scrollY;
-    const panel = tabPanelRef.current;
-    if (panel) {
-      panel.style.minHeight = panel.offsetHeight + "px";
-    }
-    _setActiveTab(tab);
-  }, []);
-
-  // Restore scroll synchronously after DOM update, before browser paint
-  useLayoutEffect(() => {
-    if (savedScrollRef.current != null) {
-      window.scrollTo(0, savedScrollRef.current);
-      savedScrollRef.current = null;
-    }
-    // Release height lock after content is rendered
-    const panel = tabPanelRef.current;
-    if (panel) panel.style.minHeight = "";
-  }, [activeTab]);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
@@ -295,7 +267,6 @@ export default function Alphaview() {
 
   const handleSearch = (sym) => {
     setSymbol(sym);
-    _setActiveTab("bilan");
     setShowWatchlist(false);
     setShowInvestors(false);
     setShowPortfolio(false);
@@ -445,28 +416,13 @@ export default function Alphaview() {
 
             <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div className="tab-bar" role="tablist" aria-label="Onglets">
-                {TABS.map(t => (
-                  <button
-                    key={t.id}
-                    role="tab"
-                    aria-selected={activeTab === t.id}
-                    aria-controls={`tabpanel-${t.id}`}
-                    className={`tab-btn${activeTab === t.id ? " active" : ""}`}
-                    onClick={() => switchTab(t.id)}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              <div ref={tabPanelRef} role="tabpanel" id={`tabpanel-${activeTab}`} aria-label={TABS.find(t => t.id === activeTab)?.label} style={{ padding: 24, minHeight: 400 }}>
-                <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
-                  {activeTab === "publications" && <EarningsTab data={data} symbol={symbol} />}
-                  {activeTab === "compare" && <CompareMode currentSymbol={symbol} currentData={data} />}
-                </Suspense>
-              </div>
-            </div>
+            <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
+              <EarningsTab data={data} symbol={symbol} />
+            </Suspense>
+
+            <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
+              <CompareMode currentSymbol={symbol} currentData={data} />
+            </Suspense>
 
             <footer className="footer" role="contentinfo">
               Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
