@@ -7,17 +7,6 @@ const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 const FMP_V4 = "https://financialmodelingprep.com/api/v4";
 const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
 
-// ── Legacy: support clé locale (migration) ──
-const STORAGE_KEY = "fmp_api_key";
-
-export function getFmpApiKey() {
-  return localStorage.getItem(STORAGE_KEY) || "";
-}
-
-export function setFmpApiKey(key) {
-  localStorage.setItem(STORAGE_KEY, key || "");
-}
-
 // FMP est toujours disponible via le Worker (clé serveur)
 export function hasFmpApiKey() {
   return true;
@@ -41,12 +30,6 @@ function incrementFmpCount() {
   const count = stored.date === today ? stored.count + 1 : 1;
   localStorage.setItem(FMP_COUNTER_KEY, JSON.stringify({ count, date: today }));
   return count;
-}
-
-export function getFmpUsage() {
-  const today = new Date().toISOString().slice(0, 10);
-  const stored = getFmpDailyCount();
-  return stored.date === today ? stored.count : 0;
 }
 
 async function fmpFetch(endpoint, base = FMP_BASE) {
@@ -108,11 +91,6 @@ export async function fetchProfile(symbol) {
   return fmpFetch(`/profile/${symbol}`);
 }
 
-// ── Résultats trimestriels (Earnings) ──
-export async function fetchEarningsHistory(symbol) {
-  return fmpFetch(`/historical/earning_calendar/${symbol}?limit=20`);
-}
-
 // ── Données trimestrielles (Income, Balance, Cashflow) ──
 export async function fetchQuarterlyIncome(symbol, limit = 40) {
   return fmpFetch(`/income-statement/${symbol}?period=quarter&limit=${limit}`);
@@ -131,16 +109,6 @@ export async function fetchAllQuarterlyFinancials(symbol) {
     fetchQuarterlyCashflow(symbol).catch(() => []),
   ]);
   return { income, balance, cashflow };
-}
-
-// ── Communiqués de presse ──
-export async function fetchPressReleases(symbol, limit = 40) {
-  return fmpFetch(`/press-releases/${symbol}?page=0&limit=${limit}`);
-}
-
-// ── SEC Filings (10-K, 10-Q, 8-K) ──
-export async function fetchSecFilings(symbol, limit = 40) {
-  return fmpFetch(`/sec_filings/${symbol}?type=&page=0&limit=${limit}`);
 }
 
 // ── Segmentation du CA par produit ──
