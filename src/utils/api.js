@@ -1,85 +1,9 @@
+import { warn } from "./log";
 import { fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
-import { rateLimited } from "./rateLimiter";
+import { WORKER_URL, YF, FREE_PROXIES, checkWorkerHealth, tryFetch, yfFetch } from "./proxy";
+import { getCachedData, setCachedData } from "./cache";
 
-// ──────────────────────────────────────────────
-// Cloudflare Worker URL
-// ──────────────────────────────────────────────
-const WORKER_URL = "https://foucauld-proxy.foucauld-finance.workers.dev";
-
-// Proxies CORS gratuits — allorigins en premier (confirmé fonctionnel)
-const FREE_PROXIES = [
-  url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` }),
-  url => ({ url: `https://corsproxy.io/?url=${encodeURIComponent(url)}` }),
-  url => ({ url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` }),
-  url => ({ url: `https://thingproxy.freeboard.io/fetch/${url}` }),
-  url => ({ url: `https://everyorigin.jwvbremen.nl/api/get?url=${encodeURIComponent(url)}`, unwrap: true }),
-];
-
-const YF = "https://query2.finance.yahoo.com";
-
-// ── Worker health check ──
-export async function checkWorkerHealth() {
-  if (!WORKER_URL) return false;
-  try {
-    const res = await fetch(`${WORKER_URL}/health`, { signal: AbortSignal.timeout(5000) });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function tryFetch(url, unwrap = false) {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(12000),
-    headers: { "Accept": "application/json" },
-  });
-  if (res.status === 429) throw new Error("Rate limit serveur dépassé. Patientez 1 minute.");
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
-  let data = JSON.parse(text);
-  if (unwrap && typeof data.contents === "string") {
-    data = JSON.parse(data.contents);
-  }
-  return data;
-}
-
-export async function proxyFetch(targetUrl) {
-  return rateLimited(async () => {
-    // 1) Cloudflare Worker (gère le crumb automatiquement)
-    if (WORKER_URL) {
-      try {
-        const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`);
-        return data;
-      } catch (e) {
-        console.warn("[FF] Worker échoué:", e.message);
-      }
-    }
-
-    // 2) Fallback proxies gratuits
-    for (let i = 0; i < FREE_PROXIES.length; i++) {
-      const { url, unwrap } = FREE_PROXIES[i](targetUrl);
-      const label = new URL(url).hostname;
-      try {
-        const data = await tryFetch(url, unwrap);
-        return data;
-      } catch (e) {
-        console.warn(`[FF] ${label} → ${e.message}`);
-      }
-    }
-
-    throw new Error("Impossible de contacter Yahoo Finance.");
-  });
-}
-
-// ── Fetch Yahoo Finance (essaie query2 puis query1) ──
-async function yfFetch(path) {
-  for (const host of [YF, YF.replace("query2", "query1")]) {
-    try {
-      return await proxyFetch(`${host}${path}`);
-    } catch (_) {}
-  }
-  throw new Error("Impossible de contacter Yahoo Finance.");
-}
+export { checkWorkerHealth } from "./proxy";
 
 // ── Chart data (fonctionne SANS crumb) ──
 export async function fetchChartData(sym, interval, range) {
@@ -172,7 +96,7 @@ async function fetchYahooTimeseries(sym) {
         const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
         return data;
       } catch (e) {
-        console.warn(`[FF] timeseries ${label} Worker failed:`, e.message);
+        warn(`[FF] timeseries ${label} Worker failed:`, e.message);
       }
     }
     // Try first CORS proxy as fallback (don't try all 5 — too slow)
@@ -181,7 +105,7 @@ async function fetchYahooTimeseries(sym) {
       const data = await tryFetch(proxyUrl, unwrap);
       return data;
     } catch (e) {
-      console.warn(`[FF] timeseries ${label} CORS proxy failed:`, e.message);
+      warn(`[FF] timeseries ${label} CORS proxy failed:`, e.message);
     }
     return null;
   };
@@ -347,7 +271,7 @@ async function fetchYahooTimeseries(sym) {
 
     return { balanceSheetStatements, incomeStatements, cashflowStatements, quarterlyData };
   } catch (e) {
-    console.warn("[FF] timeseries fetch failed:", e.message);
+    warn("[FF] timeseries fetch failed:", e.message);
     return null;
   }
 }
@@ -642,42 +566,8 @@ function yahooToFmpData(yahooResult) {
   return extendFmpWithYahoo(fmpData, yahooResult);
 }
 
-// ── Cache sessionStorage (15 min TTL, versionné) ──
-const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 10; // Incrémenter pour invalider le cache après un fix
-
-function getCachedData(sym) {
-  try {
-    const raw = sessionStorage.getItem(`ff_${sym}`);
-    if (!raw) return null;
-    const { data, ts, v } = JSON.parse(raw);
-    if (v !== CACHE_VERSION || Date.now() - ts > CACHE_TTL) {
-      sessionStorage.removeItem(`ff_${sym}`);
-      return null;
-    }
-    return { data, fetchedAt: ts };
-  } catch {
-    return null;
-  }
-}
-
 export function peekCache(sym) {
   return getCachedData(sym);
-}
-
-function setCachedData(sym, data) {
-  try {
-    sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now(), v: CACHE_VERSION }));
-  } catch {
-    // sessionStorage full — clear old entries
-    try {
-      for (let i = sessionStorage.length - 1; i >= 0; i--) {
-        const key = sessionStorage.key(i);
-        if (key?.startsWith("ff_")) sessionStorage.removeItem(key);
-      }
-      sessionStorage.setItem(`ff_${sym}`, JSON.stringify({ data, ts: Date.now(), v: CACHE_VERSION }));
-    } catch { /* ignore */ }
-  }
 }
 
 // ── Rate limiter (max 3 recherches / 5s côté client) ──
@@ -749,11 +639,11 @@ export async function fetchStockData(sym) {
         // Fetch timeseries and FMP in parallel for speed
         const [ts, fmpResult] = await Promise.all([
           fetchYahooTimeseries(sym).catch(e => {
-            console.warn("[FF] timeseries échoué:", e.message);
+            warn("[FF] timeseries échoué:", e.message);
             return null;
           }),
           fetchAllFinancials(sym).catch(e => {
-            console.warn("[FF] FMP fetch échoué:", e.message);
+            warn("[FF] FMP fetch échoué:", e.message);
             return null;
           }),
         ]);
@@ -866,7 +756,7 @@ export async function fetchStockData(sym) {
         return { data: yahooResult, fetchedAt: Date.now() };
       }
     } catch (e) {
-      console.warn("[FF] quoteSummary via Worker échoué:", e.message);
+      warn("[FF] quoteSummary via Worker échoué:", e.message);
     }
   }
 
@@ -905,7 +795,7 @@ export async function fetchStockData(sym) {
       fmpProfile = Array.isArray(prof) ? prof[0] : prof;
       fmpFinancials = fins;
     } catch (e) {
-      console.warn("[FF] FMP enrichissement échoué:", e.message);
+      warn("[FF] FMP enrichissement échoué:", e.message);
     }
   }
 
@@ -1024,7 +914,7 @@ export async function fetchStockData(sym) {
         }
       }
     } catch (e) {
-      console.warn("[FF] FMP quarterly fetch échoué:", e.message);
+      warn("[FF] FMP quarterly fetch échoué:", e.message);
     }
   }
 

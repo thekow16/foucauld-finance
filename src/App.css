@@ -1502,11 +1502,15 @@
 }
 
 /* Skeleton loader */
-.lp-skeleton {
+.lp-skeleton,
+.skeleton-block {
   background: linear-gradient(90deg, var(--border) 25%, var(--highlight-row) 50%, var(--border) 75%);
   background-size: 200% 100%;
   animation: lpPulse 1.5s ease-in-out infinite;
+  border-radius: 6px;
 }
+.skeleton-wrapper { display: flex; flex-direction: column; gap: 16px; }
+.skeleton-header-card { min-height: 140px; }
 
 /* Container */
 .lp-container {

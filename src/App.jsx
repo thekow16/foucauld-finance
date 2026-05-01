@@ -354,10 +354,34 @@ export default function Alphaview() {
         )}
 
         {loading && (
-          <div className="card" style={{ textAlign: "center", padding: "60px 24px" }}>
-            <div className="spinner" />
-            <p style={{ color: "#4f46e5", fontWeight: 700, fontSize: 15 }}>Analyse de {symbol} en cours...</p>
-            <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>Connexion à Yahoo Finance</p>
+          <div className="skeleton-wrapper">
+            <div className="card skeleton-header-card">
+              <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 18 }}>
+                <div className="skeleton-block" style={{ width: 48, height: 48, borderRadius: 12 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton-block" style={{ width: "40%", height: 22, marginBottom: 8 }} />
+                  <div className="skeleton-block" style={{ width: "25%", height: 14 }} />
+                </div>
+                <div className="skeleton-block" style={{ width: 100, height: 36, borderRadius: 8 }} />
+              </div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {[120, 90, 110, 80, 100].map((w, i) => (
+                  <div key={i} className="skeleton-block" style={{ width: w, height: 52, borderRadius: 10 }} />
+                ))}
+              </div>
+            </div>
+            <div className="card" style={{ padding: 24 }}>
+              <div className="skeleton-block" style={{ width: "30%", height: 18, marginBottom: 20 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="skeleton-block" style={{ height: 180, borderRadius: 10 }} />
+                ))}
+              </div>
+            </div>
+            <div className="card" style={{ padding: 24 }}>
+              <div className="skeleton-block" style={{ width: "25%", height: 18, marginBottom: 16 }} />
+              <div className="skeleton-block" style={{ height: 320, borderRadius: 10 }} />
+            </div>
           </div>
         )}
 
@@ -427,6 +451,7 @@ export default function Alphaview() {
             <footer className="footer" role="contentinfo">
               Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
               <strong style={{ color: "#4f46e5" }}>Alphaview</strong>
+              <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>v{__APP_VERSION__}</span>
               <div className="footer-links">
                 <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
                 <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>

@@ -1,3 +1,4 @@
+import { warn } from "../utils/log";
 import { useState, useEffect } from "react";
 import {
   ResponsiveContainer,
@@ -91,7 +92,7 @@ async function secFetch(url) {
         signal: AbortSignal.timeout(25000),
         headers: { Accept: "application/json" },
       });
-      if (!res.ok) { console.warn(`[SEC] ${s.label} → HTTP ${res.status}`); continue; }
+      if (!res.ok) { warn(`[SEC] ${s.label} → HTTP ${res.status}`); continue; }
       if (s.wrap) {
         const wrapper = await res.json();
         if (wrapper?.contents) {
@@ -103,7 +104,7 @@ async function secFetch(url) {
         return data;
       }
     } catch (e) {
-      console.warn(`[SEC] ${s.label} → ${e.message}`);
+      warn(`[SEC] ${s.label} → ${e.message}`);
     }
   }
   return null;
@@ -274,7 +275,7 @@ async function fetchSecSegments(symbol) {
       geo: buildPieData(geoEntries),
     };
   } catch (e) {
-    console.warn("[SEC] Error:", e.message);
+    warn("[SEC] Error:", e.message);
     return { product: null, geo: null };
   }
 }
@@ -407,7 +408,7 @@ export default function RevenueBreakdown({ data, symbol }) {
             return;
           }
         } catch (e) {
-          console.warn("[Segments] FMP failed:", e.message);
+          warn("[Segments] FMP failed:", e.message);
         }
       }
 
@@ -432,7 +433,7 @@ export default function RevenueBreakdown({ data, symbol }) {
           return;
         }
       } catch (e) {
-        console.warn("[Segments] SEC failed:", e.message);
+        warn("[Segments] SEC failed:", e.message);
       }
 
       if (!cancelled) setLoading(false);
