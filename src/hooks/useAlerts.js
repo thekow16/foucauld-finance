@@ -1,3 +1,4 @@
+import { warn } from "../utils/log";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchCandleData } from "../utils/api";
 import { computeSMA } from "../utils/indicators";
@@ -177,7 +178,7 @@ export function useAlerts(watchlist) {
           }
         });
       } catch (e) {
-        console.warn(`[FF] Alert check failed for ${sym}:`, e.message);
+        warn(`[FF] Alert check failed for ${sym}:`, e.message);
       }
     }));
 

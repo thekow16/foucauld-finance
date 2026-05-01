@@ -1,3 +1,4 @@
+import { warn } from "../utils/log";
 import { useState } from "react";
 import {
   ResponsiveContainer,
@@ -175,7 +176,7 @@ export function buildSeries(data) {
   if (yahooRows.length === 0 && byYear.size > 0) {
     // Log sample row to help debug
     const sample = [...byYear.values()][0];
-    console.warn("[FF][Charts] Rows exist but no financial data. Sample:", JSON.stringify(sample));
+    warn("[FF][Charts] Rows exist but no financial data. Sample:", JSON.stringify(sample));
   }
   return yahooRows;
 }

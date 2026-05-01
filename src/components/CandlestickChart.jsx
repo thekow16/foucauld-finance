@@ -4,6 +4,8 @@ import { fetchCandleData } from "../utils/api";
 import { computeSMA, computeBollingerBands } from "../utils/indicators";
 
 const TIMEFRAMES = [
+  { id: "daily", label: "Journalier", interval: "1d", range: "6mo" },
+  { id: "weekly", label: "Hebdo", interval: "1wk", range: "5y" },
   { id: "monthly", label: "Mensuel", interval: "1mo", range: "max" },
   { id: "quarterly", label: "Trimestriel", interval: "1mo", range: "max", aggregate: "quarter" },
 ];

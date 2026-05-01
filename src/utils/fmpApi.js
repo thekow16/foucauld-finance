@@ -1,3 +1,4 @@
+import { warn } from "./log";
 // ──────────────────────────────────────────────
 // Financial Modeling Prep API — proxied through Cloudflare Worker
 // La clé API est injectée côté serveur (jamais exposée au client)
@@ -37,7 +38,7 @@ async function fmpFetch(endpoint, base = FMP_BASE) {
   const today = new Date().toISOString().slice(0, 10);
   const stored = getFmpDailyCount();
   if (stored.date === today && stored.count >= FMP_DAILY_LIMIT) {
-    console.warn(`[FMP] Limite journalière atteinte (${stored.count}/${FMP_DAILY_LIMIT})`);
+    warn(`[FMP] Limite journalière atteinte (${stored.count}/${FMP_DAILY_LIMIT})`);
     throw new Error("Limite FMP atteinte pour aujourd'hui (250 req/jour). Les données Yahoo Finance restent disponibles.");
   }
   incrementFmpCount();
@@ -55,7 +56,7 @@ async function fmpFetch(endpoint, base = FMP_BASE) {
   const data = await res.json();
   // FMP returns {"Error Message": "..."} on expired/rate-limited keys with 200 OK
   if (data && !Array.isArray(data) && data["Error Message"]) {
-    console.warn("[FMP] API error:", data["Error Message"]);
+    warn("[FMP] API error:", data["Error Message"]);
     throw new Error(`FMP: ${data["Error Message"]}`);
   }
   return data;
@@ -125,13 +126,13 @@ export async function fetchRevenueGeoSegmentation(symbol) {
 export async function fetchAllFinancials(symbol) {
   const limit = 40;
   const [income, balance, cashflow, ratios, keyMetrics, productSegments, geoSegments] = await Promise.all([
-    fetchIncomeStatement(symbol, limit).catch(e => { console.warn("[FMP] income err:", e.message); return []; }),
-    fetchBalanceSheet(symbol, limit).catch(e => { console.warn("[FMP] balance err:", e.message); return []; }),
-    fetchCashFlow(symbol, limit).catch(e => { console.warn("[FMP] cashflow err:", e.message); return []; }),
-    fetchRatios(symbol, limit).catch(e => { console.warn("[FMP] ratios err:", e.message); return []; }),
-    fetchKeyMetrics(symbol, limit).catch(e => { console.warn("[FMP] keyMetrics err:", e.message); return []; }),
-    fetchRevenueProductSegmentation(symbol).catch(e => { console.warn("[FMP] productSeg err:", e.message); return []; }),
-    fetchRevenueGeoSegmentation(symbol).catch(e => { console.warn("[FMP] geoSeg err:", e.message); return []; }),
+    fetchIncomeStatement(symbol, limit).catch(e => { warn("[FMP] income err:", e.message); return []; }),
+    fetchBalanceSheet(symbol, limit).catch(e => { warn("[FMP] balance err:", e.message); return []; }),
+    fetchCashFlow(symbol, limit).catch(e => { warn("[FMP] cashflow err:", e.message); return []; }),
+    fetchRatios(symbol, limit).catch(e => { warn("[FMP] ratios err:", e.message); return []; }),
+    fetchKeyMetrics(symbol, limit).catch(e => { warn("[FMP] keyMetrics err:", e.message); return []; }),
+    fetchRevenueProductSegmentation(symbol).catch(e => { warn("[FMP] productSeg err:", e.message); return []; }),
+    fetchRevenueGeoSegmentation(symbol).catch(e => { warn("[FMP] geoSeg err:", e.message); return []; }),
   ]);
   return { income, balance, cashflow, ratios, keyMetrics, productSegments, geoSegments };
 }
