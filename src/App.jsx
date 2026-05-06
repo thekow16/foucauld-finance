@@ -10,19 +10,13 @@ const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 const CompareMode = lazy(() => import("./components/CompareMode"));
 const EarningsTab = lazy(() => import("./components/EarningsTab"));
 const InvestorsTab = lazy(() => import("./components/InvestorsTab"));
-const Watchlist = lazy(() => import("./components/Watchlist"));
 const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
-const PortfolioTab = lazy(() => import("./components/PortfolioTab"));
-const ScreenerView = lazy(() => import("./components/ScreenerView"));
-const LandingPage = lazy(() => import("./components/LandingPage"));
 const MentionsLegales = lazy(() => import("./components/LegalPages").then(m => ({ default: m.MentionsLegales })));
 const PolitiqueConfidentialite = lazy(() => import("./components/LegalPages").then(m => ({ default: m.PolitiqueConfidentialite })));
 const CGU = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGU })));
 const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGV })));
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
-import { usePortfolio } from "./hooks/usePortfolio";
-import { useDarkMode } from "./hooks/useDarkMode";
 import "./App.css";
 import { fetchStockData, classifyError, checkWorkerHealth, peekCache } from "./utils/api";
 import { getCurrentUser, logoutUser } from "./utils/auth";
@@ -58,8 +52,6 @@ export default function Alphaview() {
   const [fetchedAt, setFetchedAt] = useState(null);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showInvestors, setShowInvestors] = useState(false);
-  const [showPortfolio, setShowPortfolio] = useState(false);
-  const [showScreener, setShowScreener] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
   const [legalPage, setLegalPage] = useState(null); // "mentions" | "confidentialite" | "cgu" | "cgv"
@@ -70,10 +62,8 @@ export default function Alphaview() {
     setUser(null);
   };
 
-  const [dark, toggleDark] = useDarkMode();
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const { toggleAlert, getAlerts, triggered, dismissTriggered, maData, checking, priceAlerts, setPriceAlert, removePriceAlert } = useAlerts(watchlist);
-  const { positions, addPosition, removePosition } = usePortfolio();
   const [toasts, setToasts] = useState([]);
 
   // Toast notifications quand de nouvelles alertes sont déclenchées
@@ -99,8 +89,7 @@ export default function Alphaview() {
     triggeredCountRef.current = triggered.length;
   }, [triggered]);
 
-  // ── Dynamic page title + OG meta tags + favicon ──
-  const defaultFaviconRef = useRef(null);
+  // ── Dynamic page title + OG meta tags ──
   useEffect(() => {
     const setMeta = (prop, content) => {
       let el = document.querySelector(`meta[property="${prop}"]`);
@@ -112,29 +101,16 @@ export default function Alphaview() {
       if (!el) { el = document.createElement("link"); el.setAttribute("rel", rel); document.head.appendChild(el); }
       el.setAttribute("href", href);
     };
-    const iconEl = document.querySelector('link[rel="icon"]');
-    if (iconEl && defaultFaviconRef.current == null) {
-      defaultFaviconRef.current = iconEl.getAttribute("href");
-    }
-    const buildTickerFavicon = (ticker, changePositive) => {
-      const text = (ticker || "").slice(0, 4).toUpperCase();
-      const fontSize = text.length <= 2 ? 62 : text.length === 3 ? 48 : 36;
-      const dotColor = changePositive == null ? "#a5b4fc" : changePositive ? "#34d399" : "#ef4444";
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="18" fill="#4f46e5"/><text x="50" y="54" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="800" text-anchor="middle" dominant-baseline="central">${text}</text><circle cx="84" cy="16" r="9" fill="${dotColor}"/></svg>`;
-      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-    };
     const baseUrl = "https://thekow16.github.io/foucauld-finance";
     if (!data || !symbol) {
       document.title = "Alphaview";
       setMeta("og:title", "Alphaview — Analyse boursière");
       setMeta("og:url", baseUrl);
       setLink("canonical", baseUrl);
-      if (defaultFaviconRef.current) setLink("icon", defaultFaviconRef.current);
       return;
     }
     const pr = data.price;
     const price = pr?.regularMarketPrice?.raw;
-    const change = pr?.regularMarketChange?.raw;
     const name = pr?.shortName || symbol;
     const currency = pr?.currencySymbol || pr?.currency || "";
     const title = price != null
@@ -146,8 +122,6 @@ export default function Alphaview() {
     setMeta("og:description", `Analyse financière de ${name} (${symbol}) — cours, ratios, bilan, résultats et trésorerie.`);
     setMeta("og:url", pageUrl);
     setLink("canonical", pageUrl);
-    const up = change == null ? null : change >= 0;
-    setLink("icon", buildTickerFavicon(symbol, up));
   }, [data, symbol]);
 
   const doFetchStock = async (sym, { silent = false } = {}) => {
@@ -269,8 +243,6 @@ export default function Alphaview() {
     setSymbol(sym);
     setShowWatchlist(false);
     setShowInvestors(false);
-    setShowPortfolio(false);
-    setShowScreener(false);
     addToHistory(sym);
     // Push state for back/forward navigation
     const url = new URL(window.location);
@@ -285,11 +257,11 @@ export default function Alphaview() {
   };
 
   return (
-    <div className={`app ${dark ? "dark" : "light"}`}>
+    <div className="app">
       {/* CSS extracted to App.css */}
       <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
-      <Header ref={headerRef} onSearch={handleSearch} dark={dark} toggleDark={toggleDark} onShowWatchlist={() => { setShowWatchlist(true); setShowPortfolio(false); setShowScreener(false); setShowInvestors(false); }} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); setShowPortfolio(false); setShowScreener(false); }} onShowPortfolio={() => { setShowPortfolio(true); setShowWatchlist(false); setShowInvestors(false); setShowScreener(false); }} onShowScreener={() => { setShowScreener(true); setShowWatchlist(false); setShowInvestors(false); setShowPortfolio(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} portfolioCount={positions.length} />
+      <Header ref={headerRef} onSearch={handleSearch} onShowWatchlist={() => { setShowWatchlist(true); setShowInvestors(false); }} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
 
       {workerDown && (
         <div className="worker-banner" role="alert">
@@ -335,24 +307,7 @@ export default function Alphaview() {
             onSetPriceAlert={setPriceAlert}
             onRemovePriceAlert={removePriceAlert}
           />
-        ) : showPortfolio ? (
-          <PortfolioTab
-            positions={positions}
-            onAdd={addPosition}
-            onRemove={removePosition}
-            onSelect={handleSearch}
-            onBack={() => setShowPortfolio(false)}
-          />
-        ) : showScreener ? (
-          <ScreenerView
-            onSelect={handleSearch}
-            onBack={() => setShowScreener(false)}
-          />
         ) : (<>
-        {!(user && watchlist.length > 0) && (
-          <Watchlist watchlist={watchlist} onSelect={handleSearch} onRemove={removeFromWatchlist} />
-        )}
-
         {loading && (
           <div className="skeleton-wrapper">
             <div className="card skeleton-header-card">
@@ -420,7 +375,14 @@ export default function Alphaview() {
         )}
 
         {!loading && !error && !data && (
-          <LandingPage onSearch={handleSearch} dark={dark} user={user} watchlist={watchlist} />
+          <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--muted)" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, marginBottom: 16 }}>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <p style={{ fontSize: 16, fontWeight: 600 }}>Recherchez un symbole pour commencer</p>
+            <p style={{ fontSize: 13, marginTop: 8 }}>Ex : AAPL, MSFT, BNP.PA, MC.PA</p>
+          </div>
         )}
 
         {!loading && !error && data && (
@@ -438,7 +400,7 @@ export default function Alphaview() {
 
             <RevenueBreakdown data={data} symbol={symbol} />
 
-            <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
+            <CandlestickChart symbol={symbol} currency={data?.price?.currency} />
 
             <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
               <EarningsTab data={data} symbol={symbol} />
@@ -448,32 +410,13 @@ export default function Alphaview() {
               <CompareMode currentSymbol={symbol} currentData={data} />
             </Suspense>
 
-            <footer className="footer" role="contentinfo">
-              Données Yahoo Finance · Usage éducatif uniquement · Pas un conseil en investissement<br />
+            <footer className="footer" role="contentinfo" style={{ textAlign: "center" }}>
               <strong style={{ color: "#4f46e5" }}>Alphaview</strong>
               <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>v{__APP_VERSION__}</span>
-              <div className="footer-links">
-                <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
-                <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>
-                <button className="footer-link" onClick={() => setLegalPage("cgu")}>CGU</button>
-                <button className="footer-link" onClick={() => setLegalPage("cgv")}>CGV</button>
-              </div>
             </footer>
           </ErrorBoundary>
         )}
         </>)}
-
-        {/* Footer global visible partout */}
-        {!legalPage && !showInvestors && !showWatchlist && !showPortfolio && !showScreener && (!data || loading) && (
-          <div className="footer" style={{ marginTop: 24 }}>
-            <div className="footer-links">
-              <button className="footer-link" onClick={() => setLegalPage("mentions")}>Mentions légales</button>
-              <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>
-              <button className="footer-link" onClick={() => setLegalPage("cgu")}>CGU</button>
-              <button className="footer-link" onClick={() => setLegalPage("cgv")}>CGV</button>
-            </div>
-          </div>
-        )}
         </Suspense>
       </main>
 
