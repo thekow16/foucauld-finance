@@ -8,7 +8,6 @@ const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 const CompareMode = lazy(() => import("./components/CompareMode"));
-const EarningsTab = lazy(() => import("./components/EarningsTab"));
 const InvestorsTab = lazy(() => import("./components/InvestorsTab"));
 const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
 const MentionsLegales = lazy(() => import("./components/LegalPages").then(m => ({ default: m.MentionsLegales })));
@@ -401,10 +400,6 @@ export default function Alphaview() {
             <RevenueBreakdown data={data} symbol={symbol} />
 
             <CandlestickChart symbol={symbol} currency={data?.price?.currency} />
-
-            <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
-              <EarningsTab data={data} symbol={symbol} />
-            </Suspense>
 
             <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
               <CompareMode currentSymbol={symbol} currentData={data} />
