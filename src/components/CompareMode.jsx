@@ -10,89 +10,36 @@ function extractMetrics(symbol, data) {
   const stats = data.defaultKeyStatistics;
   const summ = data.summaryDetail;
 
-  // PE: try multiple paths
-  const pe = stats?.trailingPE?.raw ?? summ?.trailingPE?.raw ?? fin?.trailingPE?.raw;
-  const pb = stats?.priceToBook?.raw;
-  const divYield = summ?.dividendYield?.raw;
-  const grossMargin = fin?.grossMargins?.raw;
-  const opMargin = fin?.operatingMargins?.raw;
-  const netMargin = fin?.profitMargins?.raw;
-  const roe = fin?.returnOnEquity?.raw;
-  const roa = fin?.returnOnAssets?.raw;
-  const debtToEquity = fin?.debtToEquity?.raw;
-  const currentRatio = fin?.currentRatio?.raw;
-  const revenueGrowth = fin?.revenueGrowth?.raw;
-  const earningsGrowth = fin?.earningsGrowth?.raw;
-  const evToEbitda = stats?.enterpriseToEbitda?.raw;
-  const evToRevenue = stats?.enterpriseToRevenue?.raw;
+  const marketCap = pr?.marketCap?.raw ?? summ?.marketCap?.raw;
   const freeCashflow = fin?.freeCashflow?.raw;
+  const operatingCashflow = fin?.operatingCashflow?.raw;
   const revenue = fin?.totalRevenue?.raw;
-  const fcfMargin = (freeCashflow != null && revenue > 0) ? freeCashflow / revenue : null;
+  const netIncome = data?.incomeStatementHistory?.incomeStatementHistory?.[0]?.netIncome?.raw;
+
+  const sbc = data?.cashflowStatementHistory?.cashflowStatements?.[0]?.stockBasedCompensation?.raw;
+  const fcfAdjusted = (freeCashflow != null && sbc != null) ? freeCashflow - Math.abs(sbc) : freeCashflow;
+
+  const pFcf = (marketCap != null && fcfAdjusted != null && fcfAdjusted > 0) ? marketCap / fcfAdjusted : null;
+  const pSales = (marketCap != null && revenue != null && revenue > 0) ? marketCap / revenue : null;
+  const pOcf = (marketCap != null && operatingCashflow != null && operatingCashflow > 0) ? marketCap / operatingCashflow : null;
+  const pe = stats?.trailingPE?.raw ?? summ?.trailingPE?.raw ?? (marketCap != null && netIncome != null && netIncome > 0 ? marketCap / netIncome : null);
 
   return {
     symbol,
     name: pr?.shortName || pr?.longName || symbol,
-    price: pr?.regularMarketPrice?.raw,
-    change: pr?.regularMarketChangePercent?.raw,
-    currency: pr?.currency || "USD",
-    marketCap: pr?.marketCap?.raw ?? summ?.marketCap?.raw,
+    pFcf,
+    pSales,
+    pOcf,
     pe,
-    pb,
-    divYield,
-    grossMargin,
-    opMargin,
-    netMargin,
-    roe,
-    roa,
-    debtToEquity,
-    currentRatio,
-    revenueGrowth,
-    earningsGrowth,
-    evToEbitda,
-    evToRevenue,
-    fcfMargin,
-    freeCashflow,
-    revenue,
   };
 }
 
 const ROWS = [
-  { label: "Prix", key: "price", format: (v, m) => v != null ? `${v.toFixed(2)} ${m?.currency || ""}` : "—" },
-  { label: "Variation", key: "change", format: v => v != null ? `${(v * 100).toFixed(2)} %` : "—" },
-  { label: "Capitalisation", key: "marketCap", format: v => fmt(v, "currency") },
-  { label: "P/E Ratio", key: "pe", format: v => fmt(v, "ratio"), better: "lower" },
-  { label: "P/B Ratio", key: "pb", format: v => fmt(v, "ratio"), better: "lower" },
-  { label: "EV/EBITDA", key: "evToEbitda", format: v => fmt(v, "ratio"), better: "lower" },
-  { label: "Dividende", key: "divYield", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "Marge brute", key: "grossMargin", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "Marge opera.", key: "opMargin", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "Marge nette", key: "netMargin", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "Marge FCF", key: "fcfMargin", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "ROE", key: "roe", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "ROA", key: "roa", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "Dette / CP", key: "debtToEquity", format: v => v != null ? `${v.toFixed(1)}` : "—", better: "lower" },
-  { label: "Liquidite gen.", key: "currentRatio", format: v => fmt(v, "ratio"), better: "higher" },
-  { label: "Croissance CA", key: "revenueGrowth", format: v => fmt(v, "percent"), better: "higher" },
-  { label: "Croissance ben.", key: "earningsGrowth", format: v => fmt(v, "percent"), better: "higher" },
+  { label: "P / FCF (ajusté SBC)", key: "pFcf", format: v => v != null ? `${v.toFixed(1)}x` : "—" },
+  { label: "P / Chiffre d'affaires", key: "pSales", format: v => v != null ? `${v.toFixed(1)}x` : "—" },
+  { label: "P / Cash flow opérationnel", key: "pOcf", format: v => v != null ? `${v.toFixed(1)}x` : "—" },
+  { label: "P / Bénéfice net (P/E)", key: "pe", format: v => v != null ? `${v.toFixed(1)}x` : "—" },
 ];
-
-function getBetter(row, a, b) {
-  if (!row.better || a == null || b == null) return null;
-  if (a === b) return null;
-  return row.better === "higher"
-    ? (a > b ? "a" : "b")
-    : (a < b ? "a" : "b");
-}
-
-function countWins(metricsA, metricsB) {
-  let a = 0, b = 0;
-  for (const row of ROWS) {
-    const w = getBetter(row, metricsA[row.key], metricsB[row.key]);
-    if (w === "a") a++;
-    if (w === "b") b++;
-  }
-  return { a, b };
-}
 
 export default function CompareMode({ currentSymbol, currentData }) {
   const [compareSymbol, setCompareSymbol] = useState("");
@@ -167,8 +114,6 @@ export default function CompareMode({ currentSymbol, currentData }) {
   const metricsA = extractMetrics(currentSymbol, currentData);
   const metricsB = compareData ? extractMetrics(compareData.symbol, compareData.data) : null;
 
-  const wins = metricsB ? countWins(metricsA, metricsB) : { a: 0, b: 0 };
-
   const thStyle = {
     background: "var(--bg-subtle)",
     fontSize: 10,
@@ -184,12 +129,6 @@ export default function CompareMode({ currentSymbol, currentData }) {
     padding: "8px 12px",
     borderBottom: "1px solid var(--border)",
     fontSize: 13,
-  };
-
-  const winCellStyle = {
-    fontWeight: 700,
-    color: "var(--green)",
-    background: "var(--green-bg)",
   };
 
   return (
@@ -284,95 +223,34 @@ export default function CompareMode({ currentSymbol, currentData }) {
       </div>
 
       {metricsB && (
-        <>
-          {/* Score section */}
-          <div style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
-            overflow: "hidden",
-            marginTop: 12,
-          }}>
-            <div style={{
-              padding: "10px 12px",
-              background: "var(--bg-subtle)",
-              borderBottom: "1px solid var(--border)",
-            }}>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 24, flexWrap: "wrap", padding: "6px 0" }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{metricsA.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>{metricsA.symbol}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: wins.a >= wins.b ? "var(--green)" : "var(--text-3)", marginTop: 4, fontFamily: "var(--font-mono)" }}>{wins.a}</div>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-3)", padding: "0 8px" }}>vs</div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{metricsB.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>{metricsB.symbol}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: wins.b > wins.a ? "var(--green)" : "var(--text-3)", marginTop: 4, fontFamily: "var(--font-mono)" }}>{wins.b}</div>
-                </div>
-              </div>
-              <div style={{ textAlign: "center", fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-                Nombre de metriques gagnantes (sur {ROWS.filter(r => r.better).length} comparables)
-              </div>
-            </div>
-          </div>
-
-          {/* Metrics table */}
-          <div style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
-            overflow: "hidden",
-            marginTop: 12,
-          }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "12px 18px",
-              borderBottom: "1px solid var(--border)",
-            }}>
-              <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>Detail des metriques</span>
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Metrique</th>
-                    <th style={{ ...thStyle, color: "var(--accent)" }}>{metricsA.name} ({metricsA.symbol})</th>
-                    <th style={{ ...thStyle, color: "var(--orange)" }}>{metricsB.name} ({metricsB.symbol})</th>
+        <div style={{
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          overflow: "hidden",
+          marginTop: 12,
+        }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Métrique</th>
+                  <th style={{ ...thStyle, color: "var(--accent)" }}>{metricsA.symbol}</th>
+                  <th style={{ ...thStyle, color: "var(--text-2)" }}>{metricsB.symbol}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROWS.map(row => (
+                  <tr key={row.key}>
+                    <td style={{ ...tdStyle, fontWeight: 600, color: "var(--text)" }}>{row.label}</td>
+                    <td style={{ ...tdStyle, fontFamily: "var(--font-mono)" }}>{row.format(metricsA[row.key])}</td>
+                    <td style={{ ...tdStyle, fontFamily: "var(--font-mono)" }}>{row.format(metricsB[row.key])}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {ROWS.map(row => {
-                    const valA = metricsA[row.key];
-                    const valB = metricsB[row.key];
-                    const better = getBetter(row, valA, valB);
-                    return (
-                      <tr key={row.key}>
-                        <td style={{ ...tdStyle, fontWeight: 600, color: "var(--text)" }}>{row.label}</td>
-                        <td style={{
-                          ...tdStyle,
-                          ...(better === "a" ? winCellStyle : {}),
-                          color: better === "a" ? "var(--green)" : better === "b" ? "var(--red)" : "var(--text)",
-                        }}>
-                          {row.format(valA, metricsA)}
-                        </td>
-                        <td style={{
-                          ...tdStyle,
-                          ...(better === "b" ? winCellStyle : {}),
-                          color: better === "b" ? "var(--green)" : better === "a" ? "var(--red)" : "var(--text)",
-                        }}>
-                          {row.format(valB, metricsB)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
