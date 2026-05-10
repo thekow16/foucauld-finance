@@ -294,60 +294,53 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
     <div
       style={{
         background: "var(--card)",
-        borderRadius: 14,
-        padding: "22px 20px 18px",
-        boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
+        overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,.10), 0 0 0 1px ${accentColor}44`;
+        e.currentTarget.style.boxShadow = "var(--shadow-md)";
         e.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)";
+        e.currentTarget.style.boxShadow = "none";
         e.currentTarget.style.transform = "translateY(0)";
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <div style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: accentColor,
-            flexShrink: 0,
-            boxShadow: `0 0 8px ${accentColor}66`,
-          }} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
-              {title}
-            </div>
-            {subtitle && (
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1, fontWeight: 400, lineHeight: 1.3 }}>
-                {subtitle}
-              </div>
-            )}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 14px 10px",
+        borderBottom: "1px solid var(--border)",
+        gap: 8,
+      }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text)", letterSpacing: "-0.1px" }}>
+            {title}
           </div>
+          {subtitle && (
+            <div style={{ fontSize: 10, color: "var(--text-3, var(--muted))", marginTop: 1 }}>
+              {subtitle}
+            </div>
+          )}
         </div>
         {cagrLabel && (
           <div style={{
             fontSize: 10,
             fontWeight: 700,
-            color: isPositive ? "#10b981" : "#ef4444",
-            background: isPositive ? "#10b98112" : "#ef444412",
-            border: `1px solid ${isPositive ? "#10b98130" : "#ef444430"}`,
-            padding: "3px 8px",
-            borderRadius: 20,
+            color: isPositive ? "var(--green)" : "var(--red)",
+            background: isPositive ? "var(--green-bg)" : "var(--red-bg)",
+            padding: "2px 8px",
+            borderRadius: 5,
             whiteSpace: "nowrap",
             flexShrink: 0,
-            letterSpacing: "0.01em",
           }}>
             {cagrLabel}
           </div>
         )}
       </div>
-      <div style={{ width: "100%", height: 220 }}>{children}</div>
+      <div style={{ width: "100%", height: 220, padding: "10px 14px 8px" }}>{children}</div>
     </div>
   );
 }
@@ -431,9 +424,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))",
-        gap: 14,
-        marginBottom: 16,
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
+        gap: 10,
+        marginBottom: 12,
       }}
     >
       {/* Toggle annuel / trimestriel */}

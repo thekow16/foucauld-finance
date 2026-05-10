@@ -22,37 +22,85 @@ export default function EarningsTab({ data }) {
   if (!earningsDate && !epsEst) return null;
 
   return (
-    <div className="card" style={{ borderLeft: "4px solid #f59e0b" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <span style={{ fontSize: 24 }}>📅</span>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>Prochaine publication</div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            {earningsDate ? fmtDate(earningsDate) : "Date non confirmée"}
-            {earningsDateEnd && earningsDate !== earningsDateEnd && ` — ${fmtDate(earningsDateEnd)}`}
-          </div>
+    <div style={{
+      background: "var(--card)",
+      border: "1px solid var(--border)",
+      borderRadius: "var(--radius-lg)",
+      padding: "18px 20px",
+      display: "flex",
+      gap: 32,
+      flexWrap: "wrap",
+    }}>
+      <div>
+        <div style={{
+          fontSize: 10,
+          fontWeight: 700,
+          color: "var(--text-3)",
+          textTransform: "uppercase",
+          letterSpacing: ".5px",
+          marginBottom: 6,
+        }}>
+          Prochaine publication
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.3px" }}>
+          {earningsDate ? fmtDate(earningsDate) : "Date non confirmée"}
+          {earningsDateEnd && earningsDate !== earningsDateEnd && (
+            <span style={{ color: "var(--text-3)", fontSize: 14, fontWeight: 500, marginLeft: 6 }}>— {fmtDate(earningsDateEnd)}</span>
+          )}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
-        {epsEst != null && (
-          <div className="earnings-est-card">
-            <div className="earnings-est-label">BPA estimé</div>
-            <div className="earnings-est-value">{epsEst}</div>
-            {(epsLow != null || epsHigh != null) && (
-              <div className="earnings-est-range">{epsLow} — {epsHigh}</div>
-            )}
+
+      {epsEst != null && (
+        <div style={{
+          background: "var(--bg-subtle)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-sm)",
+          padding: "10px 16px",
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: "var(--text-3)",
+            textTransform: "uppercase",
+            letterSpacing: ".5px",
+            marginBottom: 4,
+          }}>
+            BPA estimé
           </div>
-        )}
-        {revEst != null && (
-          <div className="earnings-est-card">
-            <div className="earnings-est-label">CA estimé</div>
-            <div className="earnings-est-value">{revEst}</div>
-            {(revLow != null || revHigh != null) && (
-              <div className="earnings-est-range">{revLow} — {revHigh}</div>
-            )}
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text)" }}>
+            {epsEst}
           </div>
-        )}
-      </div>
+          {(epsLow != null || epsHigh != null) && (
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{epsLow} — {epsHigh}</div>
+          )}
+        </div>
+      )}
+
+      {revEst != null && (
+        <div style={{
+          background: "var(--bg-subtle)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-sm)",
+          padding: "10px 16px",
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: "var(--text-3)",
+            textTransform: "uppercase",
+            letterSpacing: ".5px",
+            marginBottom: 4,
+          }}>
+            CA estimé
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text)" }}>
+            {revEst}
+          </div>
+          {(revLow != null || revHigh != null) && (
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{revLow} — {revHigh}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
