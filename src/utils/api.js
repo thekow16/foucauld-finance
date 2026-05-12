@@ -674,6 +674,12 @@ export async function fetchStockData(sym) {
           }),
         ]);
 
+        // Diagnostic: log data coverage from each source
+        warn(`[FF] ${sym} quoteSummary: IS=${isCount} BS=${bsCount} CF=${cfCount} hasValues=${qsHasValues}`);
+        warn(`[FF] ${sym} timeseries: ${ts ? `IS=${ts.incomeStatements?.length || 0} BS=${ts.balanceSheetStatements?.length || 0} CF=${ts.cashflowStatements?.length || 0}` : "FAILED"}`);
+        warn(`[FF] ${sym} FMP: ${fmpResult ? `IS=${fmpResult.income?.length || 0} BS=${fmpResult.balance?.length || 0} CF=${fmpResult.cashflow?.length || 0}` : "FAILED"}`);
+        warn(`[FF] ${sym} SEC: ${secResult ? `IS=${secResult.income?.length || 0} BS=${secResult.balance?.length || 0} CF=${secResult.cashflow?.length || 0}` : "FAILED/non-US"}`);
+
         // Helper: deep merge timeseries with quoteSummary by date
         const mergeByDate = (tsArr, qsArr) => {
           const dateMap = new Map();
@@ -769,6 +775,7 @@ export async function fetchStockData(sym) {
 
         if (baseFmpData.income?.length > 0 || baseFmpData.balance?.length > 0) {
           yahooResult._fmpData = baseFmpData;
+          warn(`[FF] ${sym} _fmpData final: IS=${baseFmpData.income?.length || 0} BS=${baseFmpData.balance?.length || 0} CF=${baseFmpData.cashflow?.length || 0}`);
         }
 
         // Quarterly data fallback from FMP if needed
