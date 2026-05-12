@@ -1,5 +1,6 @@
 import { warn } from "./log";
 import { fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
+import { fetchSecFinancials } from "./secApi";
 import { WORKER_URL, YF, FREE_PROXIES, checkWorkerHealth, tryFetch, yfFetch } from "./proxy";
 import { getCachedData, setCachedData } from "./cache";
 
@@ -559,6 +560,27 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   return fmpData;
 }
 
+// Extend FMP data with SEC EDGAR older years (SEC → 10-20+ years for US companies)
+function extendWithSec(fmpData, secResult) {
+  if (!fmpData || !secResult) return fmpData;
+  const existingYears = new Set();
+  for (const arr of [fmpData.income, fmpData.balance, fmpData.cashflow]) {
+    for (const d of (arr || [])) {
+      const y = d.calendarYear || d.date?.substring(0, 4);
+      if (y) existingYears.add(y);
+    }
+  }
+  const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
+  const extra = (secArr) => (secArr || []).filter(d => !existingYears.has(d.calendarYear));
+  const ei = extra(secResult.income);
+  const eb = extra(secResult.balance);
+  const ec = extra(secResult.cashflow);
+  if (ei.length) fmpData.income = [...(fmpData.income || []), ...ei].sort(sortDesc);
+  if (eb.length) fmpData.balance = [...(fmpData.balance || []), ...eb].sort(sortDesc);
+  if (ec.length) fmpData.cashflow = [...(fmpData.cashflow || []), ...ec].sort(sortDesc);
+  return fmpData;
+}
+
 // Convert Yahoo data entirely to FMP format (when FMP key missing or FMP fails)
 function yahooToFmpData(yahooResult) {
   if (!yahooResult) return null;
@@ -636,14 +658,18 @@ export async function fetchStockData(sym) {
         const qsIs0 = (yahooResult.incomeStatementHistory?.incomeStatementHistory || [])[0];
         const qsHasValues = qsIs0?.totalRevenue?.raw != null;
 
-        // Fetch timeseries and FMP in parallel for speed
-        const [ts, fmpResult] = await Promise.all([
+        // Fetch timeseries, FMP, and SEC EDGAR in parallel for speed
+        const [ts, fmpResult, secResult] = await Promise.all([
           fetchYahooTimeseries(sym).catch(e => {
             warn("[FF] timeseries échoué:", e.message);
             return null;
           }),
           fetchAllFinancials(sym).catch(e => {
             warn("[FF] FMP fetch échoué:", e.message);
+            return null;
+          }),
+          fetchSecFinancials(sym).catch(e => {
+            warn("[FF] SEC EDGAR échoué:", e.message);
             return null;
           }),
         ]);
@@ -726,16 +752,22 @@ export async function fetchStockData(sym) {
           }
         }
 
-        // Build _fmpData: combine FMP + Yahoo for year coverage
+        // Build _fmpData: combine FMP + Yahoo + SEC for maximum year coverage
         let baseFmpData = null;
         if (fmpResult?.income?.length > 0 || fmpResult?.balance?.length > 0) {
           extendFmpWithYahoo(fmpResult, yahooResult);
           baseFmpData = fmpResult;
         } else {
-          // FMP empty or failed — build _fmpData from Yahoo
           baseFmpData = yahooToFmpData(yahooResult);
         }
-        if (baseFmpData && (baseFmpData.income?.length > 0 || baseFmpData.balance?.length > 0)) {
+        if (!baseFmpData) baseFmpData = { income: [], balance: [], cashflow: [] };
+
+        // Extend with SEC EDGAR data (fills older years not covered by FMP/Yahoo)
+        if (secResult?.income?.length > 0) {
+          extendWithSec(baseFmpData, secResult);
+        }
+
+        if (baseFmpData.income?.length > 0 || baseFmpData.balance?.length > 0) {
           yahooResult._fmpData = baseFmpData;
         }
 
@@ -891,7 +923,7 @@ export async function fetchStockData(sym) {
     balanceSheetHistory: { balanceSheetStatements: fmpToYahooBalance(fmpFinancials?.balance) },
     incomeStatementHistory: { incomeStatementHistory: fmpToYahooIncome(fmpFinancials?.income) },
     cashflowStatementHistory: { cashflowStatements: fmpToYahooCashflow(fmpFinancials?.cashflow) },
-    _fmpData: fmpFinancials,
+    _fmpData: fmpFinancials || { income: [], balance: [], cashflow: [] },
     assetProfile: {
       sector: fp?.sector || "N/A",
       industry: fp?.industry || "N/A",
@@ -903,10 +935,16 @@ export async function fetchStockData(sym) {
     _fromChart: true,
   };
 
-  // Fetch FMP quarterly data for chart fallback path
+  // Extend with SEC EDGAR + FMP quarterly data
   {
     try {
-      const qFins = await fetchAllQuarterlyFinancials(sym).catch(() => null);
+      const [secData, qFins] = await Promise.all([
+        fetchSecFinancials(sym).catch(e => { warn("[FF] SEC EDGAR échoué:", e.message); return null; }),
+        fetchAllQuarterlyFinancials(sym).catch(() => null),
+      ]);
+      if (secData?.income?.length > 0) {
+        extendWithSec(chartResult._fmpData, secData);
+      }
       if (qFins) {
         const fmpQuarterly = buildFmpQuarterlyData(qFins);
         if (fmpQuarterly.length > 0) {
@@ -914,7 +952,7 @@ export async function fetchStockData(sym) {
         }
       }
     } catch (e) {
-      warn("[FF] FMP quarterly fetch échoué:", e.message);
+      warn("[FF] SEC/FMP quarterly fetch échoué:", e.message);
     }
   }
 
