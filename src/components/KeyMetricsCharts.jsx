@@ -225,7 +225,7 @@ function GrowthLabels({ data, dataKey }) {
 function RoundedBar(props) {
   const { x, y, width, height, fill } = props;
   if (!height || height <= 0) return null;
-  const r = Math.min(4, width / 2, height);
+  const r = Math.min(3, width / 2, height);
   return (
     <path
       d={`M${x},${y + height} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} Z`}
@@ -316,7 +316,7 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
           </div>
         )}
       </div>
-      <div style={{ width: "100%", height: 220, padding: "10px 14px 8px" }}>{children}</div>
+      <div style={{ width: "100%", height: 240, padding: "10px 14px 8px" }}>{children}</div>
     </div>
   );
 }
@@ -324,7 +324,7 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
 /* ── Custom bar label showing YoY growth ── */
 function renderGrowthLabel(data, dataKey) {
   // Skip labels every N bars when data is dense
-  const step = data.length > 15 ? 3 : data.length > 10 ? 2 : 1;
+  const step = data.length > 15 ? 4 : data.length > 10 ? 3 : data.length > 7 ? 2 : 1;
   return (props) => {
     const { x, y, width, index, value } = props;
     if (index === 0 || value == null) return null;
@@ -383,16 +383,28 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
     </div>
   );
 
-  const many = rows.length > 12;
+  const many = rows.length > 10;
   const axisStyle = { fontSize: many ? 9 : 10, fill: "var(--muted)" };
   const gridProps = { strokeDasharray: "3 3", stroke: "var(--border)", strokeOpacity: 0.6 };
-  // Show every Nth label on X axis when there are many data points
-  const xTickInterval = many ? Math.max(1, Math.floor(rows.length / 10)) - 1 : 0;
+  const xTickInterval = 0;
   const yearTick = quarterly
     ? quarterLabel
-    : many
-      ? (val) => `'${String(val).slice(-2)}`
-      : undefined;
+    : (val) => `'${String(val).slice(-2)}`;
+  const barGap = many ? "8%" : "20%";
+  const dotRadius = many ? 2 : 3;
+  const activeDotRadius = many ? 4 : 5;
+  const strokeW = many ? 2 : 2.5;
+  const xAxisProps = {
+    dataKey: "year", tickLine: false, axisLine: false, interval: xTickInterval,
+    tickFormatter: yearTick,
+    tick: many
+      ? ({ x, y, payload }) => (
+          <text x={x} y={y + 4} textAnchor="end" transform={`rotate(-45,${x},${y + 4})`}
+            style={{ fontSize: 9, fill: "var(--muted)" }}>{yearTick(payload.value)}</text>
+        )
+      : axisStyle,
+    height: many ? 35 : 20,
+  };
 
   const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
 
@@ -464,9 +476,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 1. Chiffre d'affaires */}
       <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabel={cagr(rows, "revenue", quarterly)}>
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap="20%">
+          <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Bar dataKey="revenue" shape={<RoundedBar />} label={renderGrowthLabel(rows, "revenue")}>
@@ -484,9 +496,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 2. Free Cash Flow & SBC */}
       <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabel={cagr(rows, "fcf", quarterly)}>
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap="20%">
+          <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Legend
@@ -515,7 +527,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               </linearGradient>
             </defs>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
               tickFormatter={(v) => v != null ? `${cs}${v.toFixed(1)}` : ""} />
             <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(2)}` : "—"} />} />
@@ -523,10 +535,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               type="monotone"
               dataKey="fcfPerShare"
               stroke="#2563eb"
-              strokeWidth={2.5}
+              strokeWidth={strokeW}
               fill="url(#gradFcfShare)"
-              dot={{ r: 3, fill: "#2563eb", strokeWidth: 0 }}
-              activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
+              dot={{ r: dotRadius, fill: "#2563eb", strokeWidth: 0 }}
+              activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -543,7 +555,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               </linearGradient>
             </defs>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tickFormatter={pct} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip fmt={pct} />} />
             <ReferenceLine y={0.15} stroke="#ea580c" strokeDasharray="4 4" strokeOpacity={0.4} />
@@ -551,10 +563,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               type="monotone"
               dataKey="roce"
               stroke="#ea580c"
-              strokeWidth={2.5}
+              strokeWidth={strokeW}
               fill="url(#gradRoce)"
-              dot={{ r: 3, fill: "#ea580c", strokeWidth: 0 }}
-              activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
+              dot={{ r: dotRadius, fill: "#ea580c", strokeWidth: 0 }}
+              activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -571,17 +583,17 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               </linearGradient>
             </defs>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tickFormatter={pct} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip fmt={pct} />} />
             <Area
               type="monotone"
               dataKey="fcfMargin"
               stroke="#16a34a"
-              strokeWidth={2.5}
+              strokeWidth={strokeW}
               fill="url(#gradFcfMargin)"
-              dot={{ r: 3, fill: "#16a34a", strokeWidth: 0 }}
-              activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
+              dot={{ r: dotRadius, fill: "#16a34a", strokeWidth: 0 }}
+              activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -590,9 +602,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 6. Actions en circulation */}
       <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1">
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap="20%">
+          <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Bar dataKey="shares" shape={<RoundedBar />} label={renderGrowthLabel(rows, "shares")}>
@@ -610,9 +622,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 7. Cash & Dette */}
       <ChartCard title="Cash & Dette" subtitle={quarterly ? "Trésorerie vs dette (trimestriel)" : "Trésorerie vs dette totale"} accentColor="#14b8a6">
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap="20%">
+          <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
-            <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+            <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
             <Legend
@@ -638,7 +650,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
                 </linearGradient>
               </defs>
               <CartesianGrid {...gridProps} />
-              <XAxis dataKey="year" tick={axisStyle} tickLine={false} axisLine={false} interval={xTickInterval} tickFormatter={yearTick} />
+              <XAxis {...xAxisProps} />
               <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
                 tickFormatter={(v) => v != null ? `${cs}${v.toFixed(2)}` : ""} />
               <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(3)}` : "—"} />} />
@@ -646,10 +658,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
                 type="monotone"
                 dataKey="dividendPerShare"
                 stroke="#f59e0b"
-                strokeWidth={2.5}
+                strokeWidth={strokeW}
                 fill="url(#gradDiv)"
-                dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
-                activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
+                dot={{ r: dotRadius, fill: "#f59e0b", strokeWidth: 0 }}
+                activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>
