@@ -286,3 +286,65 @@ export function CGV({ onBack }) {
     </div>
   );
 }
+
+export function ConditionsRetour({ onBack }) {
+  return (
+    <div className="legal-page">
+      <button className="legal-back" onClick={onBack}>← Retour</button>
+      <h1>Conditions de Retour et de Rétractation</h1>
+
+      <p className="legal-updated">Dernière mise à jour : mai 2026</p>
+
+      <section>
+        <h2>1. Nature du service</h2>
+        <p>
+          Alphaview est une plateforme web gratuite d'analyse de données financières publiques. Le service ne propose actuellement aucun produit physique ni service payant.
+        </p>
+      </section>
+
+      <section>
+        <h2>2. Droit de rétractation</h2>
+        <p>
+          <strong>En l'absence de toute transaction commerciale, le droit de rétractation prévu aux articles L.221-18 et suivants du Code de la consommation ne trouve pas à s'appliquer.</strong>
+        </p>
+        <p>
+          Aucun paiement n'étant requis pour accéder au service, aucun remboursement ne peut être demandé.
+        </p>
+      </section>
+
+      <section>
+        <h2>3. Suppression de compte</h2>
+        <p>
+          L'utilisateur peut à tout moment supprimer son compte et l'ensemble de ses données (watchlist, alertes, préférences) en effaçant les données du site dans les paramètres de son navigateur. Cette opération est immédiate et irréversible.
+        </p>
+      </section>
+
+      <section>
+        <h2>4. Évolution vers des services payants</h2>
+        <p>
+          Si Alphaview venait à proposer des fonctionnalités payantes à l'avenir, les conditions suivantes s'appliqueraient conformément à la législation française :
+        </p>
+        <ul>
+          <li><strong>Délai de rétractation :</strong> 14 jours à compter de la souscription, conformément à l'article L.221-18 du Code de la consommation</li>
+          <li><strong>Modalités :</strong> demande par email à l'adresse indiquée dans les mentions légales</li>
+          <li><strong>Remboursement :</strong> intégral, dans un délai de 14 jours suivant la demande</li>
+          <li><strong>Exception :</strong> si l'utilisateur a expressément demandé l'exécution immédiate du service et renoncé à son droit de rétractation, aucun remboursement ne sera dû</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Réclamations</h2>
+        <p>
+          Pour toute question relative aux présentes conditions, vous pouvez nous contacter via les coordonnées indiquées dans les mentions légales.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Droit applicable</h2>
+        <p>
+          Les présentes conditions sont régies par le droit français. En cas de litige, les parties s'efforceront de trouver une solution amiable avant de saisir les tribunaux compétents.
+        </p>
+      </section>
+    </div>
+  );
+}

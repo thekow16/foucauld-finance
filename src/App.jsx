@@ -14,6 +14,7 @@ const MentionsLegales = lazy(() => import("./components/LegalPages").then(m => (
 const PolitiqueConfidentialite = lazy(() => import("./components/LegalPages").then(m => ({ default: m.PolitiqueConfidentialite })));
 const CGU = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGU })));
 const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m.CGV })));
+const ConditionsRetour = lazy(() => import("./components/LegalPages").then(m => ({ default: m.ConditionsRetour })));
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
 import "./App.css";
@@ -283,6 +284,8 @@ export default function Alphaview() {
           <CGU onBack={() => setLegalPage(null)} />
         ) : legalPage === "cgv" ? (
           <CGV onBack={() => setLegalPage(null)} />
+        ) : legalPage === "retour" ? (
+          <ConditionsRetour onBack={() => setLegalPage(null)} />
         ) : showInvestors ? (
           <div>
             <button onClick={() => setShowInvestors(false)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 14, marginBottom: 16, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
@@ -408,6 +411,13 @@ export default function Alphaview() {
             <footer className="footer" role="contentinfo" style={{ textAlign: "center" }}>
               <strong style={{ color: "#4f46e5" }}>Alphaview</strong>
               <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>v{__APP_VERSION__}</span>
+              <div className="footer-links">
+                <button className="footer-link" onClick={() => setLegalPage("cgv")}>Conditions générales de vente</button>
+                <span className="footer-sep">·</span>
+                <button className="footer-link" onClick={() => setLegalPage("cgu")}>Conditions de retour</button>
+                <span className="footer-sep">·</span>
+                <button className="footer-link" onClick={() => setLegalPage("confidentialite")}>Politique de confidentialité</button>
+              </div>
             </footer>
           </ErrorBoundary>
         )}
