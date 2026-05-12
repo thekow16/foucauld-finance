@@ -150,6 +150,10 @@ export function buildSeries(data) {
     .map((d) => enrich(d))
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  if (typeof console !== "undefined") {
+    const yrs = rows.map(r => r.year).join(",");
+    console.log(`[FF][Charts] buildSeries: ${rows.length} ans (${yrs}) — Yahoo IS=${income.length} BS=${balance.length} CF=${cashflow.length}, FMP IS=${fmp?.income?.length || 0} BS=${fmp?.balance?.length || 0} CF=${fmp?.cashflow?.length || 0}`);
+  }
   return rows;
 }
 

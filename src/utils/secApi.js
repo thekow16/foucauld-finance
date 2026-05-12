@@ -1,16 +1,31 @@
 import { warn } from "./log";
-import { WORKER_URL } from "./proxy";
+import { WORKER_URL, FREE_PROXIES, tryFetch } from "./proxy";
 
 // SEC EDGAR — 10-20+ ans de données financières US gratuites
-// Endpoint companyfacts : toutes les données XBRL d'un émetteur en un seul appel
+// Utilise companyfacts (toutes les données XBRL en un appel)
+// Tente le Worker proxy puis les free CORS proxies en fallback
 
 let tickerMap = null;
 
 async function secFetch(url) {
-  const proxyUrl = `${WORKER_URL}?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
-  if (!res.ok) throw new Error(`SEC HTTP ${res.status}`);
-  return res.json();
+  // 1. Worker proxy
+  if (WORKER_URL) {
+    try {
+      return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
+    } catch (e) {
+      warn("[SEC] Worker proxy échoué:", e.message);
+    }
+  }
+  // 2. Free CORS proxies (même logique que pour Yahoo)
+  for (let i = 0; i < FREE_PROXIES.length; i++) {
+    const { url: proxyUrl, unwrap } = FREE_PROXIES[i](url);
+    try {
+      return await tryFetch(proxyUrl, unwrap);
+    } catch (e) {
+      warn(`[SEC] proxy ${i} échoué:`, e.message);
+    }
+  }
+  throw new Error("SEC EDGAR inaccessible via tous les proxies");
 }
 
 async function loadTickerMap() {
@@ -20,6 +35,7 @@ async function loadTickerMap() {
   for (const entry of Object.values(data)) {
     tickerMap[entry.ticker.toUpperCase()] = String(entry.cik_str).padStart(10, "0");
   }
+  warn(`[SEC] Ticker map chargé: ${Object.keys(tickerMap).length} symboles`);
   return tickerMap;
 }
 
@@ -29,9 +45,8 @@ async function getCik(ticker) {
   return map[clean] || null;
 }
 
-// Extract annual 10-K values from a GAAP concept, deduplicated by fiscal year
 function extractAnnual(concept, unit = "USD") {
-  if (!concept?.units) return [];
+  if (!concept?.units) return new Map();
   const entries = concept.units[unit] || concept.units.shares || [];
   const byFy = new Map();
   for (const e of entries) {
@@ -46,7 +61,6 @@ function extractAnnual(concept, unit = "USD") {
   return byFy;
 }
 
-// Try multiple GAAP concept names (companies use different terms)
 function tryExtract(gaap, names, unit = "USD") {
   for (const name of names) {
     if (gaap[name]) {
@@ -59,11 +73,18 @@ function tryExtract(gaap, names, unit = "USD") {
 
 export async function fetchSecFinancials(ticker) {
   const cik = await getCik(ticker);
-  if (!cik) return null;
+  if (!cik) {
+    warn(`[SEC] ${ticker}: pas de CIK trouvé (non-US ?)`);
+    return null;
+  }
 
+  warn(`[SEC] ${ticker}: CIK=${cik}, chargement companyfacts...`);
   const data = await secFetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`);
   const gaap = data?.facts?.["us-gaap"];
-  if (!gaap) return null;
+  if (!gaap) {
+    warn(`[SEC] ${ticker}: pas de données us-gaap`);
+    return null;
+  }
 
   const revenue = tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet"]);
   const opIncome = tryExtract(gaap, ["OperatingIncomeLoss"]);
@@ -126,6 +147,6 @@ export async function fetchSecFinancials(ticker) {
     });
   }
 
-  warn(`[SEC] ${ticker}: ${sorted.length} ans de données (${sorted[sorted.length - 1]}–${sorted[0]})`);
+  warn(`[SEC] ${ticker}: ${sorted.length} ans (${sorted[sorted.length - 1]}–${sorted[0]})`);
   return { income, balance, cashflow };
 }
