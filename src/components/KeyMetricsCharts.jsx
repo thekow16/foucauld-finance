@@ -73,95 +73,46 @@ function hasFinancialData(d) {
   return keys.some((k) => d[k] != null);
 }
 
-/* ── Data builder (historique complet, 10+ ans) ── */
+/* ── Data builder (historique complet, 20+ ans) ── */
+/* Fusionne FMP + Yahoo (enrichi par timeseries) pour maximiser la couverture. */
 
 export function buildSeries(data) {
   const fmp = data?._fmpData;
-  // Debug: log what data sources are available
-  const bsArr = data?.balanceSheetHistory?.balanceSheetStatements || [];
-  const isArr = data?.incomeStatementHistory?.incomeStatementHistory || [];
-  const cfArr = data?.cashflowStatementHistory?.cashflowStatements || [];
-  const bsDates = bsArr.map(s => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0,10) : '?'));
-  const isDates = isArr.map(s => s.endDate?.fmt || (s.endDate?.raw ? new Date(s.endDate.raw * 1000).toISOString().slice(0,10) : '?'));
+  const byYear = new Map();
 
-  if (fmp?.income?.length && fmp?.cashflow?.length && fmp?.balance?.length) {
-    const byYear = new Map();
-    fmp.income.forEach((d) => {
-      const y = d?.calendarYear || d?.date?.slice(0, 4);
-      if (!y) return;
-      byYear.set(y, {
-        ...(byYear.get(y) || {}),
-        year: y,
-        revenue: d.revenue,
-        shares: d.weightedAverageShsOutDil,
-        ebit: d.operatingIncome,
-      });
-    });
-    fmp.cashflow.forEach((d) => {
-      const y = d?.calendarYear || d?.date?.slice(0, 4);
-      if (!y) return;
-      byYear.set(y, {
-        ...(byYear.get(y) || {}),
-        year: y,
-        fcf: d.freeCashFlow,
-        sbc: d.stockBasedCompensation,
-        dividendsPaid: d.dividendsPaid,
-      });
-    });
-    fmp.balance.forEach((d) => {
-      const y = d?.calendarYear || d?.date?.slice(0, 4);
-      if (!y) return;
-      byYear.set(y, {
-        ...(byYear.get(y) || {}),
-        year: y,
-        cash: d.cashAndCashEquivalents,
-        debt: d.totalDebt,
-        assets: d.totalAssets,
-        currentLiabilities: d.totalCurrentLiabilities,
-      });
-    });
-
-    const fmpRows = [...byYear.values()]
-      .map((d) => enrich(d))
-      .filter((d) => d.year && hasFinancialData(d))
-      .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-    return fmpRows;
-  }
-
-  /* Fallback Yahoo */
+  // 1) Yahoo history arrays (includes timeseries data when available → 10-20+ years)
   const income = data?.incomeStatementHistory?.incomeStatementHistory || [];
   const cashflow = data?.cashflowStatementHistory?.cashflowStatements || [];
   const balance = data?.balanceSheetHistory?.balanceSheetStatements || [];
-  const byYear = new Map();
 
   income.forEach((d) => {
-    const y = d?.endDate?.raw ? new Date(d.endDate.raw * 1000).getFullYear() : null;
+    const y = d?.endDate?.raw ? String(new Date(d.endDate.raw * 1000).getFullYear()) : null;
     if (!y) return;
-    byYear.set(String(y), {
-      ...(byYear.get(String(y)) || {}),
-      year: String(y),
+    byYear.set(y, {
+      ...(byYear.get(y) || {}),
+      year: y,
       revenue: d.totalRevenue?.raw,
       ebit: d.operatingIncome?.raw,
       shares: d.dilutedAverageShares?.raw,
     });
   });
   cashflow.forEach((d) => {
-    const y = d?.endDate?.raw ? new Date(d.endDate.raw * 1000).getFullYear() : null;
+    const y = d?.endDate?.raw ? String(new Date(d.endDate.raw * 1000).getFullYear()) : null;
     if (!y) return;
-    byYear.set(String(y), {
-      ...(byYear.get(String(y)) || {}),
-      year: String(y),
+    byYear.set(y, {
+      ...(byYear.get(y) || {}),
+      year: y,
       fcf: d.freeCashFlow?.raw,
       sbc: d.stockBasedCompensation?.raw,
       dividendsPaid: d.dividendsPaid?.raw,
     });
   });
   balance.forEach((d) => {
-    const y = d?.endDate?.raw ? new Date(d.endDate.raw * 1000).getFullYear() : null;
+    const y = d?.endDate?.raw ? String(new Date(d.endDate.raw * 1000).getFullYear()) : null;
     if (!y) return;
-    byYear.set(String(y), {
-      ...(byYear.get(String(y)) || {}),
-      year: String(y),
+    byYear.set(y, {
+      ...(byYear.get(y) || {}),
+      year: y,
       cash: d.cash?.raw,
       debt: d.totalDebt?.raw ?? d.longTermDebt?.raw,
       assets: d.totalAssets?.raw,
@@ -169,16 +120,37 @@ export function buildSeries(data) {
     });
   });
 
-  const yahooRows = [...byYear.values()]
+  // 2) FMP data overwrites Yahoo for years it covers (higher quality)
+  if (fmp?.income?.length) {
+    fmp.income.forEach((d) => {
+      const y = d?.calendarYear || d?.date?.slice(0, 4);
+      if (!y) return;
+      const existing = byYear.get(y) || { year: y };
+      byYear.set(y, { ...existing, year: y, revenue: d.revenue, shares: d.weightedAverageShsOutDil, ebit: d.operatingIncome });
+    });
+  }
+  if (fmp?.cashflow?.length) {
+    fmp.cashflow.forEach((d) => {
+      const y = d?.calendarYear || d?.date?.slice(0, 4);
+      if (!y) return;
+      const existing = byYear.get(y) || { year: y };
+      byYear.set(y, { ...existing, year: y, fcf: d.freeCashFlow, sbc: d.stockBasedCompensation, dividendsPaid: d.dividendsPaid });
+    });
+  }
+  if (fmp?.balance?.length) {
+    fmp.balance.forEach((d) => {
+      const y = d?.calendarYear || d?.date?.slice(0, 4);
+      if (!y) return;
+      const existing = byYear.get(y) || { year: y };
+      byYear.set(y, { ...existing, year: y, cash: d.cashAndCashEquivalents, debt: d.totalDebt, assets: d.totalAssets, currentLiabilities: d.totalCurrentLiabilities });
+    });
+  }
+
+  const rows = [...byYear.values()]
     .map((d) => enrich(d))
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-  if (yahooRows.length === 0 && byYear.size > 0) {
-    // Log sample row to help debug
-    const sample = [...byYear.values()][0];
-    warn("[FF][Charts] Rows exist but no financial data. Sample:", JSON.stringify(sample));
-  }
-  return yahooRows;
+  return rows;
 }
 
 function enrich(d) {
