@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { fetchStockData, searchSymbols } from "../utils/api";
-import { fmt } from "../utils/format";
+import { useState } from "react";
+import { fetchStockData } from "../utils/api";
 
 // ── Metric extraction (robust: handles both quoteSummary & chart fallback) ──
 function extractMetrics(symbol, data) {
@@ -47,47 +46,6 @@ export default function CompareMode({ currentSymbol, currentData }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Search suggestions
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSugg, setShowSugg] = useState(false);
-  const suggTimer = useRef(null);
-  const inputRef = useRef(null);
-
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setCompareSymbol(val);
-    clearTimeout(suggTimer.current);
-    if (val.trim().length >= 1) {
-      suggTimer.current = setTimeout(async () => {
-        try {
-          const results = await searchSymbols(val.trim());
-          setSuggestions(results.filter(r => r.symbol !== currentSymbol));
-          setShowSugg(true);
-        } catch { setSuggestions([]); }
-      }, 300);
-    } else {
-      setSuggestions([]);
-      setShowSugg(false);
-    }
-  };
-
-  const selectSuggestion = (sym) => {
-    setCompareSymbol(sym);
-    setSuggestions([]);
-    setShowSugg(false);
-  };
-
-  // Close suggestions on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (inputRef.current && !inputRef.current.contains(e.target)) {
-        setShowSugg(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   const handleCompare = async (e) => {
     e?.preventDefault();
     const sym = compareSymbol.trim().toUpperCase();
@@ -98,7 +56,6 @@ export default function CompareMode({ currentSymbol, currentData }) {
     }
     setLoading(true);
     setError(null);
-    setShowSugg(false);
     try {
       const result = await fetchStockData(sym);
       if (!result?.data) throw new Error("Donnees introuvables pour ce symbole.");
@@ -151,53 +108,23 @@ export default function CompareMode({ currentSymbol, currentData }) {
         </div>
         <div style={{ padding: "14px 18px" }}>
           <form onSubmit={handleCompare} style={{ display: "flex", gap: 10 }}>
-            <div style={{ flex: 1, position: "relative" }} ref={inputRef}>
-              <input
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-subtle)",
-                  fontSize: 13,
-                  color: "var(--text)",
-                  outline: "none",
-                  fontFamily: "var(--font)",
-                  boxSizing: "border-box",
-                }}
-                value={compareSymbol}
-                onChange={handleInputChange}
-                onFocus={() => suggestions.length > 0 && setShowSugg(true)}
-                placeholder="Symbole a comparer (ex: MSFT, MC.PA)"
-              />
-              {showSugg && suggestions.length > 0 && (
-                <div style={{
-                  position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
-                  background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
-                  marginTop: 4, overflow: "hidden", boxShadow: "var(--shadow-md)"
-                }}>
-                  {suggestions.map(s => (
-                    <div
-                      key={s.symbol}
-                      onClick={() => selectSuggestion(s.symbol)}
-                      style={{
-                        padding: "10px 14px", cursor: "pointer", display: "flex",
-                        justifyContent: "space-between", alignItems: "center",
-                        fontSize: 13, borderBottom: "1px solid var(--border)",
-                        transition: "background .15s",
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >
-                      <span style={{ fontWeight: 700 }}>{s.symbol}</span>
-                      <span style={{ color: "var(--text-3)", fontSize: 12, maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {s.shortname || s.longname || ""}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <input
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-subtle)",
+                fontSize: 13,
+                color: "var(--text)",
+                outline: "none",
+                fontFamily: "var(--font)",
+                boxSizing: "border-box",
+              }}
+              value={compareSymbol}
+              onChange={e => setCompareSymbol(e.target.value)}
+              placeholder="Symbole (ex: MSFT, MC.PA)"
+            />
             <button
               type="submit"
               disabled={loading}
