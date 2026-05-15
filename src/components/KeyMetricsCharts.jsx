@@ -47,7 +47,6 @@ export function cagr(rows, key, isQuarterly = false) {
   const last = valid[valid.length - 1][key];
   let years;
   if (isQuarterly) {
-    // Count quarters and convert to years
     const quarters = valid.length - 1;
     years = quarters / 4;
   } else {
@@ -57,6 +56,24 @@ export function cagr(rows, key, isQuarterly = false) {
   const rate = Math.pow(last / first, 1 / years) - 1;
   const label = isQuarterly ? `CAGR ~${years.toFixed(1)} ans` : `CAGR ${years} ans`;
   return `${label} : ${rate >= 0 ? "+" : ""}${(rate * 100).toFixed(1)}%`;
+}
+
+export function cagrN(rows, key, n) {
+  const valid = rows.filter((d) => d[key] != null && d[key] > 0);
+  if (valid.length < 2) return null;
+  const lastYear = Number(valid[valid.length - 1].year);
+  const targetYear = String(lastYear - n);
+  const start = valid.find((d) => d.year === targetYear);
+  if (!start) return null;
+  const last = valid[valid.length - 1][key];
+  const first = start[key];
+  if (first <= 0) return null;
+  const rate = Math.pow(last / first, 1 / n) - 1;
+  return { label: `${n}A`, value: `${rate >= 0 ? "+" : ""}${(rate * 100).toFixed(1)}%`, positive: rate >= 0 };
+}
+
+function cagrMulti(rows, key) {
+  return [5, 10, 20].map((n) => cagrN(rows, key, n)).filter(Boolean);
 }
 
 /* ── Quarter label helper: "2024-03" → "Q1 24" ── */
@@ -264,7 +281,7 @@ function BaggrTooltip({ active, payload, label, fmt }) {
 }
 
 /* ── Chart card ── */
-function ChartCard({ title, subtitle, accentColor, cagrLabel, expanded, onToggle, children }) {
+function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expanded, onToggle, children }) {
   const isPositive = cagrLabel && cagrLabel.includes("+");
 
   const card = (
@@ -299,8 +316,22 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, expanded, onToggle
             </div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {cagrLabel && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {cagrLabels?.length > 0 && cagrLabels.map((c) => (
+            <div key={c.label} style={{
+              fontSize: expanded ? 11 : 9,
+              fontWeight: 700,
+              color: c.positive ? "var(--green)" : "var(--red)",
+              background: c.positive ? "var(--green-bg)" : "var(--red-bg)",
+              padding: "2px 6px",
+              borderRadius: 5,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}>
+              {c.label} {c.value}
+            </div>
+          ))}
+          {cagrLabel && !cagrLabels?.length && (
             <div style={{
               fontSize: expanded ? 12 : 10,
               fontWeight: 700,
@@ -498,7 +529,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </div>
       )}
       {/* 1. Chiffre d'affaires */}
-      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabel={cagr(rows, "revenue", quarterly)} expanded={expandedChart === "revenue"} onToggle={() => toggle("revenue")}>
+      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabels={quarterly ? undefined : cagrMulti(rows, "revenue")} cagrLabel={quarterly ? cagr(rows, "revenue", true) : undefined} expanded={expandedChart === "revenue"} onToggle={() => toggle("revenue")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -518,7 +549,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 2. Free Cash Flow & SBC */}
-      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabel={cagr(rows, "fcf", quarterly)} expanded={expandedChart === "fcf"} onToggle={() => toggle("fcf")}>
+      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcf")} cagrLabel={quarterly ? cagr(rows, "fcf", true) : undefined} expanded={expandedChart === "fcf"} onToggle={() => toggle("fcf")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -541,7 +572,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 3. FCF par action */}
-      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabel={cagr(rows, "fcfPerShare", quarterly)} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")}>
+      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
