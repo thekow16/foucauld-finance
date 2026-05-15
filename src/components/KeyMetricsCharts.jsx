@@ -383,10 +383,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
     </div>
   );
 
-  const many = rows.length > 10;
-  const axisStyle = { fontSize: many ? 9 : 10, fill: "var(--muted)" };
+  const n = rows.length;
+  const many = n > 10;
+  const axisStyle = { fontSize: 10, fill: "var(--muted)" };
   const gridProps = { strokeDasharray: "3 3", stroke: "var(--border)", strokeOpacity: 0.6 };
-  const xTickInterval = 0;
   const yearTick = quarterly
     ? quarterLabel
     : (val) => `'${String(val).slice(-2)}`;
@@ -394,16 +394,13 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   const dotRadius = many ? 2 : 3;
   const activeDotRadius = many ? 4 : 5;
   const strokeW = many ? 2 : 2.5;
+  const xInterval = n <= 8 ? 0 : n <= 14 ? 1 : n <= 20 ? 2 : 3;
   const xAxisProps = {
-    dataKey: "year", tickLine: false, axisLine: false, interval: xTickInterval,
+    dataKey: "year", tickLine: false, axisLine: false,
+    interval: xInterval,
     tickFormatter: yearTick,
-    tick: many
-      ? ({ x, y, payload }) => (
-          <text x={x} y={y + 4} textAnchor="end" transform={`rotate(-45,${x},${y + 4})`}
-            style={{ fontSize: 9, fill: "var(--muted)" }}>{yearTick(payload.value)}</text>
-        )
-      : axisStyle,
-    height: many ? 35 : 20,
+    tick: axisStyle,
+    height: 22,
   };
 
   const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
