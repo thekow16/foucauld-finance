@@ -60,7 +60,7 @@ function extractAnnual(concept, unit = "USD") {
   if (!entries) return new Map();
   const byFy = new Map();
   for (const e of entries) {
-    if (e.form !== "10-K" && e.form !== "10-K/A") continue;
+    if (e.form !== "10-K" && e.form !== "10-K/A" && e.form !== "10-KT" && e.form !== "10-KSB") continue;
     if (e.fp !== "FY") continue;
     const fy = String(e.fy);
     const existing = byFy.get(fy);
@@ -72,13 +72,15 @@ function extractAnnual(concept, unit = "USD") {
 }
 
 function tryExtract(gaap, names, unit = "USD") {
+  const merged = new Map();
   for (const name of names) {
-    if (gaap[name]) {
-      const result = extractAnnual(gaap[name], unit);
-      if (result.size > 0) return result;
+    if (!gaap[name]) continue;
+    const result = extractAnnual(gaap[name], unit);
+    for (const [fy, entry] of result) {
+      if (!merged.has(fy)) merged.set(fy, entry);
     }
   }
-  return new Map();
+  return merged;
 }
 
 export async function fetchSecFinancials(ticker) {
@@ -96,14 +98,14 @@ export async function fetchSecFinancials(ticker) {
     return null;
   }
 
-  const revenue = tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet"]);
-  const opIncome = tryExtract(gaap, ["OperatingIncomeLoss"]);
-  const shares = tryExtract(gaap, ["WeightedAverageNumberOfDilutedSharesOutstanding", "CommonStockSharesOutstanding"], "shares");
+  const revenue = tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet", "SalesRevenueServicesNet"]);
+  const opIncome = tryExtract(gaap, ["OperatingIncomeLoss", "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"]);
+  const shares = tryExtract(gaap, ["WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "CommonStockSharesOutstanding", "EntityCommonStockSharesOutstanding"], "shares");
   const ocf = tryExtract(gaap, ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"]);
-  const capex = tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment"]);
-  const sbc = tryExtract(gaap, ["AllocatedShareBasedCompensationExpense", "ShareBasedCompensation"]);
-  const divs = tryExtract(gaap, ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends", "PaymentsOfOrdinaryDividends"]);
-  const cash = tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments"]);
+  const capex = tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements"]);
+  const sbc = tryExtract(gaap, ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]);
+  const divs = tryExtract(gaap, ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"]);
+  const cash = tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"]);
   const debt = tryExtract(gaap, ["LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"]);
   const assets = tryExtract(gaap, ["Assets"]);
   const curLiab = tryExtract(gaap, ["LiabilitiesCurrent"]);
