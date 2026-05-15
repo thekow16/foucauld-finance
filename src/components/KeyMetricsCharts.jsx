@@ -664,7 +664,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
 
       {/* 8. Dividendes par action — uniquement si l'entreprise verse des dividendes */}
       {rows.some((d) => d.dividendPerShare != null && d.dividendPerShare > 0) && (
-        <ChartCard title="Dividendes par action" subtitle={quarterly ? "Dividendes / action (trimestriel)" : "Dividendes / actions diluées"} accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare", quarterly)} expanded={expandedChart === "dividends"} onToggle={() => toggle("dividends")}>
+        <ChartCard title="Dividende" subtitle={quarterly ? "Dividende / action (trimestriel)" : "Évolution du dividende par action"} accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare", quarterly)} expanded={expandedChart === "dividends"} onToggle={() => toggle("dividends")}>
           <ResponsiveContainer>
             <AreaChart data={rows}>
               <defs>
