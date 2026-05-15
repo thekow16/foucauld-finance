@@ -1,5 +1,5 @@
 import { warn } from "../utils/log";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -264,9 +264,10 @@ function BaggrTooltip({ active, payload, label, fmt }) {
 }
 
 /* ── Chart card ── */
-function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
+function ChartCard({ title, subtitle, accentColor, cagrLabel, expanded, onToggle, children }) {
   const isPositive = cagrLabel && cagrLabel.includes("+");
-  return (
+
+  const card = (
     <div
       style={{
         background: "var(--card)",
@@ -275,48 +276,66 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, children }) {
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
+        cursor: "pointer",
+        ...(expanded ? { width: "100%", maxWidth: 960, margin: "0 auto" } : {}),
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = "var(--shadow-md)";
-        e.currentTarget.style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "none";
-        e.currentTarget.style.transform = "translateY(0)";
-      }}
+      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "var(--shadow-md)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; } }}
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "12px 14px 10px",
+        padding: expanded ? "16px 20px 12px" : "12px 14px 10px",
         borderBottom: "1px solid var(--border)",
         gap: 8,
       }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text)", letterSpacing: "-0.1px" }}>
+          <div style={{ fontWeight: 600, fontSize: expanded ? 15 : 12, color: "var(--text)", letterSpacing: "-0.1px" }}>
             {title}
           </div>
           {subtitle && (
-            <div style={{ fontSize: 10, color: "var(--text-3, var(--muted))", marginTop: 1 }}>
+            <div style={{ fontSize: expanded ? 12 : 10, color: "var(--text-3, var(--muted))", marginTop: 1 }}>
               {subtitle}
             </div>
           )}
         </div>
-        {cagrLabel && (
-          <div style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: isPositive ? "var(--green)" : "var(--red)",
-            background: isPositive ? "var(--green-bg)" : "var(--red-bg)",
-            padding: "2px 8px",
-            borderRadius: 5,
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-          }}>
-            {cagrLabel}
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {cagrLabel && (
+            <div style={{
+              fontSize: expanded ? 12 : 10,
+              fontWeight: 700,
+              color: isPositive ? "var(--green)" : "var(--red)",
+              background: isPositive ? "var(--green-bg)" : "var(--red-bg)",
+              padding: "2px 8px",
+              borderRadius: 5,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}>
+              {cagrLabel}
+            </div>
+          )}
+          {expanded && (
+            <div style={{ fontSize: 18, color: "var(--muted)", lineHeight: 1, marginLeft: 4 }} title="Fermer">✕</div>
+          )}
+        </div>
       </div>
-      <div style={{ width: "100%", height: 240, padding: "10px 14px 8px" }}>{children}</div>
+      <div style={{ width: "100%", height: expanded ? "calc(80vh - 80px)" : 240, padding: expanded ? "16px 20px 12px" : "10px 14px 8px" }}>{children}</div>
+    </div>
+  );
+
+  if (!expanded) return card;
+
+  return (
+    <div
+      onClick={onToggle}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,.6)", backdropFilter: "blur(6px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      {card}
     </div>
   );
 }
@@ -358,6 +377,14 @@ export function getCurrencySymbol(code) { return CURRENCY_SYMBOLS[code] || (code
 
 export default function KeyMetricsCharts({ data, currency = "USD" }) {
   const [quarterly, setQuarterly] = useState(false);
+  const [expandedChart, setExpandedChart] = useState(null);
+  const toggle = useCallback((id) => setExpandedChart(prev => prev === id ? null : id), []);
+  useEffect(() => {
+    if (!expandedChart) return;
+    const handler = (e) => { if (e.key === "Escape") setExpandedChart(null); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [expandedChart]);
   const annualRows = buildSeries(data);
   const quarterlyRows = buildQuarterlySeries(data);
   const hasQuarterly = quarterlyRows.length > 0;
@@ -471,7 +498,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </div>
       )}
       {/* 1. Chiffre d'affaires */}
-      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabel={cagr(rows, "revenue", quarterly)}>
+      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabel={cagr(rows, "revenue", quarterly)} expanded={expandedChart === "revenue"} onToggle={() => toggle("revenue")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -491,7 +518,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 2. Free Cash Flow & SBC */}
-      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabel={cagr(rows, "fcf", quarterly)}>
+      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabel={cagr(rows, "fcf", quarterly)} expanded={expandedChart === "fcf"} onToggle={() => toggle("fcf")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -514,7 +541,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 3. FCF par action */}
-      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabel={cagr(rows, "fcfPerShare", quarterly)}>
+      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabel={cagr(rows, "fcfPerShare", quarterly)} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -542,7 +569,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 4. ROCE */}
-      <ChartCard title="ROCE" subtitle={quarterly ? "ROCE trimestriel" : "Return on Capital Employed"} accentColor="#ea580c">
+      <ChartCard title="ROCE" subtitle={quarterly ? "ROCE trimestriel" : "Return on Capital Employed"} accentColor="#ea580c" expanded={expandedChart === "roce"} onToggle={() => toggle("roce")}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -570,7 +597,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 5. Marge de FCF */}
-      <ChartCard title="Marge de Free Cash Flow" subtitle={quarterly ? "FCF / CA (trimestriel)" : "FCF / Chiffre d'affaires"} accentColor="#16a34a">
+      <ChartCard title="Marge de Free Cash Flow" subtitle={quarterly ? "FCF / CA (trimestriel)" : "FCF / Chiffre d'affaires"} accentColor="#16a34a" expanded={expandedChart === "fcfMargin"} onToggle={() => toggle("fcfMargin")}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -597,7 +624,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 6. Actions en circulation */}
-      <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1">
+      <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1" expanded={expandedChart === "shares"} onToggle={() => toggle("shares")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -617,7 +644,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 7. Cash & Dette */}
-      <ChartCard title="Cash & Dette" subtitle={quarterly ? "Trésorerie vs dette (trimestriel)" : "Trésorerie vs dette totale"} accentColor="#14b8a6">
+      <ChartCard title="Cash & Dette" subtitle={quarterly ? "Trésorerie vs dette (trimestriel)" : "Trésorerie vs dette totale"} accentColor="#14b8a6" expanded={expandedChart === "cashDebt"} onToggle={() => toggle("cashDebt")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -637,7 +664,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
 
       {/* 8. Dividendes par action — uniquement si l'entreprise verse des dividendes */}
       {rows.some((d) => d.dividendPerShare != null && d.dividendPerShare > 0) && (
-        <ChartCard title="Dividendes par action" subtitle={quarterly ? "Dividendes / action (trimestriel)" : "Dividendes / actions diluées"} accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare", quarterly)}>
+        <ChartCard title="Dividendes par action" subtitle={quarterly ? "Dividendes / action (trimestriel)" : "Dividendes / actions diluées"} accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare", quarterly)} expanded={expandedChart === "dividends"} onToggle={() => toggle("dividends")}>
           <ResponsiveContainer>
             <AreaChart data={rows}>
               <defs>
