@@ -410,22 +410,22 @@ function fmpToYahooCashflow(arr) {
 function extendFmpWithYahoo(fmpData, yahooResult) {
   if (!fmpData || !yahooResult) return fmpData;
 
-  // Collect all years already present in FMP data
-  const fmpYears = new Set();
-  for (const arr of [fmpData.income, fmpData.balance, fmpData.cashflow]) {
+  // Collect years per-statement (not globally) to avoid dropping data
+  const yearsIn = (arr) => {
+    const s = new Set();
     for (const d of (arr || [])) {
-      const year = d.calendarYear || d.date?.substring(0, 4);
-      if (year) fmpYears.add(year);
+      const y = d.calendarYear || d.date?.substring(0, 4);
+      if (y) s.add(y);
     }
-  }
-
-  const yahooBsCount = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
-  const yahooIsCount = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
-  const yahooCfCount = (yahooResult.cashflowStatementHistory?.cashflowStatements || []).length;
+    return s;
+  };
+  const fmpBalanceYears = yearsIn(fmpData.balance);
+  const fmpIncomeYears = yearsIn(fmpData.income);
+  const fmpCashflowYears = yearsIn(fmpData.cashflow);
 
   const r = (obj) => obj?.raw; // extract raw value from Yahoo {raw} format
 
-  // Convert Yahoo balance sheet entries not already in FMP
+  // Convert Yahoo balance sheet entries not already in FMP balance
   const yahooBs = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
   const extraBalance = yahooBs
     .filter(s => {
@@ -434,9 +434,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
         || s.totalCurrentAssets?.raw != null || s.totalStockholderEquity?.raw != null
         || s.totalDebt?.raw != null || s.longTermDebt?.raw != null || s.netReceivables?.raw != null
         || s.inventory?.raw != null || s.retainedEarnings?.raw != null || s.propertyPlantEquipment?.raw != null;
-      if (year && !fmpYears.has(year) && !hasData) {
-      }
-      return year && !fmpYears.has(year) && hasData;
+      return year && !fmpBalanceYears.has(year) && hasData;
     })
     .map(s => ({
       date: s.endDate?.fmt,
@@ -466,7 +464,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
       _source: "yahoo",
     }));
 
-  // Convert Yahoo income statement entries
+  // Convert Yahoo income statement entries not already in FMP income
   const yahooIs = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
   const extraIncome = yahooIs
     .filter(s => {
@@ -474,9 +472,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
       const hasData = s.totalRevenue?.raw != null || s.netIncome?.raw != null || s.operatingIncome?.raw != null
         || s.grossProfit?.raw != null || s.ebitda?.raw != null || s.costOfRevenue?.raw != null
         || s.incomeBeforeTax?.raw != null || s.dilutedEPS?.raw != null || s.basicEPS?.raw != null;
-      if (year && !fmpYears.has(year) && !hasData) {
-      }
-      return year && !fmpYears.has(year) && hasData;
+      return year && !fmpIncomeYears.has(year) && hasData;
     })
     .map(s => {
       const rev = r(s.totalRevenue);
@@ -511,7 +507,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
       };
     });
 
-  // Convert Yahoo cashflow entries
+  // Convert Yahoo cashflow entries not already in FMP cashflow
   const yahooCf = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
   const extraCashflow = yahooCf
     .filter(s => {
@@ -520,9 +516,7 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
         || s.capitalExpenditures?.raw != null || s.totalCashflowsFromInvestingActivities?.raw != null
         || s.totalCashFromFinancingActivities?.raw != null || s.repurchaseOfStock?.raw != null
         || s.changeInCash?.raw != null || s.stockBasedCompensation?.raw != null;
-      if (year && !fmpYears.has(year) && !hasData) {
-      }
-      return year && !fmpYears.has(year) && hasData;
+      return year && !fmpCashflowYears.has(year) && hasData;
     })
     .map(s => ({
       date: s.endDate?.fmt,
@@ -551,9 +545,6 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   if (extraCashflow.length > 0) {
     fmpData.cashflow = [...(fmpData.cashflow || []), ...extraCashflow].sort(sortDesc);
   }
-
-  const totalYears = Math.max(fmpData.income?.length || 0, fmpData.balance?.length || 0, fmpData.cashflow?.length || 0);
-  const extraYears = Math.max(extraBalance.length, extraIncome.length, extraCashflow.length);
 
   return fmpData;
 }
