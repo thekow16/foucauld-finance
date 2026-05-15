@@ -8,10 +8,11 @@ import { WORKER_URL, FREE_PROXIES, tryFetch } from "./proxy";
 let tickerMap = null;
 
 async function secFetch(url) {
+  const SEC_TIMEOUT = 25000;
   // 1. Worker proxy
   if (WORKER_URL) {
     try {
-      return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
+      return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`, false, SEC_TIMEOUT);
     } catch (e) {
       warn("[SEC] Worker proxy échoué:", e.message);
     }
@@ -20,7 +21,7 @@ async function secFetch(url) {
   for (let i = 0; i < FREE_PROXIES.length; i++) {
     const { url: proxyUrl, unwrap } = FREE_PROXIES[i](url);
     try {
-      return await tryFetch(proxyUrl, unwrap);
+      return await tryFetch(proxyUrl, unwrap, SEC_TIMEOUT);
     } catch (e) {
       warn(`[SEC] proxy ${i} échoué:`, e.message);
     }
@@ -47,10 +48,19 @@ async function getCik(ticker) {
 
 function extractAnnual(concept, unit = "USD") {
   if (!concept?.units) return new Map();
-  const entries = concept.units[unit] || concept.units.shares || [];
+  let entries = concept.units[unit];
+  if (!entries || entries.length === 0) {
+    for (const key of Object.keys(concept.units)) {
+      if (key !== "shares" || unit === "shares") {
+        entries = concept.units[key];
+        if (entries?.length > 0) break;
+      }
+    }
+  }
+  if (!entries) return new Map();
   const byFy = new Map();
   for (const e of entries) {
-    if (e.form !== "10-K" && e.form !== "10-K/A") continue;
+    if (e.form !== "10-K" && e.form !== "10-K/A" && e.form !== "10-KT" && e.form !== "10-KSB") continue;
     if (e.fp !== "FY") continue;
     const fy = String(e.fy);
     const existing = byFy.get(fy);
@@ -62,13 +72,15 @@ function extractAnnual(concept, unit = "USD") {
 }
 
 function tryExtract(gaap, names, unit = "USD") {
+  const merged = new Map();
   for (const name of names) {
-    if (gaap[name]) {
-      const result = extractAnnual(gaap[name], unit);
-      if (result.size > 0) return result;
+    if (!gaap[name]) continue;
+    const result = extractAnnual(gaap[name], unit);
+    for (const [fy, entry] of result) {
+      if (!merged.has(fy)) merged.set(fy, entry);
     }
   }
-  return new Map();
+  return merged;
 }
 
 export async function fetchSecFinancials(ticker) {
@@ -86,14 +98,14 @@ export async function fetchSecFinancials(ticker) {
     return null;
   }
 
-  const revenue = tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet"]);
-  const opIncome = tryExtract(gaap, ["OperatingIncomeLoss"]);
-  const shares = tryExtract(gaap, ["WeightedAverageNumberOfDilutedSharesOutstanding", "CommonStockSharesOutstanding"], "shares");
+  const revenue = tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet", "SalesRevenueServicesNet"]);
+  const opIncome = tryExtract(gaap, ["OperatingIncomeLoss", "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"]);
+  const shares = tryExtract(gaap, ["WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "CommonStockSharesOutstanding", "EntityCommonStockSharesOutstanding"], "shares");
   const ocf = tryExtract(gaap, ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"]);
-  const capex = tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment"]);
-  const sbc = tryExtract(gaap, ["AllocatedShareBasedCompensationExpense", "ShareBasedCompensation"]);
-  const divs = tryExtract(gaap, ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends", "PaymentsOfOrdinaryDividends"]);
-  const cash = tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments"]);
+  const capex = tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements"]);
+  const sbc = tryExtract(gaap, ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]);
+  const divs = tryExtract(gaap, ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"]);
+  const cash = tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"]);
   const debt = tryExtract(gaap, ["LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"]);
   const assets = tryExtract(gaap, ["Assets"]);
   const curLiab = tryExtract(gaap, ["LiabilitiesCurrent"]);

@@ -23,9 +23,9 @@ export async function checkWorkerHealth() {
   }
 }
 
-export async function tryFetch(url, unwrap = false) {
+export async function tryFetch(url, unwrap = false, timeout = 12000) {
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(timeout),
     headers: { "Accept": "application/json" },
   });
   if (res.status === 429) throw new Error("Rate limit serveur dépassé. Patientez 1 minute.");
