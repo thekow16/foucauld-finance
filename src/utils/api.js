@@ -89,24 +89,22 @@ async function fetchYahooTimeseries(sym) {
   // Try both query2 and query1 hostnames for resilience
   const hosts = [YF, YF.replace("query2", "query1")];
 
-  // Quick fetch: try Worker proxy, then 1 CORS fallback, low timeout for timeseries
+  // Quick fetch: try Worker proxy, then up to 3 CORS fallbacks
   const quickFetch = async (url, label) => {
-    // Try Worker proxy first
     if (WORKER_URL) {
       try {
-        const data = await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
-        return data;
+        return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
       } catch (e) {
         warn(`[FF] timeseries ${label} Worker failed:`, e.message);
       }
     }
-    // Try first CORS proxy as fallback (don't try all 5 — too slow)
-    try {
-      const { url: proxyUrl, unwrap } = FREE_PROXIES[0](url);
-      const data = await tryFetch(proxyUrl, unwrap);
-      return data;
-    } catch (e) {
-      warn(`[FF] timeseries ${label} CORS proxy failed:`, e.message);
+    for (let i = 0; i < Math.min(3, FREE_PROXIES.length); i++) {
+      try {
+        const { url: proxyUrl, unwrap } = FREE_PROXIES[i](url);
+        return await tryFetch(proxyUrl, unwrap);
+      } catch (e) {
+        warn(`[FF] timeseries ${label} proxy ${i} failed:`, e.message);
+      }
     }
     return null;
   };
@@ -561,23 +559,25 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
 }
 
 // Extend FMP data with SEC EDGAR older years (SEC → 10-20+ years for US companies)
+// Merges per-statement: SEC income fills years missing from FMP income, independently of balance/cashflow
 function extendWithSec(fmpData, secResult) {
   if (!fmpData || !secResult) return fmpData;
-  const existingYears = new Set();
-  for (const arr of [fmpData.income, fmpData.balance, fmpData.cashflow]) {
+  const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
+  const yearsIn = (arr) => {
+    const s = new Set();
     for (const d of (arr || [])) {
       const y = d.calendarYear || d.date?.substring(0, 4);
-      if (y) existingYears.add(y);
+      if (y) s.add(y);
     }
-  }
-  const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
-  const extra = (secArr) => (secArr || []).filter(d => !existingYears.has(d.calendarYear));
-  const ei = extra(secResult.income);
-  const eb = extra(secResult.balance);
-  const ec = extra(secResult.cashflow);
+    return s;
+  };
+  const ei = (secResult.income || []).filter(d => !yearsIn(fmpData.income).has(d.calendarYear));
+  const eb = (secResult.balance || []).filter(d => !yearsIn(fmpData.balance).has(d.calendarYear));
+  const ec = (secResult.cashflow || []).filter(d => !yearsIn(fmpData.cashflow).has(d.calendarYear));
   if (ei.length) fmpData.income = [...(fmpData.income || []), ...ei].sort(sortDesc);
   if (eb.length) fmpData.balance = [...(fmpData.balance || []), ...eb].sort(sortDesc);
   if (ec.length) fmpData.cashflow = [...(fmpData.cashflow || []), ...ec].sort(sortDesc);
+  warn(`[FF] extendWithSec: added IS=${ei.length} BS=${eb.length} CF=${ec.length} years from SEC`);
   return fmpData;
 }
 

@@ -8,10 +8,11 @@ import { WORKER_URL, FREE_PROXIES, tryFetch } from "./proxy";
 let tickerMap = null;
 
 async function secFetch(url) {
+  const SEC_TIMEOUT = 25000;
   // 1. Worker proxy
   if (WORKER_URL) {
     try {
-      return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
+      return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`, false, SEC_TIMEOUT);
     } catch (e) {
       warn("[SEC] Worker proxy échoué:", e.message);
     }
@@ -20,7 +21,7 @@ async function secFetch(url) {
   for (let i = 0; i < FREE_PROXIES.length; i++) {
     const { url: proxyUrl, unwrap } = FREE_PROXIES[i](url);
     try {
-      return await tryFetch(proxyUrl, unwrap);
+      return await tryFetch(proxyUrl, unwrap, SEC_TIMEOUT);
     } catch (e) {
       warn(`[SEC] proxy ${i} échoué:`, e.message);
     }
@@ -47,7 +48,16 @@ async function getCik(ticker) {
 
 function extractAnnual(concept, unit = "USD") {
   if (!concept?.units) return new Map();
-  const entries = concept.units[unit] || concept.units.shares || [];
+  let entries = concept.units[unit];
+  if (!entries || entries.length === 0) {
+    for (const key of Object.keys(concept.units)) {
+      if (key !== "shares" || unit === "shares") {
+        entries = concept.units[key];
+        if (entries?.length > 0) break;
+      }
+    }
+  }
+  if (!entries) return new Map();
   const byFy = new Map();
   for (const e of entries) {
     if (e.form !== "10-K" && e.form !== "10-K/A") continue;
