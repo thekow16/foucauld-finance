@@ -693,35 +693,6 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* 8. Dividendes par action — uniquement si l'entreprise verse des dividendes */}
-      {rows.some((d) => d.dividendPerShare != null && d.dividendPerShare > 0) && (
-        <ChartCard title="Dividende" subtitle={quarterly ? "Dividende / action (trimestriel)" : "Évolution du dividende par action"} accentColor="#f59e0b" cagrLabel={cagr(rows, "dividendPerShare", quarterly)} expanded={expandedChart === "dividends"} onToggle={() => toggle("dividends")}>
-          <ResponsiveContainer>
-            <AreaChart data={rows}>
-              <defs>
-                <linearGradient id="gradDiv" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid {...gridProps} />
-              <XAxis {...xAxisProps} />
-              <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
-                tickFormatter={(v) => v != null ? `${cs}${v.toFixed(2)}` : ""} />
-              <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(3)}` : "—"} />} />
-              <Area
-                type="monotone"
-                dataKey="dividendPerShare"
-                stroke="#f59e0b"
-                strokeWidth={strokeW}
-                fill="url(#gradDiv)"
-                dot={{ r: dotRadius, fill: "#f59e0b", strokeWidth: 0 }}
-                activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
     </div>
   );
 }
