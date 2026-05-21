@@ -664,19 +664,12 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 6. Actions en circulation */}
       <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1" expanded={expandedChart === "shares"} onToggle={() => toggle("shares")}>
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap={barGap}>
-            <CartesianGrid {...gridProps} />
+          <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
-            <Bar dataKey="shares" shape={<RoundedBar />} label={renderGrowthLabel(rows, "shares")}>
-              {rows.map((d, i) => {
-                const prev = rows[i - 1]?.shares;
-                const color = i === 0 || d.shares == null || prev == null ? "#6366f1"
-                  : d.shares <= prev ? "#10b981" : "#ef4444";
-                return <Cell key={d.year} fill={color} />;
-              })}
-            </Bar>
+            <Bar dataKey="shares" fill="var(--accent, #2563eb)" shape={<RoundedBar />} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
