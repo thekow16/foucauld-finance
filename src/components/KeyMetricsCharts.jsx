@@ -564,14 +564,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
             <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
-            <Bar dataKey="revenue" shape={<RoundedBar />} label={renderRevenueLabel(rows)}>
-              {rows.map((d, i) => {
-                const prev = rows[i - 1]?.revenue;
-                const isFirst = i === 0 || d.revenue == null || prev == null;
-                const grew = d.revenue >= prev;
-                return <Cell key={d.year} fill={isFirst ? "#6b7280" : grew ? "#10b981" : "#ef4444"} />;
-              })}
-            </Bar>
+            <Bar dataKey="revenue" fill="var(--accent, #2563eb)" shape={<RoundedBar />} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
