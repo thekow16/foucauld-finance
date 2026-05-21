@@ -1,5 +1,5 @@
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = 12;
+const CACHE_VERSION = 13;
 
 export function getCachedData(sym) {
   try {
