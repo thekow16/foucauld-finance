@@ -371,6 +371,34 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
   );
 }
 
+/* ── Revenue chart label: always show %, colored like the bar ── */
+function renderRevenueLabel(data) {
+  const step = data.length > 15 ? 3 : data.length > 10 ? 2 : 1;
+  return (props) => {
+    const { x, y, width, index, value } = props;
+    if (index === 0 || value == null) return null;
+    if (step > 1 && index % step !== 0) return null;
+    const prev = data[index - 1]?.revenue;
+    const label = growthLabel(value, prev);
+    if (!label) return null;
+    const isPos = !label.startsWith("-");
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 5}
+        textAnchor="middle"
+        style={{
+          fontSize: data.length > 14 ? 7 : data.length > 8 ? 8 : 9,
+          fontWeight: 700,
+          fill: isPos ? "#10b981" : "#ef4444",
+        }}
+      >
+        {label}
+      </text>
+    );
+  };
+}
+
 /* ── Custom bar label showing YoY growth ── */
 function renderGrowthLabel(data, dataKey) {
   // Skip labels every N bars when data is dense
@@ -531,17 +559,17 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 1. Chiffre d'affaires */}
       <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabels={quarterly ? undefined : cagrMulti(rows, "revenue")} cagrLabel={quarterly ? cagr(rows, "revenue", true) : undefined} expanded={expandedChart === "revenue"} onToggle={() => toggle("revenue")}>
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap={barGap}>
-            <CartesianGrid {...gridProps} />
+          <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis {...xAxisProps} />
             <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
             <Tooltip content={<BaggrTooltip />} />
-            <Bar dataKey="revenue" shape={<RoundedBar />} label={renderGrowthLabel(rows, "revenue")}>
+            <Bar dataKey="revenue" shape={<RoundedBar />} label={renderRevenueLabel(rows)}>
               {rows.map((d, i) => {
                 const prev = rows[i - 1]?.revenue;
-                const color = i === 0 || d.revenue == null || prev == null ? "#0891b2"
-                  : d.revenue >= prev ? "#0891b2" : "#0891b2aa";
-                return <Cell key={d.year} fill={color} />;
+                const isFirst = i === 0 || d.revenue == null || prev == null;
+                const grew = d.revenue >= prev;
+                return <Cell key={d.year} fill={isFirst ? "#6b7280" : grew ? "#10b981" : "#ef4444"} />;
               })}
             </Bar>
           </BarChart>
