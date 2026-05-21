@@ -595,28 +595,14 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       {/* 3. FCF par action */}
       <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")}>
         <ResponsiveContainer>
-          <AreaChart data={rows}>
-            <defs>
-              <linearGradient id="gradFcfShare" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2563eb" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid {...gridProps} />
+          <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis {...xAxisProps} />
             <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
               tickFormatter={(v) => v != null ? `${cs}${v.toFixed(1)}` : ""} />
             <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(2)}` : "—"} />} />
-            <Area
-              type="monotone"
-              dataKey="fcfPerShare"
-              stroke="#2563eb"
-              strokeWidth={strokeW}
-              fill="url(#gradFcfShare)"
-              dot={{ r: dotRadius, fill: "#2563eb", strokeWidth: 0 }}
-              activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
-            />
-          </AreaChart>
+            <Bar dataKey="fcfPerShare" fill="var(--accent, #2563eb)" shape={<RoundedBar />} />
+          </BarChart>
         </ResponsiveContainer>
       </ChartCard>
 
