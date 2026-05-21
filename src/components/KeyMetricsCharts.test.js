@@ -151,6 +151,79 @@ describe("buildSeries", () => {
     expect(rows[1].dividendPerShare).toBeCloseTo(5e7 / 1e7, 5);
   });
 
+  it("rejects non-split-adjusted shares from FMP when Yahoo has split-adjusted data", () => {
+    const data = {
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 300e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+          { endDate: { raw: 1640995200 }, totalRevenue: { raw: 257e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+          { endDate: { raw: 1609459200 }, totalRevenue: { raw: 182e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+          { endDate: { raw: 1577836800 }, totalRevenue: { raw: 161e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+        ],
+      },
+      _fmpData: {
+        income: [
+          { calendarYear: "2021", revenue: 257e9, weightedAverageShsOutDil: 660e6, operatingIncome: 78e9 },
+        ],
+        cashflow: [],
+        balance: [],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    const row2021 = rows.find(r => r.year === "2021");
+    expect(row2021.shares).toBe(13.2e9);
+  });
+
+  it("normalizes non-split-adjusted shares for years only covered by SEC/FMP", () => {
+    const data = {
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 300e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+          { endDate: { raw: 1640995200 }, totalRevenue: { raw: 257e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+          { endDate: { raw: 1577836800 }, totalRevenue: { raw: 161e9 }, dilutedAverageShares: { raw: 13.2e9 } },
+        ],
+      },
+      _fmpData: {
+        income: [
+          { calendarYear: "2018", revenue: 136e9, weightedAverageShsOutDil: 660e6 },
+        ],
+        cashflow: [],
+        balance: [],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    const row2018 = rows.find(r => r.year === "2018");
+    expect(row2018.shares).toBeGreaterThan(10e9);
+    expect(row2018.shares).toBeLessThan(16e9);
+  });
+
+  it("does not over-correct legitimate share count differences from buybacks", () => {
+    const data = {
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 1e9 }, dilutedAverageShares: { raw: 8e9 } },
+          { endDate: { raw: 1640995200 }, totalRevenue: { raw: 9e8 }, dilutedAverageShares: { raw: 9e9 } },
+          { endDate: { raw: 1609459200 }, totalRevenue: { raw: 8e8 }, dilutedAverageShares: { raw: 10e9 } },
+          { endDate: { raw: 1577836800 }, totalRevenue: { raw: 7e8 }, dilutedAverageShares: { raw: 11e9 } },
+        ],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    expect(rows.find(r => r.year === "2020").shares).toBe(11e9);
+    expect(rows.find(r => r.year === "2021").shares).toBe(10e9);
+    expect(rows.find(r => r.year === "2022").shares).toBe(9e9);
+    expect(rows.find(r => r.year === "2023").shares).toBe(8e9);
+  });
+
   it("prefers FMP data when available", () => {
     const data = {
       _fmpData: {

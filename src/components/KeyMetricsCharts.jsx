@@ -90,6 +90,32 @@ function hasFinancialData(d) {
   return keys.some((k) => d[k] != null);
 }
 
+/* ── Stock-split normalization ── */
+const COMMON_SPLIT_RATIOS = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 50, 100];
+
+function normalizeShares(rows) {
+  const withShares = rows.filter(r => r.shares != null && r.shares > 0);
+  if (withShares.length < 3) return;
+  const recent = withShares.slice(-3).map(r => r.shares).sort((a, b) => a - b);
+  const ref = recent[Math.floor(recent.length / 2)];
+  for (const row of rows) {
+    if (row.shares == null || row.shares <= 0) continue;
+    const ratio = ref / row.shares;
+    if (ratio > 1.8) {
+      const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
+        Math.abs(ratio / r - 1) < Math.abs(ratio / b - 1) ? r : b
+      );
+      if (Math.abs(ratio / best - 1) < 0.15) row.shares *= best;
+    } else if (ratio < 0.55) {
+      const invRatio = 1 / ratio;
+      const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
+        Math.abs(invRatio / r - 1) < Math.abs(invRatio / b - 1) ? r : b
+      );
+      if (Math.abs(invRatio / best - 1) < 0.15) row.shares /= best;
+    }
+  }
+}
+
 /* ── Data builder (historique complet, 20+ ans) ── */
 /* Fusionne FMP + Yahoo (enrichi par timeseries) pour maximiser la couverture. */
 
@@ -146,7 +172,11 @@ export function buildSeries(data) {
       const y = d?.calendarYear || d?.date?.slice(0, 4);
       if (!y) return;
       const e = byYear.get(y) || { year: y };
-      byYear.set(y, { ...e, year: y, revenue: d.revenue ?? e.revenue, shares: d.weightedAverageShsOutDil ?? e.shares, ebit: d.operatingIncome ?? e.ebit });
+      const fmpShares = d.weightedAverageShsOutDil;
+      const shares = (fmpShares != null && e.shares != null && e.shares > 0 &&
+        (fmpShares / e.shares > 3 || fmpShares / e.shares < 1 / 3))
+        ? e.shares : (fmpShares ?? e.shares);
+      byYear.set(y, { ...e, year: y, revenue: d.revenue ?? e.revenue, shares, ebit: d.operatingIncome ?? e.ebit });
     });
   }
   if (fmp?.cashflow?.length) {
@@ -166,10 +196,11 @@ export function buildSeries(data) {
     });
   }
 
-  const rows = [...byYear.values()]
-    .map((d) => enrich(d))
+  const raw = [...byYear.values()]
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  normalizeShares(raw);
+  const rows = raw.map((d) => enrich(d));
   if (typeof console !== "undefined") {
     const yrs = rows.map(r => r.year).join(",");
     console.log(`[FF][Charts] buildSeries: ${rows.length} ans (${yrs}) — Yahoo IS=${income.length} BS=${balance.length} CF=${cashflow.length}, FMP IS=${fmp?.income?.length || 0} BS=${fmp?.balance?.length || 0} CF=${fmp?.cashflow?.length || 0}`);
