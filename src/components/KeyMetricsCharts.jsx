@@ -105,35 +105,38 @@ export function buildSeries(data) {
   income.forEach((d) => {
     const y = d?.endDate?.raw ? String(new Date(d.endDate.raw * 1000).getFullYear()) : null;
     if (!y) return;
+    const e = byYear.get(y) || {};
     byYear.set(y, {
-      ...(byYear.get(y) || {}),
+      ...e,
       year: y,
-      revenue: d.totalRevenue?.raw,
-      ebit: d.operatingIncome?.raw,
-      shares: d.dilutedAverageShares?.raw,
+      revenue: d.totalRevenue?.raw ?? e.revenue,
+      ebit: d.operatingIncome?.raw ?? e.ebit,
+      shares: d.dilutedAverageShares?.raw ?? e.shares,
     });
   });
   cashflow.forEach((d) => {
     const y = d?.endDate?.raw ? String(new Date(d.endDate.raw * 1000).getFullYear()) : null;
     if (!y) return;
+    const e = byYear.get(y) || {};
     byYear.set(y, {
-      ...(byYear.get(y) || {}),
+      ...e,
       year: y,
-      fcf: d.freeCashFlow?.raw,
-      sbc: d.stockBasedCompensation?.raw,
-      dividendsPaid: d.dividendsPaid?.raw,
+      fcf: d.freeCashFlow?.raw ?? e.fcf,
+      sbc: d.stockBasedCompensation?.raw ?? e.sbc,
+      dividendsPaid: d.dividendsPaid?.raw ?? e.dividendsPaid,
     });
   });
   balance.forEach((d) => {
     const y = d?.endDate?.raw ? String(new Date(d.endDate.raw * 1000).getFullYear()) : null;
     if (!y) return;
+    const e = byYear.get(y) || {};
     byYear.set(y, {
-      ...(byYear.get(y) || {}),
+      ...e,
       year: y,
-      cash: d.cash?.raw,
-      debt: d.totalDebt?.raw ?? d.longTermDebt?.raw,
-      assets: d.totalAssets?.raw,
-      currentLiabilities: d.totalCurrentLiabilities?.raw,
+      cash: d.cash?.raw ?? e.cash,
+      debt: (d.totalDebt?.raw ?? d.longTermDebt?.raw) ?? e.debt,
+      assets: d.totalAssets?.raw ?? e.assets,
+      currentLiabilities: d.totalCurrentLiabilities?.raw ?? e.currentLiabilities,
     });
   });
 

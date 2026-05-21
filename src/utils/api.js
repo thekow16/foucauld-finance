@@ -554,26 +554,48 @@ function extendFmpWithYahoo(fmpData, yahooResult) {
   return fmpData;
 }
 
-// Extend FMP data with SEC EDGAR older years (SEC → 10-20+ years for US companies)
-// Merges per-statement: SEC income fills years missing from FMP income, independently of balance/cashflow
+// Merge external data into fmpData — adds new years AND fills null fields in existing years
+function mergeStatements(existing, incoming, sortDesc) {
+  if (!incoming?.length) return { added: 0, enriched: 0 };
+  const byYear = new Map();
+  for (const d of (existing || [])) {
+    const y = d.calendarYear || d.date?.substring(0, 4);
+    if (y) byYear.set(y, d);
+  }
+  let added = 0, enriched = 0;
+  for (const d of incoming) {
+    const y = d.calendarYear;
+    if (!y) continue;
+    if (!byYear.has(y)) {
+      existing.push(d);
+      byYear.set(y, d);
+      added++;
+    } else {
+      const e = byYear.get(y);
+      for (const [k, v] of Object.entries(d)) {
+        if (k === "_source" || k === "date" || k === "calendarYear") continue;
+        if (v != null && e[k] == null) {
+          e[k] = v;
+          enriched++;
+        }
+      }
+    }
+  }
+  if (added > 0) existing.sort(sortDesc);
+  return { added, enriched };
+}
+
+// Extend FMP data with SEC EDGAR (adds new years + fills null fields in existing years)
 function extendWithSec(fmpData, secResult) {
   if (!fmpData || !secResult) return fmpData;
   const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
-  const yearsIn = (arr) => {
-    const s = new Set();
-    for (const d of (arr || [])) {
-      const y = d.calendarYear || d.date?.substring(0, 4);
-      if (y) s.add(y);
-    }
-    return s;
-  };
-  const ei = (secResult.income || []).filter(d => !yearsIn(fmpData.income).has(d.calendarYear));
-  const eb = (secResult.balance || []).filter(d => !yearsIn(fmpData.balance).has(d.calendarYear));
-  const ec = (secResult.cashflow || []).filter(d => !yearsIn(fmpData.cashflow).has(d.calendarYear));
-  if (ei.length) fmpData.income = [...(fmpData.income || []), ...ei].sort(sortDesc);
-  if (eb.length) fmpData.balance = [...(fmpData.balance || []), ...eb].sort(sortDesc);
-  if (ec.length) fmpData.cashflow = [...(fmpData.cashflow || []), ...ec].sort(sortDesc);
-  warn(`[FF] extendWithSec: added IS=${ei.length} BS=${eb.length} CF=${ec.length} years from SEC`);
+  if (!fmpData.income) fmpData.income = [];
+  if (!fmpData.balance) fmpData.balance = [];
+  if (!fmpData.cashflow) fmpData.cashflow = [];
+  const ri = mergeStatements(fmpData.income, secResult.income, sortDesc);
+  const rb = mergeStatements(fmpData.balance, secResult.balance, sortDesc);
+  const rc = mergeStatements(fmpData.cashflow, secResult.cashflow, sortDesc);
+  warn(`[FF] extendWithSec: IS +${ri.added}new/${ri.enriched}enr BS +${rb.added}new/${rb.enriched}enr CF +${rc.added}new/${rc.enriched}enr`);
   return fmpData;
 }
 
@@ -581,21 +603,13 @@ function extendWithSec(fmpData, secResult) {
 function extendWithMacrotrends(fmpData, mtResult) {
   if (!fmpData || !mtResult) return fmpData;
   const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
-  const yearsIn = (arr) => {
-    const s = new Set();
-    for (const d of (arr || [])) {
-      const y = d.calendarYear || d.date?.substring(0, 4);
-      if (y) s.add(y);
-    }
-    return s;
-  };
-  const ei = (mtResult.income || []).filter(d => !yearsIn(fmpData.income).has(d.calendarYear));
-  const eb = (mtResult.balance || []).filter(d => !yearsIn(fmpData.balance).has(d.calendarYear));
-  const ec = (mtResult.cashflow || []).filter(d => !yearsIn(fmpData.cashflow).has(d.calendarYear));
-  if (ei.length) fmpData.income = [...(fmpData.income || []), ...ei].sort(sortDesc);
-  if (eb.length) fmpData.balance = [...(fmpData.balance || []), ...eb].sort(sortDesc);
-  if (ec.length) fmpData.cashflow = [...(fmpData.cashflow || []), ...ec].sort(sortDesc);
-  warn(`[FF] extendWithMacrotrends: added IS=${ei.length} BS=${eb.length} CF=${ec.length} years`);
+  if (!fmpData.income) fmpData.income = [];
+  if (!fmpData.balance) fmpData.balance = [];
+  if (!fmpData.cashflow) fmpData.cashflow = [];
+  const ri = mergeStatements(fmpData.income, mtResult.income, sortDesc);
+  const rb = mergeStatements(fmpData.balance, mtResult.balance, sortDesc);
+  const rc = mergeStatements(fmpData.cashflow, mtResult.cashflow, sortDesc);
+  warn(`[FF] extendWithMacrotrends: IS +${ri.added}new/${ri.enriched}enr BS +${rb.added}new/${rb.enriched}enr CF +${rc.added}new/${rc.enriched}enr`);
   return fmpData;
 }
 
