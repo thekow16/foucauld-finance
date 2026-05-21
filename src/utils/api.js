@@ -411,145 +411,93 @@ function fmpToYahooCashflow(arr) {
 // ── Extend FMP data with older Yahoo Timeseries years ──
 // Yahoo Timeseries often provides 10-20 years of history for free,
 // while FMP free plan only returns 5 years. This function converts
-// Yahoo's older years to FMP format and appends them.
+// Yahoo's older years to FMP format and merges them (field-level).
 function extendFmpWithYahoo(fmpData, yahooResult) {
   if (!fmpData || !yahooResult) return fmpData;
 
-  // Collect years per-statement (not globally) to avoid dropping data
-  const yearsIn = (arr) => {
-    const s = new Set();
-    for (const d of (arr || [])) {
-      const y = d.calendarYear || d.date?.substring(0, 4);
-      if (y) s.add(y);
-    }
-    return s;
-  };
-  const fmpBalanceYears = yearsIn(fmpData.balance);
-  const fmpIncomeYears = yearsIn(fmpData.income);
-  const fmpCashflowYears = yearsIn(fmpData.cashflow);
+  const r = (obj) => obj?.raw;
+  const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
+  const yearOf = (s) => s.endDate?.fmt?.substring(0, 4) || (s.endDate?.raw ? String(new Date(s.endDate.raw * 1000).getFullYear()) : null);
 
-  const r = (obj) => obj?.raw; // extract raw value from Yahoo {raw} format
-
-  // Convert Yahoo balance sheet entries not already in FMP balance
-  const yahooBs = yahooResult.balanceSheetHistory?.balanceSheetStatements || [];
-  const extraBalance = yahooBs
-    .filter(s => {
-      const year = s.endDate?.fmt?.substring(0, 4);
+  // Convert Yahoo balance sheet to FMP format
+  const yahooBs = (yahooResult.balanceSheetHistory?.balanceSheetStatements || [])
+    .map(s => {
+      const y = yearOf(s);
+      if (!y) return null;
       const hasData = s.totalAssets?.raw != null || s.cash?.raw != null || s.totalLiab?.raw != null
         || s.totalCurrentAssets?.raw != null || s.totalStockholderEquity?.raw != null
-        || s.totalDebt?.raw != null || s.longTermDebt?.raw != null || s.netReceivables?.raw != null
-        || s.inventory?.raw != null || s.retainedEarnings?.raw != null || s.propertyPlantEquipment?.raw != null;
-      return year && !fmpBalanceYears.has(year) && hasData;
-    })
-    .map(s => ({
-      date: s.endDate?.fmt,
-      calendarYear: s.endDate?.fmt?.substring(0, 4),
-      totalAssets: r(s.totalAssets),
-      totalCurrentAssets: r(s.totalCurrentAssets),
-      cashAndCashEquivalents: r(s.cash),
-      shortTermInvestments: r(s.shortTermInvestments),
-      cashAndShortTermInvestments: ((r(s.cash) || 0) + (r(s.shortTermInvestments) || 0)) || null,
-      netReceivables: r(s.netReceivables),
-      inventory: r(s.inventory),
-      otherCurrentAssets: r(s.otherCurrentAssets),
-      propertyPlantEquipmentNet: r(s.propertyPlantEquipment),
-      goodwill: r(s.goodWill),
-      totalNonCurrentAssets: r(s.totalNonCurrentAssets),
-      totalLiabilities: r(s.totalLiab),
-      totalCurrentLiabilities: r(s.totalCurrentLiabilities),
-      shortTermDebt: r(s.shortLongTermDebt),
-      accountPayables: r(s.accountsPayable),
-      totalNonCurrentLiabilities: r(s.nonCurrentLiabilities),
-      longTermDebt: r(s.longTermDebt),
-      totalDebt: r(s.totalDebt),
-      totalStockholdersEquity: r(s.totalStockholderEquity),
-      retainedEarnings: r(s.retainedEarnings),
-      commonStock: r(s.commonStock),
-      minorityInterest: r(s.minorityInterest),
-      _source: "yahoo",
-    }));
-
-  // Convert Yahoo income statement entries not already in FMP income
-  const yahooIs = yahooResult.incomeStatementHistory?.incomeStatementHistory || [];
-  const extraIncome = yahooIs
-    .filter(s => {
-      const year = s.endDate?.fmt?.substring(0, 4);
-      const hasData = s.totalRevenue?.raw != null || s.netIncome?.raw != null || s.operatingIncome?.raw != null
-        || s.grossProfit?.raw != null || s.ebitda?.raw != null || s.costOfRevenue?.raw != null
-        || s.incomeBeforeTax?.raw != null || s.dilutedEPS?.raw != null || s.basicEPS?.raw != null;
-      return year && !fmpIncomeYears.has(year) && hasData;
-    })
-    .map(s => {
-      const rev = r(s.totalRevenue);
-      const gp = r(s.grossProfit);
-      const oi = r(s.operatingIncome);
-      const ni = r(s.netIncome);
-      const ebitda = r(s.ebitda);
+        || s.totalDebt?.raw != null || s.longTermDebt?.raw != null;
+      if (!hasData) return null;
       return {
-        date: s.endDate?.fmt,
-        calendarYear: s.endDate?.fmt?.substring(0, 4),
-        revenue: rev,
-        costOfRevenue: r(s.costOfRevenue),
-        grossProfit: gp,
+        date: s.endDate?.fmt, calendarYear: y,
+        totalAssets: r(s.totalAssets), totalCurrentAssets: r(s.totalCurrentAssets),
+        cashAndCashEquivalents: r(s.cash), shortTermInvestments: r(s.shortTermInvestments),
+        netReceivables: r(s.netReceivables), inventory: r(s.inventory),
+        propertyPlantEquipmentNet: r(s.propertyPlantEquipment), goodwill: r(s.goodWill),
+        totalLiabilities: r(s.totalLiab), totalCurrentLiabilities: r(s.totalCurrentLiabilities),
+        shortTermDebt: r(s.shortLongTermDebt), accountPayables: r(s.accountsPayable),
+        longTermDebt: r(s.longTermDebt), totalDebt: r(s.totalDebt),
+        totalStockholdersEquity: r(s.totalStockholderEquity),
+        retainedEarnings: r(s.retainedEarnings), commonStock: r(s.commonStock),
+        minorityInterest: r(s.minorityInterest),
+        _source: "yahoo",
+      };
+    }).filter(Boolean);
+
+  // Convert Yahoo income to FMP format
+  const yahooIs = (yahooResult.incomeStatementHistory?.incomeStatementHistory || [])
+    .map(s => {
+      const y = yearOf(s);
+      if (!y) return null;
+      const rev = r(s.totalRevenue), gp = r(s.grossProfit), oi = r(s.operatingIncome);
+      const ni = r(s.netIncome), ebitda = r(s.ebitda);
+      if (rev == null && ni == null && oi == null) return null;
+      return {
+        date: s.endDate?.fmt, calendarYear: y,
+        revenue: rev, costOfRevenue: r(s.costOfRevenue), grossProfit: gp,
         researchAndDevelopmentExpenses: r(s.researchDevelopment),
         sellingGeneralAndAdministrativeExpenses: r(s.sellingGeneralAdministrative),
-        operatingExpenses: r(s.totalOperatingExpenses),
-        operatingIncome: oi,
-        interestExpense: r(s.interestExpense),
-        incomeBeforeTax: r(s.incomeBeforeTax),
-        incomeTaxExpense: r(s.incomeTaxExpense),
-        netIncome: ni,
-        ebitda: ebitda,
-        epsdiluted: r(s.dilutedEPS),
-        eps: r(s.basicEPS),
+        operatingExpenses: r(s.totalOperatingExpenses), operatingIncome: oi,
+        interestExpense: r(s.interestExpense), incomeBeforeTax: r(s.incomeBeforeTax),
+        incomeTaxExpense: r(s.incomeTaxExpense), netIncome: ni, ebitda: ebitda,
+        epsdiluted: r(s.dilutedEPS), eps: r(s.basicEPS),
         weightedAverageShsOutDil: r(s.dilutedAverageShares),
-        // Compute margin ratios
         grossProfitRatio: rev && gp ? gp / rev : null,
         operatingIncomeRatio: rev && oi ? oi / rev : null,
         netIncomeRatio: rev && ni ? ni / rev : null,
         ebitdaratio: rev && ebitda ? ebitda / rev : null,
         _source: "yahoo",
       };
-    });
+    }).filter(Boolean);
 
-  // Convert Yahoo cashflow entries not already in FMP cashflow
-  const yahooCf = yahooResult.cashflowStatementHistory?.cashflowStatements || [];
-  const extraCashflow = yahooCf
-    .filter(s => {
-      const year = s.endDate?.fmt?.substring(0, 4);
-      const hasData = s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null || s.dividendsPaid?.raw != null
-        || s.capitalExpenditures?.raw != null || s.totalCashflowsFromInvestingActivities?.raw != null
-        || s.totalCashFromFinancingActivities?.raw != null || s.repurchaseOfStock?.raw != null
-        || s.changeInCash?.raw != null || s.stockBasedCompensation?.raw != null;
-      return year && !fmpCashflowYears.has(year) && hasData;
-    })
-    .map(s => ({
-      date: s.endDate?.fmt,
-      calendarYear: s.endDate?.fmt?.substring(0, 4),
-      operatingCashFlow: r(s.totalCashFromOperatingActivities),
-      capitalExpenditure: r(s.capitalExpenditures),
-      freeCashFlow: r(s.freeCashFlow),
-      netCashUsedForInvestingActivites: r(s.totalCashflowsFromInvestingActivities),
-      netCashUsedProvidedByFinancingActivities: r(s.totalCashFromFinancingActivities),
-      commonStockRepurchased: r(s.repurchaseOfStock),
-      dividendsPaid: r(s.dividendsPaid),
-      netChangeInCash: r(s.changeInCash),
-      stockBasedCompensation: r(s.stockBasedCompensation),
-      depreciationAndAmortization: r(s.depreciation),
-      _source: "yahoo",
-    }));
+  // Convert Yahoo cashflow to FMP format
+  const yahooCf = (yahooResult.cashflowStatementHistory?.cashflowStatements || [])
+    .map(s => {
+      const y = yearOf(s);
+      if (!y) return null;
+      const hasData = s.totalCashFromOperatingActivities?.raw != null || s.freeCashFlow?.raw != null
+        || s.capitalExpenditures?.raw != null || s.stockBasedCompensation?.raw != null;
+      if (!hasData) return null;
+      return {
+        date: s.endDate?.fmt, calendarYear: y,
+        operatingCashFlow: r(s.totalCashFromOperatingActivities),
+        capitalExpenditure: r(s.capitalExpenditures), freeCashFlow: r(s.freeCashFlow),
+        netCashUsedForInvestingActivites: r(s.totalCashflowsFromInvestingActivities),
+        netCashUsedProvidedByFinancingActivities: r(s.totalCashFromFinancingActivities),
+        commonStockRepurchased: r(s.repurchaseOfStock), dividendsPaid: r(s.dividendsPaid),
+        netChangeInCash: r(s.changeInCash), stockBasedCompensation: r(s.stockBasedCompensation),
+        depreciationAndAmortization: r(s.depreciation),
+        _source: "yahoo",
+      };
+    }).filter(Boolean);
 
-  // Merge and sort (newest first)
-  const sortDesc = (a, b) => (b.date || "").localeCompare(a.date || "");
-  if (extraBalance.length > 0) {
-    fmpData.balance = [...(fmpData.balance || []), ...extraBalance].sort(sortDesc);
-  }
-  if (extraIncome.length > 0) {
-    fmpData.income = [...(fmpData.income || []), ...extraIncome].sort(sortDesc);
-  }
-  if (extraCashflow.length > 0) {
-    fmpData.cashflow = [...(fmpData.cashflow || []), ...extraCashflow].sort(sortDesc);
-  }
+  // Field-level merge (fills null fields in existing FMP years + adds new years)
+  if (!fmpData.balance) fmpData.balance = [];
+  if (!fmpData.income) fmpData.income = [];
+  if (!fmpData.cashflow) fmpData.cashflow = [];
+  mergeStatements(fmpData.balance, yahooBs, sortDesc);
+  mergeStatements(fmpData.income, yahooIs, sortDesc);
+  mergeStatements(fmpData.cashflow, yahooCf, sortDesc);
 
   return fmpData;
 }
@@ -803,7 +751,7 @@ export async function fetchStockData(sym) {
         if (!baseFmpData) baseFmpData = { income: [], balance: [], cashflow: [] };
 
         // Extend with SEC EDGAR data (fills older years not covered by FMP/Yahoo)
-        if (secResult?.income?.length > 0) {
+        if (secResult?.income?.length > 0 || secResult?.balance?.length > 0 || secResult?.cashflow?.length > 0) {
           extendWithSec(baseFmpData, secResult);
         }
 
@@ -1013,7 +961,7 @@ export async function fetchStockData(sym) {
           warn(`[FF] ${sym} fallback: timeseries ajouté IS=${tsData.incomeStatements?.length||0}`);
         }
       }
-      if (secData?.income?.length > 0) {
+      if (secData?.income?.length > 0 || secData?.balance?.length > 0 || secData?.cashflow?.length > 0) {
         extendWithSec(chartResult._fmpData, secData);
       }
       // Try Macrotrends for stocks with limited coverage

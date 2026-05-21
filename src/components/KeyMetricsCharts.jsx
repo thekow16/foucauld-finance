@@ -162,7 +162,7 @@ export function buildSeries(data) {
       const y = d?.calendarYear || d?.date?.slice(0, 4);
       if (!y) return;
       const e = byYear.get(y) || { year: y };
-      byYear.set(y, { ...e, year: y, cash: d.cashAndCashEquivalents ?? e.cash, debt: d.totalDebt ?? e.debt, assets: d.totalAssets ?? e.assets, currentLiabilities: d.totalCurrentLiabilities ?? e.currentLiabilities });
+      byYear.set(y, { ...e, year: y, cash: d.cashAndCashEquivalents ?? e.cash, debt: d.totalDebt ?? d.longTermDebt ?? e.debt, assets: d.totalAssets ?? e.assets, currentLiabilities: d.totalCurrentLiabilities ?? e.currentLiabilities });
     });
   }
 
@@ -180,11 +180,11 @@ export function buildSeries(data) {
 function enrich(d) {
   const investedCapital =
     d.assets != null && d.currentLiabilities != null ? d.assets - d.currentLiabilities : null;
-  const roce = investedCapital && d.ebit != null ? d.ebit / investedCapital : null;
-  const fcfMargin = d.fcf != null && d.revenue ? d.fcf / d.revenue : null;
-  const fcfPerShare = d.fcf != null && d.shares ? d.fcf / d.shares : null;
+  const roce = investedCapital != null && investedCapital !== 0 && d.ebit != null ? d.ebit / investedCapital : null;
+  const fcfMargin = d.fcf != null && d.revenue != null && d.revenue !== 0 ? d.fcf / d.revenue : null;
+  const fcfPerShare = d.fcf != null && d.shares != null && d.shares !== 0 ? d.fcf / d.shares : null;
   const dividendPerShare =
-    d.dividendsPaid != null && d.shares ? Math.abs(d.dividendsPaid) / d.shares : null;
+    d.dividendsPaid != null && d.shares != null && d.shares !== 0 ? Math.abs(d.dividendsPaid) / d.shares : null;
   return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare };
 }
 
@@ -630,6 +630,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               stroke="#ea580c"
               strokeWidth={strokeW}
               fill="url(#gradRoce)"
+              connectNulls
               dot={{ r: dotRadius, fill: "#ea580c", strokeWidth: 0 }}
               activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
             />
@@ -657,6 +658,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
               stroke="#16a34a"
               strokeWidth={strokeW}
               fill="url(#gradFcfMargin)"
+              connectNulls
               dot={{ r: dotRadius, fill: "#16a34a", strokeWidth: 0 }}
               activeDot={{ r: activeDotRadius, stroke: "#fff", strokeWidth: 2 }}
             />
