@@ -1,6 +1,7 @@
 import { warn } from "./log";
 import { fetchProfile, fetchAllFinancials, fetchAllQuarterlyFinancials } from "./fmpApi";
 import { fetchSecFinancials } from "./secApi";
+import { fetchMacrotrendsFinancials } from "./macrotrendsApi";
 import { WORKER_URL, YF, FREE_PROXIES, checkWorkerHealth, tryFetch, yfFetch } from "./proxy";
 import { getCachedData, setCachedData } from "./cache";
 
@@ -576,6 +577,28 @@ function extendWithSec(fmpData, secResult) {
   return fmpData;
 }
 
+// Extend with Macrotrends data (best-effort, for non-US stocks with limited coverage)
+function extendWithMacrotrends(fmpData, mtResult) {
+  if (!fmpData || !mtResult) return fmpData;
+  const sortDesc = (a, b) => (b.date || b.calendarYear || "").localeCompare(a.date || a.calendarYear || "");
+  const yearsIn = (arr) => {
+    const s = new Set();
+    for (const d of (arr || [])) {
+      const y = d.calendarYear || d.date?.substring(0, 4);
+      if (y) s.add(y);
+    }
+    return s;
+  };
+  const ei = (mtResult.income || []).filter(d => !yearsIn(fmpData.income).has(d.calendarYear));
+  const eb = (mtResult.balance || []).filter(d => !yearsIn(fmpData.balance).has(d.calendarYear));
+  const ec = (mtResult.cashflow || []).filter(d => !yearsIn(fmpData.cashflow).has(d.calendarYear));
+  if (ei.length) fmpData.income = [...(fmpData.income || []), ...ei].sort(sortDesc);
+  if (eb.length) fmpData.balance = [...(fmpData.balance || []), ...eb].sort(sortDesc);
+  if (ec.length) fmpData.cashflow = [...(fmpData.cashflow || []), ...ec].sort(sortDesc);
+  warn(`[FF] extendWithMacrotrends: added IS=${ei.length} BS=${eb.length} CF=${ec.length} years`);
+  return fmpData;
+}
+
 // Convert Yahoo data entirely to FMP format (when FMP key missing or FMP fails)
 function yahooToFmpData(yahooResult) {
   if (!yahooResult) return null;
@@ -768,6 +791,20 @@ export async function fetchStockData(sym) {
         // Extend with SEC EDGAR data (fills older years not covered by FMP/Yahoo)
         if (secResult?.income?.length > 0) {
           extendWithSec(baseFmpData, secResult);
+        }
+
+        // Try Macrotrends for non-US stocks with limited coverage
+        const incomeYearCount = new Set((baseFmpData.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean)).size;
+        if (incomeYearCount <= 8) {
+          const companyName = yahooResult.price?.longName || yahooResult.price?.shortName || "";
+          try {
+            const mtResult = await fetchMacrotrendsFinancials(sym, companyName);
+            if (mtResult?.income?.length > 0) {
+              extendWithMacrotrends(baseFmpData, mtResult);
+            }
+          } catch (e) {
+            warn("[FF] Macrotrends échoué:", e.message);
+          }
         }
 
         if (baseFmpData.income?.length > 0 || baseFmpData.balance?.length > 0) {
@@ -964,6 +1001,19 @@ export async function fetchStockData(sym) {
       }
       if (secData?.income?.length > 0) {
         extendWithSec(chartResult._fmpData, secData);
+      }
+      // Try Macrotrends for stocks with limited coverage
+      const fallbackYearCount = new Set((chartResult._fmpData?.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean)).size;
+      if (fallbackYearCount <= 8) {
+        const companyName = fp?.companyName || meta.shortName || "";
+        try {
+          const mtData = await fetchMacrotrendsFinancials(sym, companyName);
+          if (mtData?.income?.length > 0) {
+            extendWithMacrotrends(chartResult._fmpData, mtData);
+          }
+        } catch (e) {
+          warn("[FF] Macrotrends (fallback) échoué:", e.message);
+        }
       }
       if (qFins) {
         const fmpQuarterly = buildFmpQuarterlyData(qFins);

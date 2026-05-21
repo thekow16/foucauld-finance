@@ -23,6 +23,7 @@ const ALLOWED_HOSTS = [
   "efts.sec.gov",
   "api.anthropic.com",
   "financialmodelingprep.com",
+  "www.macrotrends.net",
 ];
 
 // ── Rate limiter par IP (en mémoire, reset au redéploiement) ──
@@ -263,6 +264,23 @@ export default {
         return new Response(body, {
           status: resp.status,
           headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
+        });
+      }
+
+      // ── Macrotrends : proxy HTML avec headers navigateur ──
+      if (targetUrl.hostname === "www.macrotrends.net") {
+        const resp = await fetch(targetUrl.toString(), {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+          },
+        });
+        const body = await resp.text();
+        const ct = resp.headers.get("Content-Type") || "text/html";
+        return new Response(body, {
+          status: resp.status,
+          headers: { "Content-Type": ct, ...getCorsHeaders(request), "Cache-Control": "public, max-age=86400" },
         });
       }
 
