@@ -137,29 +137,29 @@ export function buildSeries(data) {
     });
   });
 
-  // 2) FMP data overwrites Yahoo for years it covers (higher quality)
+  // 2) FMP data enriches Yahoo (only overwrites when FMP has actual data)
   if (fmp?.income?.length) {
     fmp.income.forEach((d) => {
       const y = d?.calendarYear || d?.date?.slice(0, 4);
       if (!y) return;
-      const existing = byYear.get(y) || { year: y };
-      byYear.set(y, { ...existing, year: y, revenue: d.revenue, shares: d.weightedAverageShsOutDil, ebit: d.operatingIncome });
+      const e = byYear.get(y) || { year: y };
+      byYear.set(y, { ...e, year: y, revenue: d.revenue ?? e.revenue, shares: d.weightedAverageShsOutDil ?? e.shares, ebit: d.operatingIncome ?? e.ebit });
     });
   }
   if (fmp?.cashflow?.length) {
     fmp.cashflow.forEach((d) => {
       const y = d?.calendarYear || d?.date?.slice(0, 4);
       if (!y) return;
-      const existing = byYear.get(y) || { year: y };
-      byYear.set(y, { ...existing, year: y, fcf: d.freeCashFlow, sbc: d.stockBasedCompensation, dividendsPaid: d.dividendsPaid });
+      const e = byYear.get(y) || { year: y };
+      byYear.set(y, { ...e, year: y, fcf: d.freeCashFlow ?? e.fcf, sbc: d.stockBasedCompensation ?? e.sbc, dividendsPaid: d.dividendsPaid ?? e.dividendsPaid });
     });
   }
   if (fmp?.balance?.length) {
     fmp.balance.forEach((d) => {
       const y = d?.calendarYear || d?.date?.slice(0, 4);
       if (!y) return;
-      const existing = byYear.get(y) || { year: y };
-      byYear.set(y, { ...existing, year: y, cash: d.cashAndCashEquivalents, debt: d.totalDebt, assets: d.totalAssets, currentLiabilities: d.totalCurrentLiabilities });
+      const e = byYear.get(y) || { year: y };
+      byYear.set(y, { ...e, year: y, cash: d.cashAndCashEquivalents ?? e.cash, debt: d.totalDebt ?? e.debt, assets: d.totalAssets ?? e.assets, currentLiabilities: d.totalCurrentLiabilities ?? e.currentLiabilities });
     });
   }
 

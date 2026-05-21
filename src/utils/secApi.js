@@ -60,7 +60,7 @@ function extractAnnual(concept, unit = "USD") {
   if (!entries) return new Map();
   const byFy = new Map();
   for (const e of entries) {
-    if (e.form !== "10-K" && e.form !== "10-K/A" && e.form !== "10-KT" && e.form !== "10-KSB") continue;
+    if (e.form !== "10-K" && e.form !== "10-K/A" && e.form !== "10-KT" && e.form !== "10-KSB" && e.form !== "20-F" && e.form !== "20-F/A") continue;
     if (e.fp !== "FY") continue;
     const fy = String(e.fy);
     const existing = byFy.get(fy);
@@ -93,25 +93,43 @@ export async function fetchSecFinancials(ticker) {
   warn(`[SEC] ${ticker}: CIK=${cik}, chargement companyfacts...`);
   const data = await secFetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`);
   const gaap = data?.facts?.["us-gaap"];
-  if (!gaap) {
-    warn(`[SEC] ${ticker}: pas de données us-gaap`);
+  const ifrs = data?.facts?.["ifrs-full"];
+  const facts = gaap || ifrs;
+  if (!facts) {
+    warn(`[SEC] ${ticker}: pas de données us-gaap ni ifrs-full`);
     return null;
   }
 
-  const revenue = tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet", "SalesRevenueServicesNet"]);
-  const opIncome = tryExtract(gaap, ["OperatingIncomeLoss", "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"]);
-  const shares = tryExtract(gaap, ["WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "CommonStockSharesOutstanding", "EntityCommonStockSharesOutstanding"], "shares");
-  const ocf = tryExtract(gaap, ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"]);
-  const capex = tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements"]);
-  const sbc = tryExtract(gaap, ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]);
-  const divs = tryExtract(gaap, ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"]);
-  const cash = tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"]);
-  const debt = tryExtract(gaap, ["LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"]);
-  const assets = tryExtract(gaap, ["Assets"]);
-  const curLiab = tryExtract(gaap, ["LiabilitiesCurrent"]);
+  const revenue = gaap
+    ? tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet", "SalesRevenueServicesNet"])
+    : tryExtract(ifrs, ["Revenue", "RevenueFromContractsWithCustomers"]);
+  const opIncome = gaap
+    ? tryExtract(gaap, ["OperatingIncomeLoss", "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"])
+    : tryExtract(ifrs, ["ProfitLossFromOperatingActivities", "OperatingProfit"]);
+  const shares = tryExtract(facts, ["WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "CommonStockSharesOutstanding", "EntityCommonStockSharesOutstanding", "WeightedAverageShares"], "shares");
+  const ocf = gaap
+    ? tryExtract(gaap, ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"])
+    : tryExtract(ifrs, ["CashFlowsFromUsedInOperatingActivities"]);
+  const capex = gaap
+    ? tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements"])
+    : tryExtract(ifrs, ["PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"]);
+  const sbc = tryExtract(facts, ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]);
+  const divs = gaap
+    ? tryExtract(gaap, ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"])
+    : tryExtract(ifrs, ["DividendsPaidClassifiedAsFinancingActivities", "DividendsPaid"]);
+  const cash = gaap
+    ? tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"])
+    : tryExtract(ifrs, ["CashAndCashEquivalents"]);
+  const debt = gaap
+    ? tryExtract(gaap, ["LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"])
+    : tryExtract(ifrs, ["NoncurrentLiabilities", "LongtermBorrowings"]);
+  const assets = tryExtract(facts, ["Assets"]);
+  const curLiab = gaap
+    ? tryExtract(gaap, ["LiabilitiesCurrent"])
+    : tryExtract(ifrs, ["CurrentLiabilities"]);
 
   const allYears = new Set();
-  for (const m of [revenue, opIncome, ocf, assets]) {
+  for (const m of [revenue, opIncome, shares, ocf, capex, sbc, divs, cash, debt, assets, curLiab]) {
     for (const fy of m.keys()) allYears.add(fy);
   }
   if (allYears.size === 0) return null;
