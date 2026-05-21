@@ -89,8 +89,8 @@ async function fetchYahooTimeseries(sym) {
   // Try both query2 and query1 hostnames for resilience
   const hosts = [YF, YF.replace("query2", "query1")];
 
-  // Quick fetch: try Worker proxy, then up to 3 CORS fallbacks
-  const quickFetch = async (url, label) => {
+  // Robust fetch: try Worker proxy, then ALL CORS proxies
+  const robustFetch = async (url, label) => {
     if (WORKER_URL) {
       try {
         return await tryFetch(`${WORKER_URL}?url=${encodeURIComponent(url)}`);
@@ -98,7 +98,7 @@ async function fetchYahooTimeseries(sym) {
         warn(`[FF] timeseries ${label} Worker failed:`, e.message);
       }
     }
-    for (let i = 0; i < Math.min(3, FREE_PROXIES.length); i++) {
+    for (let i = 0; i < FREE_PROXIES.length; i++) {
       try {
         const { url: proxyUrl, unwrap } = FREE_PROXIES[i](url);
         return await tryFetch(proxyUrl, unwrap);
@@ -113,9 +113,13 @@ async function fetchYahooTimeseries(sym) {
   const fetchBatch = async (fields, label) => {
     for (const host of hosts) {
       const url = `${host}/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}?period1=${fortyYearsAgo}&period2=${now}&merge=false&padTimeSeries=false&type=${fields.join(",")}`;
-      const result = await quickFetch(url, `${label} (${host.includes("query1") ? "q1" : "q2"})`);
-      if (result?.timeseries?.result?.length > 0) return result;
+      const result = await robustFetch(url, `${label} (${host.includes("query1") ? "q1" : "q2"})`);
+      if (result?.timeseries?.result?.length > 0) {
+        warn(`[FF] timeseries ${label}: ${result.timeseries.result.length} séries OK`);
+        return result;
+      }
     }
+    warn(`[FF] timeseries ${label}: ÉCHEC sur tous les proxies`);
     return null;
   };
 
@@ -739,7 +743,9 @@ export async function fetchStockData(sym) {
           }
           const bsN = (yahooResult.balanceSheetHistory?.balanceSheetStatements || []).length;
           const isN = (yahooResult.incomeStatementHistory?.incomeStatementHistory || []).length;
+          warn(`[FF] ${sym} après merge timeseries: IS=${isN} BS=${bsN}`);
         } else {
+          warn(`[FF] ${sym} timeseries INDISPONIBLE — Yahoo quoteSummary seul`);
           // If no timeseries and no Yahoo BS data, inject FMP data in Yahoo format
           const stillNoBs = !(yahooResult.balanceSheetHistory?.balanceSheetStatements || []).some(s => s.totalAssets?.raw != null);
           if (stillNoBs && fmpResult) {
@@ -766,7 +772,10 @@ export async function fetchStockData(sym) {
 
         if (baseFmpData.income?.length > 0 || baseFmpData.balance?.length > 0) {
           yahooResult._fmpData = baseFmpData;
-          warn(`[FF] ${sym} _fmpData final: IS=${baseFmpData.income?.length || 0} BS=${baseFmpData.balance?.length || 0} CF=${baseFmpData.cashflow?.length || 0}`);
+          const isYears = [...new Set((baseFmpData.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean))].sort();
+          warn(`[FF] ${sym} _fmpData final: IS=${baseFmpData.income?.length || 0} (${isYears[0]||"?"}–${isYears[isYears.length-1]||"?"}) BS=${baseFmpData.balance?.length || 0} CF=${baseFmpData.cashflow?.length || 0}`);
+        } else {
+          warn(`[FF] ${sym} AUCUNE donnée _fmpData — graphiques limités aux ${(yahooResult.incomeStatementHistory?.incomeStatementHistory||[]).length} ans Yahoo quoteSummary`);
         }
 
         // Quarterly data fallback from FMP if needed
@@ -933,13 +942,26 @@ export async function fetchStockData(sym) {
     _fromChart: true,
   };
 
-  // Extend with SEC EDGAR + FMP quarterly data
+  // Extend with Yahoo timeseries + SEC EDGAR + FMP quarterly data
   {
     try {
-      const [secData, qFins] = await Promise.all([
+      const [tsData, secData, qFins] = await Promise.all([
+        fetchYahooTimeseries(sym).catch(e => { warn("[FF] timeseries (fallback) échoué:", e.message); return null; }),
         fetchSecFinancials(sym).catch(e => { warn("[FF] SEC EDGAR échoué:", e.message); return null; }),
         fetchAllQuarterlyFinancials(sym).catch(() => null),
       ]);
+      // Merge timeseries into _fmpData for the fallback path
+      if (tsData && chartResult._fmpData) {
+        const tsAsFmp = yahooToFmpData({
+          incomeStatementHistory: { incomeStatementHistory: tsData.incomeStatements || [] },
+          balanceSheetHistory: { balanceSheetStatements: tsData.balanceSheetStatements || [] },
+          cashflowStatementHistory: { cashflowStatements: tsData.cashflowStatements || [] },
+        });
+        if (tsAsFmp) {
+          extendWithSec(chartResult._fmpData, tsAsFmp);
+          warn(`[FF] ${sym} fallback: timeseries ajouté IS=${tsData.incomeStatements?.length||0}`);
+        }
+      }
       if (secData?.income?.length > 0) {
         extendWithSec(chartResult._fmpData, secData);
       }
@@ -950,7 +972,7 @@ export async function fetchStockData(sym) {
         }
       }
     } catch (e) {
-      warn("[FF] SEC/FMP quarterly fetch échoué:", e.message);
+      warn("[FF] SEC/FMP/timeseries fallback échoué:", e.message);
     }
   }
 
