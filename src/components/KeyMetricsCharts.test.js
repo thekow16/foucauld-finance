@@ -255,6 +255,58 @@ describe("buildSeries", () => {
     expect(rows.find(r => r.year === "2023").shares).toBe(8e9);
   });
 
+  it("detects 2:1 split when FMP has pre-split data", () => {
+    const data = {
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 10e9 }, dilutedAverageShares: { raw: 2e9 } },
+          { endDate: { raw: 1640995200 }, totalRevenue: { raw: 9e9 }, dilutedAverageShares: { raw: 2e9 } },
+        ],
+      },
+      _fmpData: {
+        income: [
+          { calendarYear: "2020", revenue: 8e9, weightedAverageShsOutDil: 950e6 },
+        ],
+        cashflow: [],
+        balance: [],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    const row2020 = rows.find(r => r.year === "2020");
+    expect(row2020.shares).toBeGreaterThan(1.5e9);
+    expect(row2020.shares).toBeLessThan(2.5e9);
+  });
+
+  it("handles multiple splits in the same dataset", () => {
+    const data = {
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 50e9 }, dilutedAverageShares: { raw: 12e9 } },
+          { endDate: { raw: 1640995200 }, totalRevenue: { raw: 45e9 }, dilutedAverageShares: { raw: 12e9 } },
+        ],
+      },
+      _fmpData: {
+        income: [
+          { calendarYear: "2019", revenue: 30e9, weightedAverageShsOutDil: 3e9 },
+          { calendarYear: "2015", revenue: 15e9, weightedAverageShsOutDil: 500e6 },
+        ],
+        cashflow: [],
+        balance: [],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    const all = rows.map(r => r.shares);
+    const min = Math.min(...all);
+    const max = Math.max(...all);
+    expect(max / min).toBeLessThan(1.5);
+  });
+
   it("prefers FMP data when available", () => {
     const data = {
       _fmpData: {

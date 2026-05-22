@@ -97,32 +97,37 @@ function normalizeShares(rows) {
   const withShares = rows.filter(r => r.shares != null && r.shares > 0);
   if (withShares.length < 2) return;
 
-  let maxIdx = -1;
-  let maxRatio = 0;
+  let found = true;
+  while (found) {
+    found = false;
+    let maxIdx = -1;
+    let maxRatio = 0;
 
-  for (let i = 1; i < withShares.length; i++) {
-    const raw = withShares[i].shares / withShares[i - 1].shares;
-    const absRatio = raw > 1 ? raw : 1 / raw;
-    if (absRatio > 3 && absRatio > maxRatio) {
-      maxRatio = absRatio;
-      maxIdx = i;
+    for (let i = 1; i < withShares.length; i++) {
+      const raw = withShares[i].shares / withShares[i - 1].shares;
+      const absRatio = raw > 1 ? raw : 1 / raw;
+      if (absRatio > 1.8 && absRatio > maxRatio) {
+        maxRatio = absRatio;
+        maxIdx = i;
+      }
     }
+
+    if (maxIdx < 0) break;
+
+    const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
+      Math.abs(maxRatio / r - 1) < Math.abs(maxRatio / b - 1) ? r : b
+    );
+    if (Math.abs(maxRatio / best - 1) > 0.15) break;
+
+    const forward = withShares[maxIdx].shares > withShares[maxIdx - 1].shares;
+    if (forward) {
+      for (const row of withShares.slice(0, maxIdx)) row.shares *= best;
+    } else {
+      for (const row of withShares.slice(maxIdx)) row.shares *= best;
+    }
+    console.log(`[FF] normalizeShares: detected ${best}:1 split between ${withShares[maxIdx - 1].year} and ${withShares[maxIdx].year}`);
+    found = true;
   }
-
-  if (maxIdx < 0) return;
-
-  const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
-    Math.abs(maxRatio / r - 1) < Math.abs(maxRatio / b - 1) ? r : b
-  );
-  if (Math.abs(maxRatio / best - 1) > 0.20) return;
-
-  const forward = withShares[maxIdx].shares > withShares[maxIdx - 1].shares;
-  if (forward) {
-    for (const row of withShares.slice(0, maxIdx)) row.shares *= best;
-  } else {
-    for (const row of withShares.slice(maxIdx)) row.shares *= best;
-  }
-  console.log(`[FF] normalizeShares: detected ${best}:1 split between ${withShares[maxIdx - 1].year} and ${withShares[maxIdx].year}`);
 }
 
 /* ── Data builder (historique complet, 20+ ans) ── */
@@ -183,7 +188,7 @@ export function buildSeries(data) {
       const e = byYear.get(y) || { year: y };
       const fmpShares = d.weightedAverageShsOutDil;
       const shares = (fmpShares != null && e.shares != null && e.shares > 0 &&
-        (fmpShares / e.shares > 3 || fmpShares / e.shares < 1 / 3))
+        (fmpShares / e.shares > 1.8 || fmpShares / e.shares < 1 / 1.8))
         ? e.shares : (fmpShares ?? e.shares);
       byYear.set(y, { ...e, year: y, revenue: d.revenue ?? e.revenue, shares, ebit: d.operatingIncome ?? e.ebit });
     });
@@ -257,10 +262,11 @@ function buildQuarterlySeries(data) {
     });
   });
 
-  return [...byQuarter.values()]
-    .map((d) => enrich(d))
+  const raw = [...byQuarter.values()]
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  normalizeShares(raw);
+  return raw.map((d) => enrich(d));
 }
 
 /* ── Growth label rendered above bars ── */
