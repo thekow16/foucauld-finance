@@ -428,7 +428,7 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
       onClick={onToggle}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,.85)",
+        background: "var(--bg, #f7f7f8)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: 24,
       }}
