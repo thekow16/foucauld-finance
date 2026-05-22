@@ -324,11 +324,6 @@ function PieCard({ title, subtitle, accentColor, data }) {
       border: "1px solid var(--border)",
       position: "relative", overflow: "hidden",
     }}>
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0,
-        height: 3, background: accentColor,
-        borderRadius: "16px 16px 0 0",
-      }} />
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", letterSpacing: "-0.2px" }}>
           {title}
