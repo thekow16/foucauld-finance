@@ -8,7 +8,6 @@ const RevenueBreakdown = lazy(() => import("./components/RevenueBreakdown"));
 // Lazy-loaded components (code splitting)
 const CandlestickChart = lazy(() => import("./components/CandlestickChart"));
 const CompareMode = lazy(() => import("./components/CompareMode"));
-const InvestorsTab = lazy(() => import("./components/InvestorsTab"));
 const WatchlistTab = lazy(() => import("./components/WatchlistTab"));
 const MentionsLegales = lazy(() => import("./components/LegalPages").then(m => ({ default: m.MentionsLegales })));
 const PolitiqueConfidentialite = lazy(() => import("./components/LegalPages").then(m => ({ default: m.PolitiqueConfidentialite })));
@@ -51,7 +50,6 @@ export default function Alphaview() {
   const [data, setData] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
   const [showWatchlist, setShowWatchlist] = useState(false);
-  const [showInvestors, setShowInvestors] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(() => getCurrentUser());
   const [legalPage, setLegalPage] = useState(null); // "mentions" | "confidentialite" | "cgu" | "cgv"
@@ -218,7 +216,6 @@ export default function Alphaview() {
       }
       if (e.key === "Escape") {
         setShowWatchlist(false);
-        setShowInvestors(false);
         setShowAuth(false);
         setLegalPage(null);
       }
@@ -242,7 +239,6 @@ export default function Alphaview() {
   const handleSearch = (sym) => {
     setSymbol(sym);
     setShowWatchlist(false);
-    setShowInvestors(false);
     addToHistory(sym);
     // Push state for back/forward navigation
     const url = new URL(window.location);
@@ -261,7 +257,7 @@ export default function Alphaview() {
       {/* CSS extracted to App.css */}
       <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
-      <Header ref={headerRef} onSearch={handleSearch} onShowWatchlist={() => { setShowWatchlist(true); setShowInvestors(false); }} watchlistCount={watchlist.length} onShowInvestors={() => { setShowInvestors(true); setShowWatchlist(false); }} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
+      <Header ref={headerRef} onSearch={handleSearch} onShowWatchlist={() => { setShowWatchlist(true); }} watchlistCount={watchlist.length} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
 
       {workerDown && (
         <div className="worker-banner" role="alert">
@@ -286,13 +282,6 @@ export default function Alphaview() {
           <CGV onBack={() => setLegalPage(null)} />
         ) : legalPage === "retour" ? (
           <ConditionsRetour onBack={() => setLegalPage(null)} />
-        ) : showInvestors ? (
-          <div>
-            <button onClick={() => setShowInvestors(false)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 14, marginBottom: 16, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
-              ← Retour
-            </button>
-            <InvestorsTab onSymbolClick={handleSearch} />
-          </div>
         ) : showWatchlist ? (
           <WatchlistTab
             watchlist={watchlist}
