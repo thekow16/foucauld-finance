@@ -212,7 +212,7 @@ function SearchIcon() {
 /* ── Component ── */
 
 export default forwardRef(function Header(
-  { onSearch, onShowWatchlist, watchlistCount, user, onShowAuth, onLogout, searchHistory = [], dark, onToggleDark },
+  { onSearch, onShowWatchlist, watchlistCount, user, onShowAuth, onLogout, searchHistory = [] },
   ref
 ) {
   const [query, setQuery] = useState("");
@@ -405,25 +405,6 @@ export default forwardRef(function Header(
               </div>
             )}
           </div>
-
-          {/* Dark mode toggle */}
-          <button
-            onClick={onToggleDark}
-            style={{
-              ...navBtn,
-              fontSize: 16,
-              padding: "6px 8px",
-              width: 34,
-              height: 34,
-              justifyContent: "center",
-            }}
-            title={dark ? "Mode clair" : "Mode sombre"}
-            aria-label={dark ? "Activer le mode clair" : "Activer le mode sombre"}
-            onMouseEnter={handleNavEnter}
-            onMouseLeave={handleNavLeave}
-          >
-            {dark ? "☀️" : "🌙"}
-          </button>
 
           {/* Divider */}
           <div style={dividerStyle} />
