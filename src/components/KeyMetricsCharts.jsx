@@ -347,68 +347,66 @@ function avg5(rows, key) {
 }
 
 /* ── Chart card ── */
-function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expanded, onToggle, verdict, children }) {
+function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expanded, onToggle, verdict, wide, children }) {
   const isPositive = cagrLabel && cagrLabel.includes("+");
-  const bgTint = verdict === true ? "rgba(16,185,129,0.07)"
-    : verdict === false ? "rgba(239,68,68,0.07)" : undefined;
+  const bgTint = verdict === true ? "rgba(16,185,129,0.06)"
+    : verdict === false ? "rgba(239,68,68,0.06)" : undefined;
 
   const card = (
     <div
       style={{
         background: bgTint || "var(--card)",
         border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
+        borderRadius: 12,
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
         cursor: "pointer",
+        ...(wide ? { gridColumn: "1 / -1" } : {}),
         ...(expanded ? { width: "100%", maxWidth: 960, margin: "0 auto" } : {}),
       }}
-      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "var(--shadow-md)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.08)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
       onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; } }}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: expanded ? "16px 20px 12px" : "12px 14px 10px",
-        borderBottom: "1px solid var(--border)",
-        gap: 8,
+        padding: expanded ? "14px 20px 8px" : "10px 12px 6px",
+        gap: 6,
       }}>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: expanded ? 15 : 12, color: "var(--text)", letterSpacing: "-0.1px" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: expanded ? 14 : 12, color: "var(--text)", lineHeight: 1.2 }}>
             {title}
           </div>
           {subtitle && (
-            <div style={{ fontSize: expanded ? 12 : 10, color: "var(--text-3, var(--muted))", marginTop: 1 }}>
+            <div style={{ fontSize: expanded ? 11 : 9, color: "var(--text-3, var(--muted))", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {subtitle}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", justifyContent: "flex-end", flexShrink: 0 }}>
           {cagrLabels?.length > 0 && cagrLabels.map((c) => (
             <div key={c.label} style={{
-              fontSize: expanded ? 11 : 9,
+              fontSize: expanded ? 10 : 9,
               fontWeight: 700,
               color: c.positive ? "var(--green)" : "var(--red)",
               background: c.positive ? "var(--green-bg)" : "var(--red-bg)",
-              padding: "2px 6px",
-              borderRadius: 5,
+              padding: "1px 5px",
+              borderRadius: 4,
               whiteSpace: "nowrap",
-              flexShrink: 0,
             }}>
               {c.label} {c.value}
             </div>
           ))}
           {cagrLabel && !cagrLabels?.length && (
             <div style={{
-              fontSize: expanded ? 12 : 10,
+              fontSize: expanded ? 11 : 9,
               fontWeight: 700,
               color: isPositive ? "var(--green)" : "var(--red)",
               background: isPositive ? "var(--green-bg)" : "var(--red-bg)",
-              padding: "2px 8px",
-              borderRadius: 5,
+              padding: "1px 6px",
+              borderRadius: 4,
               whiteSpace: "nowrap",
-              flexShrink: 0,
             }}>
               {cagrLabel}
             </div>
@@ -418,7 +416,7 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
           )}
         </div>
       </div>
-      <div style={{ width: "100%", height: expanded ? "calc(80vh - 80px)" : 240, padding: expanded ? "16px 20px 12px" : "10px 14px 8px" }}>{children}</div>
+      <div style={{ width: "100%", height: expanded ? "calc(80vh - 80px)" : (wide ? 180 : 200), padding: expanded ? "12px 20px 12px" : "4px 10px 8px" }}>{children}</div>
     </div>
   );
 
@@ -579,12 +577,11 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   } : {};
 
   return (
-    <>
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
-        gap: 10,
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))",
+        gap: 8,
         marginBottom: 12,
       }}
     >
@@ -769,11 +766,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </ResponsiveContainer>
       </ChartCard>
 
-    </div>
-
-    {/* FCF par action — pleine largeur, sous la grille */}
-    <div style={{ marginBottom: 12 }}>
-      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")} verdict={v.fcfShare}>
+      {/* 7. FCF par action — pleine largeur */}
+      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")} verdict={v.fcfShare} wide>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
@@ -786,6 +780,5 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </ResponsiveContainer>
       </ChartCard>
     </div>
-    </>
   );
 }
