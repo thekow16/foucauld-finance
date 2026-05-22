@@ -579,6 +579,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   } : {};
 
   return (
+    <>
     <div
       style={{
         display: "grid",
@@ -679,20 +680,6 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* 3. FCF par action */}
-      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")} verdict={v.fcfShare}>
-        <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
-            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
-            <XAxis {...xAxisProps} />
-            <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
-              tickFormatter={(v) => v != null ? `${cs}${v.toFixed(1)}` : ""} />
-            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${cs}${v.toFixed(2)}` : "—"} />} />
-            <Bar dataKey="fcfPerShare" fill="var(--accent, #2563eb)" shape={<RoundedBar />} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
       {/* 4. ROCE */}
       <ChartCard title="ROCE" subtitle={quarterly ? "ROCE trimestriel" : "Return on Capital Employed"} accentColor="#ea580c" expanded={expandedChart === "roce"} onToggle={() => toggle("roce")} verdict={v.roce}>
         <ResponsiveContainer>
@@ -783,5 +770,22 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
     </div>
+
+    {/* FCF par action — pleine largeur, sous la grille */}
+    <div style={{ marginBottom: 12 }}>
+      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")} verdict={v.fcfShare}>
+        <ResponsiveContainer>
+          <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
+            <XAxis {...xAxisProps} />
+            <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
+              tickFormatter={(val) => val != null ? `${cs}${val.toFixed(1)}` : ""} />
+            <Tooltip content={<BaggrTooltip fmt={(val) => val != null ? `${cs}${val.toFixed(2)}` : "—"} />} />
+            <Bar dataKey="fcfPerShare" fill="var(--accent, #2563eb)" shape={<RoundedBar />} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
+    </>
   );
 }
