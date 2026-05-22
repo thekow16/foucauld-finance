@@ -563,7 +563,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   const v = !quarterly ? {
     revenue: (() => { const r = cagr5Rate(rows, "revenue"); return r != null ? r >= 0.10 : null; })(),
     fcf: (() => { const r = cagr5Rate(rows, "fcf"); return r != null ? r >= 0.10 : null; })(),
-    fcfShare: (() => { const r = cagr5Rate(rows, "fcfPerShare"); return r != null ? r >= 0.10 : null; })(),
+    fcfShare: null,
     roce: (() => { const a = avg5(rows, "roce"); return a != null ? a >= 0.15 : null; })(),
     fcfMargin: (() => { const a = avg5(rows, "fcfMargin"); return a != null ? a >= 0.10 : null; })(),
     shares: (() => {
@@ -571,7 +571,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       if (valid.length < 2) return null;
       const last = valid[valid.length - 1];
       const start = valid.find(r => r.year === String(Number(last.year) - 5));
-      return start ? last.shares <= start.shares : null;
+      if (!start) return null;
+      const growth = (last.shares - start.shares) / start.shares;
+      return growth <= 0;
     })(),
     debt: (() => { const last = rows[rows.length - 1]; return last?.debtRepayYears != null ? last.debtRepayYears <= 3 : null; })(),
   } : {};
