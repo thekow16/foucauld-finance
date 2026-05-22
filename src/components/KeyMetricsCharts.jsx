@@ -216,7 +216,9 @@ function enrich(d) {
   const fcfPerShare = d.fcf != null && d.shares != null && d.shares !== 0 ? d.fcf / d.shares : null;
   const dividendPerShare =
     d.dividendsPaid != null && d.shares != null && d.shares !== 0 ? Math.abs(d.dividendsPaid) / d.shares : null;
-  return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare };
+  const netDebt = d.debt != null && d.cash != null ? d.debt - d.cash : null;
+  const fcfToNetDebt = d.fcf != null && netDebt != null && netDebt !== 0 ? d.fcf / netDebt : null;
+  return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare, netDebt, fcfToNetDebt };
 }
 
 /* ── Quarterly data builder ── */
@@ -272,14 +274,25 @@ function GrowthLabels({ data, dataKey }) {
   });
 }
 
-/* ── Custom bar shape with rounded top ── */
+/* ── Custom bar shape with rounded corners ── */
 function RoundedBar(props) {
   const { x, y, width, height, fill } = props;
-  if (!height || height <= 0) return null;
-  const r = Math.min(3, width / 2, height);
+  if (!width || !height) return null;
+  const top = Math.min(y, y + height);
+  const bottom = Math.max(y, y + height);
+  const h = bottom - top;
+  const r = Math.min(3, width / 2, h);
+  if (height >= 0) {
+    return (
+      <path
+        d={`M${x},${bottom} L${x},${top + r} Q${x},${top} ${x + r},${top} L${x + width - r},${top} Q${x + width},${top} ${x + width},${top + r} L${x + width},${bottom} Z`}
+        fill={fill}
+      />
+    );
+  }
   return (
     <path
-      d={`M${x},${y + height} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} Z`}
+      d={`M${x},${top} L${x},${bottom - r} Q${x},${bottom} ${x + r},${bottom} L${x + width - r},${bottom} Q${x + width},${bottom} ${x + width},${bottom - r} L${x + width},${top} Z`}
       fill={fill}
     />
   );
@@ -710,21 +723,21 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* 7. Cash & Dette */}
-      <ChartCard title="Cash & Dette" subtitle={quarterly ? "Trésorerie vs dette (trimestriel)" : "Trésorerie vs dette totale"} accentColor="#14b8a6" expanded={expandedChart === "cashDebt"} onToggle={() => toggle("cashDebt")}>
+      {/* 7. FCF / Dette Nette */}
+      <ChartCard title="FCF / Dette Nette" subtitle={quarterly ? "Ratio trimestriel" : "Capacité de remboursement"} accentColor="#0891b2" expanded={expandedChart === "fcfNetDebt"} onToggle={() => toggle("fcfNetDebt")}>
         <ResponsiveContainer>
-          <BarChart data={rows} barCategoryGap={barGap}>
+          <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid {...gridProps} />
             <XAxis {...xAxisProps} />
-            <YAxis tickFormatter={compact} tick={axisStyle} tickLine={false} axisLine={false} width={52} />
-            <Tooltip content={<BaggrTooltip />} />
-            <Legend
-              wrapperStyle={{ fontSize: 11, fontWeight: 500 }}
-              iconType="circle"
-              iconSize={6}
-            />
-            <Bar dataKey="cash" name="Trésorerie" fill="#14b8a6" shape={<RoundedBar />} />
-            <Bar dataKey="debt" name="Dette" fill="#ef4444" shape={<RoundedBar />} />
+            <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
+              tickFormatter={(v) => v != null ? `${v.toFixed(1)}x` : ""} />
+            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${v.toFixed(2)}x` : "—"} />} />
+            <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.8} />
+            <Bar dataKey="fcfToNetDebt" name="FCF / Dette Nette" shape={<RoundedBar />}>
+              {rows.map((d) => (
+                <Cell key={d.year} fill={d.fcfToNetDebt != null && d.fcfToNetDebt >= 0 ? "#14b8a6" : "#ef4444"} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
