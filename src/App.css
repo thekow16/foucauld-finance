@@ -67,6 +67,39 @@ html { font-size: 14px; }
   --space-10: 40px;
 }
 
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --bg-subtle: #1a1c25;
+  --card: #1a1c25;
+  --card-hover: #22242e;
+  --text: #e8e8ed;
+  --text-2: #a0a0b0;
+  --text-3: #6e6e82;
+  --text-secondary: var(--text-2);
+  --muted: #55556a;
+  --border: #2a2c38;
+  --border-2: #363848;
+  --accent: oklch(62% 0.20 242);
+  --accent-hover: oklch(56% 0.20 242);
+  --accent-subtle: oklch(22% 0.06 242);
+  --accent-muted: oklch(45% 0.12 242);
+  --accent-light: var(--accent-subtle);
+  --accent-dark: var(--accent-hover);
+  --green: oklch(65% 0.17 152);
+  --green-bg: oklch(22% 0.06 152);
+  --red: oklch(62% 0.20 25);
+  --red-bg: oklch(22% 0.06 25);
+  --orange: oklch(72% 0.16 58);
+  --orange-bg: oklch(22% 0.05 58);
+  --highlight-row: #22242e;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.2);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,.25), 0 0 0 1px var(--border);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.3), 0 0 0 1px var(--border);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.4), 0 0 0 1px var(--border);
+  --shadow: var(--shadow-sm);
+  color-scheme: dark;
+}
+
 .app {
   font-family: var(--font);
   background: var(--bg);

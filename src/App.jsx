@@ -16,6 +16,7 @@ const CGV = lazy(() => import("./components/LegalPages").then(m => ({ default: m
 const ConditionsRetour = lazy(() => import("./components/LegalPages").then(m => ({ default: m.ConditionsRetour })));
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useAlerts } from "./hooks/useAlerts";
+import { useDarkMode } from "./hooks/useDarkMode";
 import "./App.css";
 import { fetchStockData, classifyError, checkWorkerHealth, peekCache } from "./utils/api";
 import { getCurrentUser, logoutUser } from "./utils/auth";
@@ -44,6 +45,7 @@ function getInitialSymbol() {
 }
 
 export default function Alphaview() {
+  const [dark, toggleDark] = useDarkMode();
   const [symbol, setSymbol] = useState(getInitialSymbol);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -257,7 +259,7 @@ export default function Alphaview() {
       {/* CSS extracted to App.css */}
       <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
-      <Header ref={headerRef} onSearch={handleSearch} onShowWatchlist={() => { setShowWatchlist(true); }} watchlistCount={watchlist.length} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} />
+      <Header ref={headerRef} onSearch={handleSearch} onShowWatchlist={() => { setShowWatchlist(true); }} watchlistCount={watchlist.length} user={user} onShowAuth={() => setShowAuth(true)} onLogout={handleLogout} searchHistory={getSearchHistory()} dark={dark} onToggleDark={toggleDark} />
 
       {workerDown && (
         <div className="worker-banner" role="alert">
@@ -391,7 +393,7 @@ export default function Alphaview() {
 
             <RevenueBreakdown data={data} symbol={symbol} />
 
-            <CandlestickChart symbol={symbol} currency={data?.price?.currency} />
+            <CandlestickChart symbol={symbol} dark={dark} currency={data?.price?.currency} />
 
             <Suspense fallback={<div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Chargement…</div>}>
               <CompareMode currentSymbol={symbol} currentData={data} />
