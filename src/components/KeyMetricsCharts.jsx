@@ -416,7 +416,7 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
           )}
         </div>
       </div>
-      <div style={{ width: "100%", height: expanded ? "calc(80vh - 80px)" : (wide ? 180 : 200), padding: expanded ? "12px 20px 12px" : "4px 10px 8px" }}>{children}</div>
+      <div style={{ width: "100%", height: expanded ? "calc(80vh - 80px)" : (wide ? 220 : 260), padding: expanded ? "12px 20px 12px" : "4px 10px 8px" }}>{children}</div>
     </div>
   );
 
