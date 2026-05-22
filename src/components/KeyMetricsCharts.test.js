@@ -203,6 +203,37 @@ describe("buildSeries", () => {
     expect(row2018.shares).toBeLessThan(16e9);
   });
 
+  it("correctly normalizes 25:1 split even with buyback-driven share decline (BKNG)", () => {
+    const data = {
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1735689600 }, totalRevenue: { raw: 23e9 }, dilutedAverageShares: { raw: 850e6 } },
+          { endDate: { raw: 1704067200 }, totalRevenue: { raw: 21e9 }, dilutedAverageShares: { raw: 913e6 } },
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 17e9 }, dilutedAverageShares: { raw: 1.0e9 } },
+        ],
+      },
+      _fmpData: {
+        income: [
+          { calendarYear: "2019", revenue: 15e9, weightedAverageShsOutDil: 43.5e6 },
+          { calendarYear: "2018", revenue: 14.5e9, weightedAverageShsOutDil: 48e6 },
+          { calendarYear: "2015", revenue: 9.2e9, weightedAverageShsOutDil: 52e6 },
+        ],
+        cashflow: [],
+        balance: [],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    const row2015 = rows.find(r => r.year === "2015");
+    const row2019 = rows.find(r => r.year === "2019");
+    expect(row2015.shares).toBeGreaterThan(1e9);
+    expect(row2015.shares).toBeLessThan(1.6e9);
+    expect(row2019.shares).toBeGreaterThan(900e6);
+    expect(row2019.shares).toBeLessThan(1.3e9);
+  });
+
   it("does not over-correct legitimate share count differences from buybacks", () => {
     const data = {
       incomeStatementHistory: {

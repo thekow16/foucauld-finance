@@ -95,25 +95,34 @@ const COMMON_SPLIT_RATIOS = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 50, 10
 
 function normalizeShares(rows) {
   const withShares = rows.filter(r => r.shares != null && r.shares > 0);
-  if (withShares.length < 3) return;
-  const recent = withShares.slice(-3).map(r => r.shares).sort((a, b) => a - b);
-  const ref = recent[Math.floor(recent.length / 2)];
-  for (const row of rows) {
-    if (row.shares == null || row.shares <= 0) continue;
-    const ratio = ref / row.shares;
-    if (ratio > 1.8) {
-      const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
-        Math.abs(ratio / r - 1) < Math.abs(ratio / b - 1) ? r : b
-      );
-      if (Math.abs(ratio / best - 1) < 0.15) row.shares *= best;
-    } else if (ratio < 0.55) {
-      const invRatio = 1 / ratio;
-      const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
-        Math.abs(invRatio / r - 1) < Math.abs(invRatio / b - 1) ? r : b
-      );
-      if (Math.abs(invRatio / best - 1) < 0.15) row.shares /= best;
+  if (withShares.length < 2) return;
+
+  let maxIdx = -1;
+  let maxRatio = 0;
+
+  for (let i = 1; i < withShares.length; i++) {
+    const raw = withShares[i].shares / withShares[i - 1].shares;
+    const absRatio = raw > 1 ? raw : 1 / raw;
+    if (absRatio > 3 && absRatio > maxRatio) {
+      maxRatio = absRatio;
+      maxIdx = i;
     }
   }
+
+  if (maxIdx < 0) return;
+
+  const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
+    Math.abs(maxRatio / r - 1) < Math.abs(maxRatio / b - 1) ? r : b
+  );
+  if (Math.abs(maxRatio / best - 1) > 0.20) return;
+
+  const forward = withShares[maxIdx].shares > withShares[maxIdx - 1].shares;
+  if (forward) {
+    for (const row of withShares.slice(0, maxIdx)) row.shares *= best;
+  } else {
+    for (const row of withShares.slice(maxIdx)) row.shares *= best;
+  }
+  console.log(`[FF] normalizeShares: detected ${best}:1 split between ${withShares[maxIdx - 1].year} and ${withShares[maxIdx].year}`);
 }
 
 /* ── Data builder (historique complet, 20+ ans) ── */
