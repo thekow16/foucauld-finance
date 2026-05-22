@@ -31,8 +31,8 @@ html { font-size: 14px; }
   --text-3: #8c8c9a;
   --text-secondary: var(--text-2);
   --muted: #b0b0be;
-  --border: #e4e4ea;
-  --border-2: #d0d0da;
+  --border: #c8c8d2;
+  --border-2: #a0a0b0;
   --accent: oklch(52% 0.22 242);
   --accent-hover: oklch(46% 0.22 242);
   --accent-subtle: oklch(96% 0.04 242);
@@ -46,10 +46,10 @@ html { font-size: 14px; }
   --orange: oklch(68% 0.18 58);
   --orange-bg: oklch(97% 0.04 58);
   --highlight-row: #f5f5f8;
-  --shadow-xs: 0 1px 2px rgba(0,0,0,.05);
-  --shadow-sm: 0 1px 4px rgba(0,0,0,.06), 0 0 0 1px var(--border);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.07), 0 0 0 1px var(--border);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,.10), 0 0 0 1px var(--border);
+  --shadow-xs: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.10), 0 0 0 1px var(--border);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.12), 0 0 0 1px var(--border);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.16), 0 0 0 1px var(--border);
   --shadow: var(--shadow-sm);
   --radius: 10px;
   --radius-sm: 7px;
@@ -242,12 +242,12 @@ html { font-size: 14px; }
   background: var(--card);
   border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,.08);
   margin-bottom: 12px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
 }
 .card:hover {
-  box-shadow: none;
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
 }
 
 .stock-name {
