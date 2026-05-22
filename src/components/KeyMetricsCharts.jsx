@@ -329,14 +329,33 @@ function BaggrTooltip({ active, payload, label, fmt }) {
   );
 }
 
+/* ── Verdict helpers (background tint) ── */
+function cagr5Rate(rows, key) {
+  const valid = rows.filter(r => r[key] != null && r[key] > 0);
+  if (valid.length < 2) return null;
+  const lastYear = Number(valid[valid.length - 1].year);
+  const start = valid.find(r => r.year === String(lastYear - 5));
+  if (!start || start[key] <= 0) return null;
+  return Math.pow(valid[valid.length - 1][key] / start[key], 1 / 5) - 1;
+}
+
+function avg5(rows, key) {
+  const valid = rows.filter(r => r[key] != null);
+  const last5 = valid.slice(-5);
+  if (last5.length === 0) return null;
+  return last5.reduce((s, r) => s + r[key], 0) / last5.length;
+}
+
 /* ── Chart card ── */
-function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expanded, onToggle, children }) {
+function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expanded, onToggle, verdict, children }) {
   const isPositive = cagrLabel && cagrLabel.includes("+");
+  const bgTint = verdict === true ? "rgba(16,185,129,0.07)"
+    : verdict === false ? "rgba(239,68,68,0.07)" : undefined;
 
   const card = (
     <div
       style={{
-        background: "var(--card)",
+        background: bgTint || "var(--card)",
         border: "1px solid var(--border)",
         borderRadius: "var(--radius-lg)",
         overflow: "hidden",
@@ -540,6 +559,23 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
 
   const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
 
+  // Verdicts (fond vert/rouge)
+  const v = !quarterly ? {
+    revenue: (() => { const r = cagr5Rate(rows, "revenue"); return r != null ? r >= 0.10 : null; })(),
+    fcf: (() => { const r = cagr5Rate(rows, "fcf"); return r != null ? r >= 0.10 : null; })(),
+    fcfShare: (() => { const r = cagr5Rate(rows, "fcfPerShare"); return r != null ? r >= 0.10 : null; })(),
+    roce: (() => { const a = avg5(rows, "roce"); return a != null ? a >= 0.15 : null; })(),
+    fcfMargin: (() => { const a = avg5(rows, "fcfMargin"); return a != null ? a >= 0.10 : null; })(),
+    shares: (() => {
+      const valid = rows.filter(r => r.shares != null && r.shares > 0);
+      if (valid.length < 2) return null;
+      const last = valid[valid.length - 1];
+      const start = valid.find(r => r.year === String(Number(last.year) - 5));
+      return start ? last.shares <= start.shares : null;
+    })(),
+    debt: (() => { const last = rows[rows.length - 1]; return last?.debtRepayYears != null ? last.debtRepayYears <= 3 : null; })(),
+  } : {};
+
   return (
     <div
       style={{
@@ -606,7 +642,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </div>
       )}
       {/* 1. Chiffre d'affaires */}
-      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabels={quarterly ? undefined : cagrMulti(rows, "revenue")} cagrLabel={quarterly ? cagr(rows, "revenue", true) : undefined} expanded={expandedChart === "revenue"} onToggle={() => toggle("revenue")}>
+      <ChartCard title="Chiffre d'affaires" subtitle={quarterly ? "Évolution trimestrielle du CA" : "Évolution annuelle du CA"} accentColor="#0891b2" cagrLabels={quarterly ? undefined : cagrMulti(rows, "revenue")} cagrLabel={quarterly ? cagr(rows, "revenue", true) : undefined} expanded={expandedChart === "revenue"} onToggle={() => toggle("revenue")} verdict={v.revenue}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
@@ -619,7 +655,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 2. Free Cash Flow & SBC */}
-      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcf")} cagrLabel={quarterly ? cagr(rows, "fcf", true) : undefined} expanded={expandedChart === "fcf"} onToggle={() => toggle("fcf")}>
+      <ChartCard title="Free Cash Flow & SBC" subtitle={quarterly ? "FCF vs SBC trimestriel" : "FCF vs rémunération en actions"} accentColor="#0d9488" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcf")} cagrLabel={quarterly ? cagr(rows, "fcf", true) : undefined} expanded={expandedChart === "fcf"} onToggle={() => toggle("fcf")} verdict={v.fcf}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={barGap}>
             <CartesianGrid {...gridProps} />
@@ -642,7 +678,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 3. FCF par action */}
-      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")}>
+      <ChartCard title="Free Cash Flow par action" subtitle={quarterly ? "FCF / action (trimestriel)" : "FCF / actions diluées"} accentColor="#2563eb" cagrLabels={quarterly ? undefined : cagrMulti(rows, "fcfPerShare")} cagrLabel={quarterly ? cagr(rows, "fcfPerShare", true) : undefined} expanded={expandedChart === "fcfShare"} onToggle={() => toggle("fcfShare")} verdict={v.fcfShare}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
@@ -656,7 +692,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 4. ROCE */}
-      <ChartCard title="ROCE" subtitle={quarterly ? "ROCE trimestriel" : "Return on Capital Employed"} accentColor="#ea580c" expanded={expandedChart === "roce"} onToggle={() => toggle("roce")}>
+      <ChartCard title="ROCE" subtitle={quarterly ? "ROCE trimestriel" : "Return on Capital Employed"} accentColor="#ea580c" expanded={expandedChart === "roce"} onToggle={() => toggle("roce")} verdict={v.roce}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -685,7 +721,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 5. Marge de FCF */}
-      <ChartCard title="Marge de Free Cash Flow" subtitle={quarterly ? "FCF / CA (trimestriel)" : "FCF / Chiffre d'affaires"} accentColor="#16a34a" expanded={expandedChart === "fcfMargin"} onToggle={() => toggle("fcfMargin")}>
+      <ChartCard title="Marge de Free Cash Flow" subtitle={quarterly ? "FCF / CA (trimestriel)" : "FCF / Chiffre d'affaires"} accentColor="#16a34a" expanded={expandedChart === "fcfMargin"} onToggle={() => toggle("fcfMargin")} verdict={v.fcfMargin}>
         <ResponsiveContainer>
           <AreaChart data={rows}>
             <defs>
@@ -713,7 +749,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 6. Actions en circulation */}
-      <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1" expanded={expandedChart === "shares"} onToggle={() => toggle("shares")}>
+      <ChartCard title="Actions en circulation" subtitle={quarterly ? "Actions diluées (trimestriel)" : "Nombre d'actions diluées"} accentColor="#6366f1" expanded={expandedChart === "shares"} onToggle={() => toggle("shares")} verdict={v.shares}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
@@ -726,7 +762,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       </ChartCard>
 
       {/* 7. Délai de remboursement */}
-      <ChartCard title="Remboursement dette" subtitle={quarterly ? "Dette nette / FCF (trimestriel)" : "Années pour rembourser la dette nette avec le FCF"} accentColor="#0891b2" expanded={expandedChart === "debtRepay"} onToggle={() => toggle("debtRepay")}>
+      <ChartCard title="Remboursement dette" subtitle={quarterly ? "Dette nette / FCF (trimestriel)" : "Années pour rembourser la dette nette avec le FCF"} accentColor="#0891b2" expanded={expandedChart === "debtRepay"} onToggle={() => toggle("debtRepay")} verdict={v.debt}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid {...gridProps} />
