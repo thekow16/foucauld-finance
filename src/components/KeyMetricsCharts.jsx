@@ -217,8 +217,10 @@ function enrich(d) {
   const dividendPerShare =
     d.dividendsPaid != null && d.shares != null && d.shares !== 0 ? Math.abs(d.dividendsPaid) / d.shares : null;
   const netDebt = d.debt != null && d.cash != null ? d.debt - d.cash : null;
-  const fcfToNetDebt = d.fcf != null && netDebt != null && netDebt !== 0 ? d.fcf / netDebt : null;
-  return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare, netDebt, fcfToNetDebt };
+  const debtRepayYears = netDebt != null && d.fcf != null
+    ? (netDebt <= 0 ? 0 : (d.fcf > 0 ? netDebt / d.fcf : null))
+    : null;
+  return { ...d, roce, fcfMargin, fcfPerShare, dividendPerShare, debtRepayYears };
 }
 
 /* ── Quarterly data builder ── */
@@ -723,19 +725,19 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* 7. FCF / Dette Nette */}
-      <ChartCard title="FCF / Dette Nette" subtitle={quarterly ? "Ratio trimestriel" : "Capacité de remboursement"} accentColor="#0891b2" expanded={expandedChart === "fcfNetDebt"} onToggle={() => toggle("fcfNetDebt")}>
+      {/* 7. Délai de remboursement */}
+      <ChartCard title="Remboursement dette" subtitle={quarterly ? "Dette nette / FCF (trimestriel)" : "Années pour rembourser la dette nette avec le FCF"} accentColor="#0891b2" expanded={expandedChart === "debtRepay"} onToggle={() => toggle("debtRepay")}>
         <ResponsiveContainer>
           <BarChart data={rows} barCategoryGap={many ? "12%" : "18%"}>
             <CartesianGrid {...gridProps} />
             <XAxis {...xAxisProps} />
             <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={52}
-              tickFormatter={(v) => v != null ? `${v.toFixed(1)}x` : ""} />
-            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? `${v.toFixed(2)}x` : "—"} />} />
-            <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.8} />
-            <Bar dataKey="fcfToNetDebt" name="FCF / Dette Nette" shape={<RoundedBar />}>
+              tickFormatter={(v) => v != null ? `${v.toFixed(0)} ans` : ""} />
+            <Tooltip content={<BaggrTooltip fmt={(v) => v != null ? (v === 0 ? "Tréso. nette positive" : `${v.toFixed(1)} ans`) : "—"} />} />
+            <ReferenceLine y={3} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} label={{ value: "3 ans", position: "right", fill: "var(--muted)", fontSize: 9 }} />
+            <Bar dataKey="debtRepayYears" name="Années" shape={<RoundedBar />}>
               {rows.map((d) => (
-                <Cell key={d.year} fill={d.fcfToNetDebt != null && d.fcfToNetDebt >= 0 ? "#14b8a6" : "#ef4444"} />
+                <Cell key={d.year} fill={d.debtRepayYears == null ? "#94a3b8" : d.debtRepayYears <= 3 ? "#10b981" : d.debtRepayYears <= 7 ? "#f59e0b" : "#ef4444"} />
               ))}
             </Bar>
           </BarChart>
