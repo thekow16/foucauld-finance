@@ -212,7 +212,7 @@ function SearchIcon() {
 /* ── Component ── */
 
 export default forwardRef(function Header(
-  { onSearch, onShowWatchlist, watchlistCount, onShowInvestors, user, onShowAuth, onLogout, searchHistory = [] },
+  { onSearch, onShowWatchlist, watchlistCount, user, onShowAuth, onLogout, searchHistory = [] },
   ref
 ) {
   const [query, setQuery] = useState("");
@@ -317,16 +317,6 @@ export default forwardRef(function Header(
   /* Nav actions (shared desktop & mobile) */
   const navActions = (
     <>
-      <button
-        onClick={() => { onShowInvestors(); setMenuOpen(false); }}
-        style={navBtn}
-        title="Investisseurs"
-        aria-label="Voir les top investisseurs"
-        onMouseEnter={handleNavEnter}
-        onMouseLeave={handleNavLeave}
-      >
-        Investisseurs
-      </button>
       <button
         onClick={() => { onShowWatchlist(); setMenuOpen(false); }}
         style={navBtn}
