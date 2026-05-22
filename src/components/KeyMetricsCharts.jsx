@@ -356,18 +356,18 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
     <div
       style={{
         background: bgTint || "var(--card)",
-        border: "2px solid var(--border-2, #c0c0cc)",
+        border: "2.5px solid #a0a0b0",
         borderRadius: 12,
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
         cursor: "pointer",
-        boxShadow: "0 4px 14px rgba(0,0,0,.10)",
+        boxShadow: "0 6px 20px rgba(0,0,0,.15)",
         ...(wide ? { gridColumn: "1 / -1" } : {}),
         ...(expanded ? { width: "100%", maxWidth: 960, margin: "0 auto" } : {}),
       }}
-      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 8px 28px rgba(0,0,0,.16)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
-      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,.10)"; e.currentTarget.style.transform = "translateY(0)"; } }}
+      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 10px 32px rgba(0,0,0,.22)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,.15)"; e.currentTarget.style.transform = "translateY(0)"; } }}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       <div style={{
@@ -428,7 +428,7 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
       onClick={onToggle}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,.6)", backdropFilter: "blur(6px)",
+        background: "rgba(0,0,0,.85)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: 24,
       }}
