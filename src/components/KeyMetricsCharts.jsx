@@ -356,17 +356,18 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
     <div
       style={{
         background: bgTint || "var(--card)",
-        border: "1px solid var(--border)",
+        border: "1.5px solid var(--border-2, #d0d0da)",
         borderRadius: 12,
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
         cursor: "pointer",
+        boxShadow: "0 2px 8px rgba(0,0,0,.06)",
         ...(wide ? { gridColumn: "1 / -1" } : {}),
         ...(expanded ? { width: "100%", maxWidth: 960, margin: "0 auto" } : {}),
       }}
-      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.08)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; } }}
+      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,.12)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.06)"; e.currentTarget.style.transform = "translateY(0)"; } }}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       <div style={{
