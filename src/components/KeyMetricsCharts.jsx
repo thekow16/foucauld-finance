@@ -93,9 +93,35 @@ function hasFinancialData(d) {
 /* ── Stock-split normalization ── */
 const COMMON_SPLIT_RATIOS = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 50, 100];
 
-function normalizeShares(rows) {
+// Facteurs cumulés plausibles à partir des splits réels (produits de toute
+// sous-séquence contiguë de ratios, ex: splits 2:1 puis 4:1 → {2, 4, 8}).
+function plausibleSplitFactors(events) {
+  const ratios = events.map(e => e.ratio).filter(r => r > 0 && Math.abs(r - 1) > 0.01);
+  const factors = [];
+  for (let i = 0; i < ratios.length; i++) {
+    let p = 1;
+    for (let j = i; j < ratios.length; j++) {
+      p *= ratios[j];
+      const f = p >= 1 ? p : 1 / p;
+      if (f > 1.2 && !factors.some(x => Math.abs(x / f - 1) < 0.01)) factors.push(f);
+    }
+  }
+  return factors;
+}
+
+// splitEvents: [] = l'action n'a jamais splitté (aucune correction),
+// null/undefined = info indisponible (heuristique sur ratios communs).
+function normalizeShares(rows, splitEvents) {
   const withShares = rows.filter(r => r.shares != null && r.shares > 0);
   if (withShares.length < 2) return;
+
+  const eventsKnown = splitEvents != null;
+  const realFactors = eventsKnown ? plausibleSplitFactors(splitEvents) : null;
+  if (eventsKnown && realFactors.length === 0) return;
+
+  const jumpThreshold = eventsKnown ? 1.5 : 1.8;
+  const tolerance = eventsKnown ? 0.35 : 0.15;
+  const candidates = eventsKnown ? realFactors : COMMON_SPLIT_RATIOS;
 
   let found = true;
   while (found) {
@@ -106,7 +132,7 @@ function normalizeShares(rows) {
     for (let i = 1; i < withShares.length; i++) {
       const raw = withShares[i].shares / withShares[i - 1].shares;
       const absRatio = raw > 1 ? raw : 1 / raw;
-      if (absRatio > 1.8 && absRatio > maxRatio) {
+      if (absRatio > jumpThreshold && absRatio > maxRatio) {
         maxRatio = absRatio;
         maxIdx = i;
       }
@@ -114,10 +140,10 @@ function normalizeShares(rows) {
 
     if (maxIdx < 0) break;
 
-    const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
-      Math.abs(maxRatio / r - 1) < Math.abs(maxRatio / b - 1) ? r : b
+    const best = candidates.reduce((b, r) =>
+      Math.abs(Math.log(maxRatio / r)) < Math.abs(Math.log(maxRatio / b)) ? r : b
     );
-    if (Math.abs(maxRatio / best - 1) > 0.15) break;
+    if (Math.abs(maxRatio / best - 1) > tolerance) break;
 
     const forward = withShares[maxIdx].shares > withShares[maxIdx - 1].shares;
     if (forward) {
@@ -125,7 +151,7 @@ function normalizeShares(rows) {
     } else {
       for (const row of withShares.slice(maxIdx)) row.shares *= best;
     }
-    console.log(`[FF] normalizeShares: detected ${best}:1 split between ${withShares[maxIdx - 1].year} and ${withShares[maxIdx].year}`);
+    console.log(`[FF] normalizeShares: ${eventsKnown ? "split réel" : "split estimé"} ${best}:1 entre ${withShares[maxIdx - 1].year} et ${withShares[maxIdx].year}`);
     found = true;
   }
 }
@@ -213,7 +239,7 @@ export function buildSeries(data) {
   const raw = [...byYear.values()]
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-  normalizeShares(raw);
+  normalizeShares(raw, data?._splitEvents);
   const rows = raw.map((d) => enrich(d));
   if (typeof console !== "undefined") {
     const yrs = rows.map(r => r.year).join(",");
@@ -265,7 +291,7 @@ function buildQuarterlySeries(data) {
   const raw = [...byQuarter.values()]
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-  normalizeShares(raw);
+  normalizeShares(raw, data?._splitEvents);
   return raw.map((d) => enrich(d));
 }
 
@@ -571,7 +597,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
     height: 22,
   };
 
-  const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
+  const shortHistory = !quarterly && rows.length > 0 && rows.length < 15;
 
   // Verdicts (fond vert/rouge)
   const v = !quarterly ? {
@@ -653,8 +679,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
           }}
         >
           <span style={{ fontSize: 16 }}>&#9432;</span>
-          Historique limité à {rows.length} ans pour cette action.
-          Certaines actions ont jusqu'à 20+ ans de données disponibles.
+          Historique limité à {rows.length} ans — toutes les sources disponibles
+          (Yahoo, FMP, SEC EDGAR, Macrotrends) ont été combinées pour cette action.
         </div>
       )}
       {/* 1. Chiffre d'affaires */}

@@ -307,6 +307,59 @@ describe("buildSeries", () => {
     expect(max / min).toBeLessThan(1.5);
   });
 
+  it("uses real split events to pick the exact ratio when heuristic would guess wrong", () => {
+    // Jump observé 18.4x : l'heuristique choisirait 20:1 (|18.4/20-1|=0.08),
+    // mais le split réel est 25:1 — les événements réels doivent gagner.
+    const data = {
+      _splitEvents: [{ date: 1775000000, ratio: 25 }],
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1735689600 }, totalRevenue: { raw: 25e9 }, dilutedAverageShares: { raw: 760e6 } },
+          { endDate: { raw: 1704067200 }, totalRevenue: { raw: 23e9 }, dilutedAverageShares: { raw: 780e6 } },
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 21e9 }, dilutedAverageShares: { raw: 800e6 } },
+        ],
+      },
+      _fmpData: {
+        income: [
+          { calendarYear: "2019", revenue: 15e9, weightedAverageShsOutDil: 43.5e6 },
+          { calendarYear: "2018", revenue: 14.5e9, weightedAverageShsOutDil: 48e6 },
+        ],
+        cashflow: [],
+        balance: [],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    const row2019 = rows.find(r => r.year === "2019");
+    expect(row2019.shares).toBeGreaterThan(1.05e9);
+    expect(row2019.shares).toBeLessThan(1.12e9);
+    expect(rows.find(r => r.year === "2018").shares).toBe(48e6 * 25);
+  });
+
+  it("never corrects shares when real split history shows no splits", () => {
+    // Dilution massive réelle (2.2x) : sans info de splits l'heuristique
+    // aurait "corrigé" par 2:1 — avec _splitEvents: [] on ne touche à rien.
+    const data = {
+      _splitEvents: [],
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          { endDate: { raw: 1672531200 }, totalRevenue: { raw: 3e9 }, dilutedAverageShares: { raw: 235e6 } },
+          { endDate: { raw: 1640995200 }, totalRevenue: { raw: 2.5e9 }, dilutedAverageShares: { raw: 230e6 } },
+          { endDate: { raw: 1609459200 }, totalRevenue: { raw: 2e9 }, dilutedAverageShares: { raw: 220e6 } },
+          { endDate: { raw: 1577836800 }, totalRevenue: { raw: 1e9 }, dilutedAverageShares: { raw: 100e6 } },
+        ],
+      },
+      cashflowStatementHistory: { cashflowStatements: [] },
+      balanceSheetHistory: { balanceSheetStatements: [] },
+    };
+
+    const rows = buildSeries(data);
+    expect(rows.find(r => r.year === "2020").shares).toBe(100e6);
+    expect(rows.find(r => r.year === "2021").shares).toBe(220e6);
+  });
+
   it("prefers FMP data when available", () => {
     const data = {
       _fmpData: {
