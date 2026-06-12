@@ -367,12 +367,19 @@ export default function Alphaview() {
 
         {!loading && !error && !data && (
           <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--muted)" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, marginBottom: 16 }}>
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <p style={{ fontSize: 16, fontWeight: 600 }}>Recherchez un symbole pour commencer</p>
-            <p style={{ fontSize: 13, marginTop: 8 }}>Ex : AAPL, MSFT, BNP.PA, MC.PA</p>
+            <div style={{
+              width: 64, height: 64, borderRadius: 16,
+              background: "var(--accent-subtle)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 20px",
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Recherchez un symbole pour commencer</p>
+            <p style={{ fontSize: 14, color: "var(--text-2)" }}>Ex : AAPL, MSFT, BNP.PA, MC.PA</p>
           </div>
         )}
 
@@ -386,7 +393,6 @@ export default function Alphaview() {
               onToggleWatchlist={handleToggleWatchlist}
             />
 
-
             <KeyMetricsCharts data={data} currency={data?.price?.currency || data?.summaryDetail?.currency || "USD"} />
 
             <RevenueBreakdown data={data} symbol={symbol} />
@@ -398,7 +404,7 @@ export default function Alphaview() {
             </Suspense>
 
             <footer className="footer" role="contentinfo" style={{ textAlign: "center" }}>
-              <strong style={{ color: "#4f46e5" }}>Alphaview</strong>
+              <strong style={{ color: "var(--accent)", fontSize: 13 }}>Alphaview</strong>
               <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>v{__APP_VERSION__}</span>
               <div className="footer-links">
                 <button className="footer-link" onClick={() => setLegalPage("cgv")}>Conditions générales de vente</button>

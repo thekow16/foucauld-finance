@@ -43,6 +43,29 @@ export async function fetchCandleData(sym, interval, range) {
     .filter(Boolean);
 }
 
+// ── Splits réels Yahoo — utilisés pour la normalisation exacte des actions ──
+// Retourne [] si l'action n'a jamais splitté (info fiable), null si le fetch échoue.
+export async function fetchSplitEvents(sym) {
+  try {
+    const json = await yfFetch(`/v8/finance/chart/${sym}?interval=3mo&range=max&events=splits`);
+    const result = json.chart?.result?.[0];
+    if (!result) return null;
+    const splits = result.events?.splits || {};
+    const events = Object.values(splits)
+      .map(s => ({
+        date: s.date,
+        ratio: s.numerator && s.denominator ? s.numerator / s.denominator : null,
+      }))
+      .filter(s => s.ratio && s.date)
+      .sort((a, b) => a.date - b.date);
+    warn(`[FF] ${sym} splits réels: ${events.length ? events.map(e => `${e.ratio}:1 (${new Date(e.date * 1000).getFullYear()})`).join(", ") : "aucun"}`);
+    return events;
+  } catch (e) {
+    warn("[FF] splits fetch échoué:", e.message);
+    return null;
+  }
+}
+
 // ── Yahoo Timeseries API — retourne les données financières détaillées ──
 // L'API quoteSummary ne retourne plus les valeurs financières (seulement endDate),
 // donc on utilise fundamentals-timeseries comme source alternative.
@@ -638,8 +661,8 @@ export async function fetchStockData(sym) {
         const qsIs0 = (yahooResult.incomeStatementHistory?.incomeStatementHistory || [])[0];
         const qsHasValues = qsIs0?.totalRevenue?.raw != null;
 
-        // Fetch timeseries, FMP, and SEC EDGAR in parallel for speed
-        const [ts, fmpResult, secResult] = await Promise.all([
+        // Fetch timeseries, FMP, SEC EDGAR, and real split events in parallel for speed
+        const [ts, fmpResult, secResult, splitEvents] = await Promise.all([
           fetchYahooTimeseries(sym).catch(e => {
             warn("[FF] timeseries échoué:", e.message);
             return null;
@@ -652,7 +675,9 @@ export async function fetchStockData(sym) {
             warn("[FF] SEC EDGAR échoué:", e.message);
             return null;
           }),
+          fetchSplitEvents(sym).catch(() => null),
         ]);
+        if (splitEvents != null) yahooResult._splitEvents = splitEvents;
 
         // Diagnostic: log data coverage from each source
         warn(`[FF] ${sym} quoteSummary: IS=${isCount} BS=${bsCount} CF=${cfCount} hasValues=${qsHasValues}`);
@@ -755,9 +780,9 @@ export async function fetchStockData(sym) {
           extendWithSec(baseFmpData, secResult);
         }
 
-        // Try Macrotrends for non-US stocks with limited coverage
+        // Try Macrotrends whenever we have less than 20 years of history
         const incomeYearCount = new Set((baseFmpData.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean)).size;
-        if (incomeYearCount <= 8) {
+        if (incomeYearCount < 20) {
           const companyName = yahooResult.price?.longName || yahooResult.price?.shortName || "";
           try {
             const mtResult = await fetchMacrotrendsFinancials(sym, companyName);
@@ -944,11 +969,13 @@ export async function fetchStockData(sym) {
   // Extend with Yahoo timeseries + SEC EDGAR + FMP quarterly data
   {
     try {
-      const [tsData, secData, qFins] = await Promise.all([
+      const [tsData, secData, qFins, fbSplitEvents] = await Promise.all([
         fetchYahooTimeseries(sym).catch(e => { warn("[FF] timeseries (fallback) échoué:", e.message); return null; }),
         fetchSecFinancials(sym).catch(e => { warn("[FF] SEC EDGAR échoué:", e.message); return null; }),
         fetchAllQuarterlyFinancials(sym).catch(() => null),
+        fetchSplitEvents(sym).catch(() => null),
       ]);
+      if (fbSplitEvents != null) chartResult._splitEvents = fbSplitEvents;
       // Merge timeseries into _fmpData for the fallback path
       if (tsData && chartResult._fmpData) {
         const tsAsFmp = yahooToFmpData({
@@ -964,9 +991,9 @@ export async function fetchStockData(sym) {
       if (secData?.income?.length > 0 || secData?.balance?.length > 0 || secData?.cashflow?.length > 0) {
         extendWithSec(chartResult._fmpData, secData);
       }
-      // Try Macrotrends for stocks with limited coverage
+      // Try Macrotrends whenever we have less than 20 years of history
       const fallbackYearCount = new Set((chartResult._fmpData?.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean)).size;
-      if (fallbackYearCount <= 8) {
+      if (fallbackYearCount < 20) {
         const companyName = fp?.companyName || meta.shortName || "";
         try {
           const mtData = await fetchMacrotrendsFinancials(sym, companyName);

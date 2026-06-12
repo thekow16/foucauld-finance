@@ -93,36 +93,67 @@ function hasFinancialData(d) {
 /* ── Stock-split normalization ── */
 const COMMON_SPLIT_RATIOS = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 50, 100];
 
-function normalizeShares(rows) {
+// Facteurs cumulés plausibles à partir des splits réels (produits de toute
+// sous-séquence contiguë de ratios, ex: splits 2:1 puis 4:1 → {2, 4, 8}).
+function plausibleSplitFactors(events) {
+  const ratios = events.map(e => e.ratio).filter(r => r > 0 && Math.abs(r - 1) > 0.01);
+  const factors = [];
+  for (let i = 0; i < ratios.length; i++) {
+    let p = 1;
+    for (let j = i; j < ratios.length; j++) {
+      p *= ratios[j];
+      const f = p >= 1 ? p : 1 / p;
+      if (f > 1.2 && !factors.some(x => Math.abs(x / f - 1) < 0.01)) factors.push(f);
+    }
+  }
+  return factors;
+}
+
+// splitEvents: [] = l'action n'a jamais splitté (aucune correction),
+// null/undefined = info indisponible (heuristique sur ratios communs).
+function normalizeShares(rows, splitEvents) {
   const withShares = rows.filter(r => r.shares != null && r.shares > 0);
   if (withShares.length < 2) return;
 
-  let maxIdx = -1;
-  let maxRatio = 0;
+  const eventsKnown = splitEvents != null;
+  const realFactors = eventsKnown ? plausibleSplitFactors(splitEvents) : null;
+  if (eventsKnown && realFactors.length === 0) return;
 
-  for (let i = 1; i < withShares.length; i++) {
-    const raw = withShares[i].shares / withShares[i - 1].shares;
-    const absRatio = raw > 1 ? raw : 1 / raw;
-    if (absRatio > 3 && absRatio > maxRatio) {
-      maxRatio = absRatio;
-      maxIdx = i;
+  const jumpThreshold = eventsKnown ? 1.5 : 1.8;
+  const tolerance = eventsKnown ? 0.35 : 0.15;
+  const candidates = eventsKnown ? realFactors : COMMON_SPLIT_RATIOS;
+
+  let found = true;
+  while (found) {
+    found = false;
+    let maxIdx = -1;
+    let maxRatio = 0;
+
+    for (let i = 1; i < withShares.length; i++) {
+      const raw = withShares[i].shares / withShares[i - 1].shares;
+      const absRatio = raw > 1 ? raw : 1 / raw;
+      if (absRatio > jumpThreshold && absRatio > maxRatio) {
+        maxRatio = absRatio;
+        maxIdx = i;
+      }
     }
+
+    if (maxIdx < 0) break;
+
+    const best = candidates.reduce((b, r) =>
+      Math.abs(Math.log(maxRatio / r)) < Math.abs(Math.log(maxRatio / b)) ? r : b
+    );
+    if (Math.abs(maxRatio / best - 1) > tolerance) break;
+
+    const forward = withShares[maxIdx].shares > withShares[maxIdx - 1].shares;
+    if (forward) {
+      for (const row of withShares.slice(0, maxIdx)) row.shares *= best;
+    } else {
+      for (const row of withShares.slice(maxIdx)) row.shares *= best;
+    }
+    console.log(`[FF] normalizeShares: ${eventsKnown ? "split réel" : "split estimé"} ${best}:1 entre ${withShares[maxIdx - 1].year} et ${withShares[maxIdx].year}`);
+    found = true;
   }
-
-  if (maxIdx < 0) return;
-
-  const best = COMMON_SPLIT_RATIOS.reduce((b, r) =>
-    Math.abs(maxRatio / r - 1) < Math.abs(maxRatio / b - 1) ? r : b
-  );
-  if (Math.abs(maxRatio / best - 1) > 0.20) return;
-
-  const forward = withShares[maxIdx].shares > withShares[maxIdx - 1].shares;
-  if (forward) {
-    for (const row of withShares.slice(0, maxIdx)) row.shares *= best;
-  } else {
-    for (const row of withShares.slice(maxIdx)) row.shares *= best;
-  }
-  console.log(`[FF] normalizeShares: detected ${best}:1 split between ${withShares[maxIdx - 1].year} and ${withShares[maxIdx].year}`);
 }
 
 /* ── Data builder (historique complet, 20+ ans) ── */
@@ -183,7 +214,7 @@ export function buildSeries(data) {
       const e = byYear.get(y) || { year: y };
       const fmpShares = d.weightedAverageShsOutDil;
       const shares = (fmpShares != null && e.shares != null && e.shares > 0 &&
-        (fmpShares / e.shares > 3 || fmpShares / e.shares < 1 / 3))
+        (fmpShares / e.shares > 1.8 || fmpShares / e.shares < 1 / 1.8))
         ? e.shares : (fmpShares ?? e.shares);
       byYear.set(y, { ...e, year: y, revenue: d.revenue ?? e.revenue, shares, ebit: d.operatingIncome ?? e.ebit });
     });
@@ -208,7 +239,7 @@ export function buildSeries(data) {
   const raw = [...byYear.values()]
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-  normalizeShares(raw);
+  normalizeShares(raw, data?._splitEvents);
   const rows = raw.map((d) => enrich(d));
   if (typeof console !== "undefined") {
     const yrs = rows.map(r => r.year).join(",");
@@ -257,10 +288,11 @@ function buildQuarterlySeries(data) {
     });
   });
 
-  return [...byQuarter.values()]
-    .map((d) => enrich(d))
+  const raw = [...byQuarter.values()]
     .filter((d) => d.year && hasFinancialData(d))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  normalizeShares(raw, data?._splitEvents);
+  return raw.map((d) => enrich(d));
 }
 
 /* ── Growth label rendered above bars ── */
@@ -365,18 +397,18 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
     <div
       style={{
         background: bgTint || "var(--card)",
-        border: "2.5px solid #a0a0b0",
-        borderRadius: 12,
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg, 16px)",
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
         cursor: "pointer",
-        boxShadow: "0 6px 20px rgba(0,0,0,.15)",
+        boxShadow: "var(--shadow-sm, 0 2px 8px rgba(0,0,0,.07))",
         ...(wide ? { gridColumn: "1 / -1" } : {}),
         ...(expanded ? { width: "100%", maxWidth: 960, margin: "0 auto" } : {}),
       }}
-      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 10px 32px rgba(0,0,0,.22)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
-      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,.15)"; e.currentTarget.style.transform = "translateY(0)"; } }}
+      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "var(--shadow-md, 0 6px 20px rgba(0,0,0,.10))"; e.currentTarget.style.transform = "translateY(-3px)"; } }}
+      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "var(--shadow-sm, 0 2px 8px rgba(0,0,0,.07))"; e.currentTarget.style.transform = "translateY(0)"; } }}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       <div style={{
@@ -528,10 +560,11 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   if (!annualRows.length) return (
     <div style={{
       background: "var(--card)",
-      borderRadius: 14,
+      borderRadius: "var(--radius-lg, 16px)",
       padding: "32px 24px",
       textAlign: "center",
-      boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
+      boxShadow: "var(--shadow-sm)",
+      border: "1px solid var(--border)",
       marginBottom: 16,
     }}>
       <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
@@ -565,7 +598,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
     height: 22,
   };
 
-  const shortHistory = !quarterly && rows.length > 0 && rows.length <= 5;
+  const shortHistory = !quarterly && rows.length > 0 && rows.length < 15;
 
   // Verdicts (fond vert/rouge)
   const v = !quarterly ? {
@@ -591,8 +624,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))",
-        gap: 8,
-        marginBottom: 12,
+        gap: 12,
+        marginBottom: 16,
       }}
     >
       {/* Toggle annuel / trimestriel */}
@@ -602,7 +635,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
             display: "inline-flex",
             background: "var(--card)",
             border: "1px solid var(--border)",
-            borderRadius: 10,
+            borderRadius: "var(--radius-sm, 8px)",
             padding: 3,
             gap: 2,
           }}>
@@ -613,10 +646,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
                   key={label}
                   onClick={() => setQuarterly(i === 1)}
                   style={{
-                    padding: "5px 14px",
+                    padding: "6px 16px",
                     fontSize: 12,
-                    fontWeight: 600,
-                    borderRadius: 7,
+                    fontWeight: isActive ? 700 : 600,
+                    borderRadius: 6,
                     border: "none",
                     background: isActive ? "var(--accent, #2563eb)" : "transparent",
                     color: isActive ? "#fff" : "var(--muted)",
@@ -636,8 +669,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
           style={{
             gridColumn: "1 / -1",
             background: "var(--card)",
-            boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
-            borderRadius: 10,
+            boxShadow: "var(--shadow-xs)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm, 8px)",
             padding: "10px 16px",
             fontSize: 12,
             color: "var(--muted)",
@@ -647,8 +681,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
           }}
         >
           <span style={{ fontSize: 16 }}>&#9432;</span>
-          Historique limité à {rows.length} ans pour cette action.
-          Certaines actions ont jusqu'à 20+ ans de données disponibles.
+          Historique limité à {rows.length} ans — toutes les sources disponibles
+          (Yahoo, FMP, SEC EDGAR, Macrotrends) ont été combinées pour cette action.
         </div>
       )}
       {/* 1. Chiffre d'affaires */}

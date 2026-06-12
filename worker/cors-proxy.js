@@ -107,8 +107,32 @@ function getCorsHeaders(request) {
   };
 }
 
+// ── Cache edge partagé (Cache API Cloudflare) ──
+// TTL par source : les états financiers changent rarement, les prix souvent.
+function cacheTtlFor(targetUrl) {
+  const h = targetUrl.hostname;
+  const p = targetUrl.pathname;
+  if (h.endsWith("sec.gov")) return 86400;                       // 24 h
+  if (h === "financialmodelingprep.com") return 21600;           // 6 h (économise le quota 250/j)
+  if (h === "www.macrotrends.net") return 604800;                // 7 j
+  if (h.endsWith("yahoo.com")) {
+    if (p.includes("fundamentals-timeseries")) return 21600;     // 6 h
+    if (p.includes("quoteSummary")) return 600;                  // 10 min
+    return 120;                                                  // chart/quote/search : 2 min
+  }
+  return 0;
+}
+
+// Clé de cache : URL cible sans les paramètres volatils (crumb, apikey)
+function buildCacheKey(targetUrl) {
+  const ku = new URL(targetUrl.toString());
+  ku.searchParams.delete("crumb");
+  ku.searchParams.delete("apikey");
+  return new Request(`https://edge-cache.internal/${encodeURIComponent(ku.toString())}`, { method: "GET" });
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: { ...getCorsHeaders(request), "Access-Control-Max-Age": "86400" } });
     }
@@ -125,15 +149,6 @@ export default {
       return new Response(JSON.stringify({ status: "ok", crumbCached: !!cachedCrumb, uptime: Date.now() }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
-      });
-    }
-
-    // Rate limiting par IP
-    const clientIP = request.headers.get("CF-Connecting-IP") || "unknown";
-    if (!checkRateLimit(clientIP)) {
-      return new Response(JSON.stringify({ error: "Rate limit dépassé. Réessayez dans 1 minute." }), {
-        status: 429,
-        headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Retry-After": "60" },
       });
     }
 
@@ -160,6 +175,55 @@ export default {
         headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
+
+    // ── Cache edge : vérifié AVANT le rate limit (les hits ne consomment pas de quota) ──
+    const ttl = request.method === "GET" && targetUrl.hostname !== "api.anthropic.com"
+      ? cacheTtlFor(targetUrl) : 0;
+    const cacheKey = ttl > 0 ? buildCacheKey(targetUrl) : null;
+    if (cacheKey) {
+      try {
+        const hit = await caches.default.match(cacheKey);
+        if (hit) {
+          const body = await hit.text();
+          return new Response(body, {
+            status: 200,
+            headers: {
+              "Content-Type": hit.headers.get("Content-Type") || "application/json",
+              ...getCorsHeaders(request),
+              "X-Cache": "HIT",
+            },
+          });
+        }
+      } catch (_) { /* Cache API indisponible — on continue sans cache */ }
+    }
+
+    // Rate limiting par IP
+    const clientIP = request.headers.get("CF-Connecting-IP") || "unknown";
+    if (!checkRateLimit(clientIP)) {
+      return new Response(JSON.stringify({ error: "Rate limit dépassé. Réessayez dans 1 minute." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Retry-After": "60" },
+      });
+    }
+
+    // Construit la réponse finale + stocke en cache edge si succès
+    const finish = (body, status, contentType = "application/json") => {
+      // Ne pas cacher : erreurs HTTP, ou réponses FMP 200 contenant un message d'erreur (quota)
+      const cacheable = cacheKey && status === 200 &&
+        !(targetUrl.hostname === "financialmodelingprep.com" && body.includes("Error Message"));
+      if (cacheable) {
+        const toStore = new Response(body, {
+          status: 200,
+          headers: { "Content-Type": contentType, "Cache-Control": `public, max-age=${ttl}` },
+        });
+        const putPromise = caches.default.put(cacheKey, toStore).catch(() => {});
+        if (ctx?.waitUntil) ctx.waitUntil(putPromise);
+      }
+      return new Response(body, {
+        status,
+        headers: { "Content-Type": contentType, ...getCorsHeaders(request), "X-Cache": cacheKey ? "MISS" : "BYPASS" },
+      });
+    };
 
     try {
       const isYahoo = targetUrl.hostname.endsWith("yahoo.com");
@@ -195,17 +259,11 @@ export default {
             },
           });
           const body = await retry.text();
-          return new Response(body, {
-            status: retry.status,
-            headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=60" },
-          });
+          return finish(body, retry.status);
         }
 
         const body = await resp.text();
-        return new Response(body, {
-          status: resp.status,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=60" },
-        });
+        return finish(body, resp.status);
       }
 
       if (isSec) {
@@ -217,10 +275,7 @@ export default {
           },
         });
         const body = await resp.text();
-        return new Response(body, {
-          status: resp.status,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=300" },
-        });
+        return finish(body, resp.status);
       }
 
       // ── FMP (Financial Modeling Prep) : injection clé API côté serveur ──
@@ -238,10 +293,7 @@ export default {
           headers: { "Accept": "application/json" },
         });
         const body = await resp.text();
-        return new Response(body, {
-          status: resp.status,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=300" },
-        });
+        return finish(body, resp.status);
       }
 
       // ── Anthropic API : proxy POST avec headers ──
@@ -278,10 +330,7 @@ export default {
         });
         const body = await resp.text();
         const ct = resp.headers.get("Content-Type") || "text/html";
-        return new Response(body, {
-          status: resp.status,
-          headers: { "Content-Type": ct, ...getCorsHeaders(request), "Cache-Control": "public, max-age=86400" },
-        });
+        return finish(body, resp.status, ct);
       }
 
       // ── Autre hôte autorisé : proxy simple ──
@@ -289,10 +338,7 @@ export default {
         headers: { "Accept": "application/json" },
       });
       const body = await resp.text();
-      return new Response(body, {
-        status: resp.status,
-        headers: { "Content-Type": "application/json", ...getCorsHeaders(request), "Cache-Control": "public, max-age=60" },
-      });
+      return finish(body, resp.status);
     } catch (e) {
       return new Response(JSON.stringify({ error: e.message }), {
         status: 502,
