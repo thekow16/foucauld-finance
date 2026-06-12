@@ -117,23 +117,6 @@ html { font-size: 14px; }
   letter-spacing: -.5px;
 }
 
-.dark-toggle {
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  width: 34px; height: 34px;
-  font-size: 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-2);
-  transition: all .18s;
-}
-.dark-toggle:hover {
-  background: var(--border);
-}
-
 .search-wrap {
   display: flex;
   gap: 8px;
@@ -348,40 +331,6 @@ html { font-size: 14px; }
   margin-top: 4px;
   opacity: 0.75;
   font-style: italic;
-}
-
-.section-nav {
-  display: flex;
-  gap: 4px;
-  background: var(--bg-subtle);
-  border-radius: var(--radius);
-  padding: 4px;
-  margin-bottom: 20px;
-  overflow-x: auto;
-}
-.section-nav-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  font-family: var(--font);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: all .15s;
-  white-space: nowrap;
-}
-.section-nav-btn:hover {
-  color: var(--text);
-  background: rgba(255,255,255,.5);
-}
-.section-nav-btn.active {
-  background: var(--card);
-  color: var(--text);
-  font-weight: 700;
-  box-shadow: var(--shadow-xs);
 }
 
 .watchlist-btn {
@@ -1429,8 +1378,6 @@ html { font-size: 14px; }
     white-space: normal;
   }
   .ff-table tr:hover td:first-child { background: var(--highlight-row); }
-  .section-nav { gap: 2px; padding: 3px; }
-  .section-nav-btn { padding: 8px 12px; font-size: 12px; }
 }
 
 @media (max-width: 480px) {
