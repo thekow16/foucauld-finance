@@ -5,41 +5,43 @@ import { searchSymbols } from "../utils/api";
 
 const stickyBar = {
   position: "sticky",
-  top: 0,
+  top: 3,
   zIndex: 50,
-  background: "var(--card)",
+  background: "rgba(255,255,255,.85)",
   borderBottom: "1px solid var(--border)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
 };
 
 const innerWrap = {
   maxWidth: 1200,
   margin: "0 auto",
-  height: 52,
+  height: 54,
   display: "flex",
   alignItems: "center",
-  padding: "0 20px",
+  padding: "0 24px",
 };
 
 const logoBox = {
-  width: 30,
-  height: 30,
-  background: "var(--accent)",
-  borderRadius: 8,
+  width: 32,
+  height: 32,
+  background: "linear-gradient(135deg, var(--accent), oklch(55% 0.20 300))",
+  borderRadius: 9,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   flexShrink: 0,
+  boxShadow: "0 2px 8px rgba(0,0,0,.12)",
 };
 
 const logoText = {
-  fontSize: 15,
-  fontWeight: 700,
+  fontSize: 16,
+  fontWeight: 800,
   color: "var(--text)",
-  marginLeft: 8,
+  marginLeft: 10,
   fontFamily: "var(--font)",
   whiteSpace: "nowrap",
+  letterSpacing: "-0.3px",
 };
 
 const navBtn = {
@@ -67,16 +69,17 @@ const searchWrap = {
 
 const searchInput = {
   width: "100%",
-  height: 34,
+  height: 36,
   padding: "0 12px 0 34px",
   fontSize: 13,
   fontFamily: "var(--font)",
-  background: "var(--card)",
-  border: "1px solid var(--border)",
+  background: "var(--bg-subtle)",
+  border: "1px solid transparent",
   borderRadius: "var(--radius-sm)",
   color: "var(--text)",
   outline: "none",
   boxSizing: "border-box",
+  transition: "border-color .2s, background .2s, box-shadow .2s",
 };
 
 const searchIconWrap = {
@@ -358,7 +361,8 @@ export default forwardRef(function Header(
                 ref={inputRef}
                 value={query}
                 onChange={e => handleInput(e.target.value)}
-                onFocus={handleFocus}
+                onFocus={(e) => { handleFocus(); e.target.style.borderColor = "var(--accent)"; e.target.style.background = "var(--card)"; e.target.style.boxShadow = "0 0 0 3px var(--accent-subtle)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.background = "var(--bg-subtle)"; e.target.style.boxShadow = "none"; }}
                 placeholder="Rechercher… ( / )"
                 aria-label="Rechercher une action par symbole"
                 aria-autocomplete="list"

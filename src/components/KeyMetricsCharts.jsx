@@ -397,18 +397,18 @@ function ChartCard({ title, subtitle, accentColor, cagrLabel, cagrLabels, expand
     <div
       style={{
         background: bgTint || "var(--card)",
-        border: "2.5px solid #a0a0b0",
-        borderRadius: 12,
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg, 16px)",
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow .2s, transform .2s",
         cursor: "pointer",
-        boxShadow: "0 6px 20px rgba(0,0,0,.15)",
+        boxShadow: "var(--shadow-sm, 0 2px 8px rgba(0,0,0,.07))",
         ...(wide ? { gridColumn: "1 / -1" } : {}),
         ...(expanded ? { width: "100%", maxWidth: 960, margin: "0 auto" } : {}),
       }}
-      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 10px 32px rgba(0,0,0,.22)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
-      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,.15)"; e.currentTarget.style.transform = "translateY(0)"; } }}
+      onMouseEnter={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "var(--shadow-md, 0 6px 20px rgba(0,0,0,.10))"; e.currentTarget.style.transform = "translateY(-3px)"; } }}
+      onMouseLeave={(e) => { if (!expanded) { e.currentTarget.style.boxShadow = "var(--shadow-sm, 0 2px 8px rgba(0,0,0,.07))"; e.currentTarget.style.transform = "translateY(0)"; } }}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       <div style={{
@@ -560,10 +560,11 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
   if (!annualRows.length) return (
     <div style={{
       background: "var(--card)",
-      borderRadius: 14,
+      borderRadius: "var(--radius-lg, 16px)",
       padding: "32px 24px",
       textAlign: "center",
-      boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
+      boxShadow: "var(--shadow-sm)",
+      border: "1px solid var(--border)",
       marginBottom: 16,
     }}>
       <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
@@ -623,8 +624,8 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))",
-        gap: 8,
-        marginBottom: 12,
+        gap: 12,
+        marginBottom: 16,
       }}
     >
       {/* Toggle annuel / trimestriel */}
@@ -634,7 +635,7 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
             display: "inline-flex",
             background: "var(--card)",
             border: "1px solid var(--border)",
-            borderRadius: 10,
+            borderRadius: "var(--radius-sm, 8px)",
             padding: 3,
             gap: 2,
           }}>
@@ -645,10 +646,10 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
                   key={label}
                   onClick={() => setQuarterly(i === 1)}
                   style={{
-                    padding: "5px 14px",
+                    padding: "6px 16px",
                     fontSize: 12,
-                    fontWeight: 600,
-                    borderRadius: 7,
+                    fontWeight: isActive ? 700 : 600,
+                    borderRadius: 6,
                     border: "none",
                     background: isActive ? "var(--accent, #2563eb)" : "transparent",
                     color: isActive ? "#fff" : "var(--muted)",
@@ -668,8 +669,9 @@ export default function KeyMetricsCharts({ data, currency = "USD" }) {
           style={{
             gridColumn: "1 / -1",
             background: "var(--card)",
-            boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px var(--border)",
-            borderRadius: 10,
+            boxShadow: "var(--shadow-xs)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm, 8px)",
             padding: "10px 16px",
             fontSize: 12,
             color: "var(--muted)",
