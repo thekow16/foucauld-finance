@@ -9,23 +9,9 @@ function formatElapsed(ms) {
   return `il y a ${min} min`;
 }
 
-function compactStat(v) {
-  if (v == null || Number.isNaN(v)) return "—";
-  const abs = Math.abs(v);
-  const sign = v < 0 ? "-" : "";
-  if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(1)} T`;
-  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)} Md`;
-  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)} M`;
-  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(0)}`;
-  return `${sign}${abs.toFixed(2)}`;
-}
-
 export default function StockHeader({ data, symbol, fetchedAt, isInWatchlist, onToggleWatchlist }) {
   const pr = data?.price;
   const prof = data?.assetProfile;
-  const sd = data?.summaryDetail;
-  const ks = data?.defaultKeyStatistics;
-  const fd = data?.financialData;
   const curPrice = pr?.regularMarketPrice?.raw;
   const chg = pr?.regularMarketChange?.raw;
   const chgPct = pr?.regularMarketChangePercent?.raw;
@@ -40,23 +26,6 @@ export default function StockHeader({ data, symbol, fetchedAt, isInWatchlist, on
     const id = setInterval(() => setElapsed(Date.now() - fetchedAt), 30_000);
     return () => clearInterval(id);
   }, [fetchedAt]);
-
-  const stats = [];
-  const mktCap = sd?.marketCap?.raw ?? pr?.marketCap?.raw;
-  if (mktCap != null) stats.push({ label: "Cap.", value: compactStat(mktCap) });
-  const pe = sd?.trailingPE?.raw ?? ks?.trailingPE?.raw;
-  if (pe != null) stats.push({ label: "P/E", value: pe.toFixed(1) });
-  const eps = ks?.trailingEps?.raw;
-  if (eps != null) stats.push({ label: "BPA", value: eps.toFixed(2) });
-  const divYield = sd?.dividendYield?.raw;
-  if (divYield != null && divYield > 0) stats.push({ label: "Div.", value: `${(divYield * 100).toFixed(2)}%`, cls: "green" });
-  const hi52 = sd?.fiftyTwoWeekHigh?.raw;
-  const lo52 = sd?.fiftyTwoWeekLow?.raw;
-  if (hi52 != null && lo52 != null) stats.push({ label: "52 sem.", value: `${lo52.toFixed(0)} — ${hi52.toFixed(0)}` });
-  const roe = fd?.returnOnEquity?.raw;
-  if (roe != null) stats.push({ label: "ROE", value: `${(roe * 100).toFixed(1)}%`, cls: roe >= 0.15 ? "green" : roe < 0 ? "red" : "" });
-  const margin = fd?.profitMargins?.raw;
-  if (margin != null && stats.length < 7) stats.push({ label: "Marge nette", value: `${(margin * 100).toFixed(1)}%`, cls: margin >= 0.1 ? "green" : margin < 0 ? "red" : "" });
 
   return (
     <div
@@ -210,16 +179,6 @@ export default function StockHeader({ data, symbol, fetchedAt, isInWatchlist, on
           )}
         </div>
       </div>
-      {stats.length > 0 && (
-        <div className="stock-stats-row">
-          {stats.map((s) => (
-            <div className="stock-stat" key={s.label}>
-              <div className="stock-stat-label">{s.label}</div>
-              <div className={`stock-stat-value ${s.cls || ""}`}>{s.value}</div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
