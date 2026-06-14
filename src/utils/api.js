@@ -7,6 +7,10 @@ import { getCachedData, setCachedData } from "./cache";
 
 export { checkWorkerHealth } from "./proxy";
 
+function isNonUS(sym) {
+  return /\.(HK|SZ|SS|TW|KS|KQ|T|L|PA|DE|AS|MC|MI|OL|ST|HE|CO|IS|VI|BR|SA|AX|NZ|SI|JK|BK|BO|NS)$/i.test(sym);
+}
+
 // ── Chart data (fonctionne SANS crumb) ──
 export async function fetchChartData(sym, interval, range) {
   const json = await yfFetch(`/v8/finance/chart/${sym}?interval=${interval}&range=${range}`);
@@ -662,6 +666,8 @@ export async function fetchStockData(sym) {
         const qsHasValues = qsIs0?.totalRevenue?.raw != null;
 
         // Fetch timeseries, FMP, SEC EDGAR, and real split events in parallel for speed
+        // Skip SEC for non-US stocks (it can only handle US-listed companies)
+        const skipSec = isNonUS(sym);
         const [ts, fmpResult, secResult, splitEvents] = await Promise.all([
           fetchYahooTimeseries(sym).catch(e => {
             warn("[FF] timeseries échoué:", e.message);
@@ -671,7 +677,7 @@ export async function fetchStockData(sym) {
             warn("[FF] FMP fetch échoué:", e.message);
             return null;
           }),
-          fetchSecFinancials(sym).catch(e => {
+          skipSec ? Promise.resolve(null) : fetchSecFinancials(sym).catch(e => {
             warn("[FF] SEC EDGAR échoué:", e.message);
             return null;
           }),
@@ -780,9 +786,9 @@ export async function fetchStockData(sym) {
           extendWithSec(baseFmpData, secResult);
         }
 
-        // Try Macrotrends whenever we have less than 20 years of history
+        // Try Macrotrends whenever we have less than 20 years of history (US stocks only)
         const incomeYearCount = new Set((baseFmpData.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean)).size;
-        if (incomeYearCount < 20) {
+        if (incomeYearCount < 20 && !isNonUS(sym)) {
           const companyName = yahooResult.price?.longName || yahooResult.price?.shortName || "";
           try {
             const mtResult = await fetchMacrotrendsFinancials(sym, companyName);
@@ -969,9 +975,10 @@ export async function fetchStockData(sym) {
   // Extend with Yahoo timeseries + SEC EDGAR + FMP quarterly data
   {
     try {
+      const skipSecFb = isNonUS(sym);
       const [tsData, secData, qFins, fbSplitEvents] = await Promise.all([
         fetchYahooTimeseries(sym).catch(e => { warn("[FF] timeseries (fallback) échoué:", e.message); return null; }),
-        fetchSecFinancials(sym).catch(e => { warn("[FF] SEC EDGAR échoué:", e.message); return null; }),
+        skipSecFb ? Promise.resolve(null) : fetchSecFinancials(sym).catch(e => { warn("[FF] SEC EDGAR échoué:", e.message); return null; }),
         fetchAllQuarterlyFinancials(sym).catch(() => null),
         fetchSplitEvents(sym).catch(() => null),
       ]);
@@ -991,9 +998,9 @@ export async function fetchStockData(sym) {
       if (secData?.income?.length > 0 || secData?.balance?.length > 0 || secData?.cashflow?.length > 0) {
         extendWithSec(chartResult._fmpData, secData);
       }
-      // Try Macrotrends whenever we have less than 20 years of history
+      // Try Macrotrends whenever we have less than 20 years of history (US stocks only)
       const fallbackYearCount = new Set((chartResult._fmpData?.income || []).map(d => d.calendarYear || d.date?.slice(0,4)).filter(Boolean)).size;
-      if (fallbackYearCount < 20) {
+      if (fallbackYearCount < 20 && !isNonUS(sym)) {
         const companyName = fp?.companyName || meta.shortName || "";
         try {
           const mtData = await fetchMacrotrendsFinancials(sym, companyName);
