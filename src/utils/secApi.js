@@ -83,22 +83,10 @@ function tryExtract(gaap, names, unit = "USD") {
   return merged;
 }
 
-export async function fetchSecFinancials(ticker) {
-  const cik = await getCik(ticker);
-  if (!cik) {
-    warn(`[SEC] ${ticker}: pas de CIK trouvé (non-US ?)`);
-    return null;
-  }
-
-  warn(`[SEC] ${ticker}: CIK=${cik}, chargement companyfacts...`);
-  const data = await secFetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`);
-  const gaap = data?.facts?.["us-gaap"];
-  const ifrs = data?.facts?.["ifrs-full"];
-  const facts = gaap || ifrs;
-  if (!facts) {
-    warn(`[SEC] ${ticker}: pas de données us-gaap ni ifrs-full`);
-    return null;
-  }
+// Parse a companyfacts payload (us-gaap ou ifrs-full) en états financiers.
+// Séparé de fetchSecFinancials pour être testable sans réseau.
+export function parseSecFacts(facts, { gaap, ifrs } = {}) {
+  if (!facts) return null;
 
   const revenue = gaap
     ? tryExtract(gaap, ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet", "SalesRevenueGoodsNet", "SalesRevenueServicesNet"])
@@ -110,26 +98,60 @@ export async function fetchSecFinancials(ticker) {
   const ocf = gaap
     ? tryExtract(gaap, ["NetCashProvidedByUsedInOperatingActivities", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"])
     : tryExtract(ifrs, ["CashFlowsFromUsedInOperatingActivities"]);
+  // Capex : couvre les variantes télécom/industrie (Verizon, AT&T → PaymentsToAcquireProductiveAssets)
   const capex = gaap
-    ? tryExtract(gaap, ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsForCapitalImprovements"])
+    ? tryExtract(gaap, [
+        "PaymentsToAcquirePropertyPlantAndEquipment",
+        "PaymentsToAcquireProductiveAssets",
+        "PaymentsForProceedsFromProductiveAssets",
+        "PaymentsToAcquireOtherPropertyPlantAndEquipment",
+        "PaymentsToAcquireMachineryAndEquipment",
+        "PaymentsForCapitalImprovements",
+      ])
     : tryExtract(ifrs, ["PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"]);
-  const sbc = tryExtract(facts, ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"]);
+  const sbc = tryExtract(facts, [
+    "ShareBasedCompensation",
+    "AllocatedShareBasedCompensationExpense",
+    "ShareBasedCompensationArrangementByShareBasedPaymentAwardCompensationCost1",
+    "EmployeeBenefitsAndShareBasedCompensation",
+  ]);
   const divs = gaap
     ? tryExtract(gaap, ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"])
     : tryExtract(ifrs, ["DividendsPaidClassifiedAsFinancingActivities", "DividendsPaid"]);
   const cash = gaap
     ? tryExtract(gaap, ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsAndShortTermInvestments", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"])
     : tryExtract(ifrs, ["CashAndCashEquivalents"]);
-  const debt = gaap
-    ? tryExtract(gaap, ["LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"])
+  // Dette : un total direct si disponible, sinon somme (non-courant + courant).
+  // Couvre les tags post-ASC842 incluant les locations financières (Verizon ≥2022).
+  const debtTotal = gaap
+    ? tryExtract(gaap, [
+        "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities",
+        "DebtLongtermAndShorttermCombinedAmount",
+        "LongTermDebt",
+        "LongTermDebtAndCapitalLeaseObligations",
+      ])
     : tryExtract(ifrs, ["NoncurrentLiabilities", "LongtermBorrowings"]);
+  const debtNoncurrent = gaap
+    ? tryExtract(gaap, [
+        "LongTermDebtNoncurrent",
+        "LongTermDebtAndFinanceLeaseObligationsNoncurrent",
+        "LongTermDebtAndCapitalLeaseObligations",
+      ])
+    : new Map();
+  const debtCurrent = gaap
+    ? tryExtract(gaap, [
+        "LongTermDebtCurrent",
+        "LongTermDebtAndCapitalLeaseObligationsCurrent",
+        "DebtCurrent",
+      ])
+    : new Map();
   const assets = tryExtract(facts, ["Assets"]);
   const curLiab = gaap
     ? tryExtract(gaap, ["LiabilitiesCurrent"])
     : tryExtract(ifrs, ["CurrentLiabilities"]);
 
   const allYears = new Set();
-  for (const m of [revenue, opIncome, shares, ocf, capex, sbc, divs, cash, debt, assets, curLiab]) {
+  for (const m of [revenue, opIncome, shares, ocf, capex, sbc, divs, cash, debtTotal, debtNoncurrent, debtCurrent, assets, curLiab]) {
     for (const fy of m.keys()) allYears.add(fy);
   }
   if (allYears.size === 0) return null;
@@ -147,6 +169,14 @@ export async function fetchSecFinancials(ticker) {
     const capexVal = v(capex, fy);
     const fcf = ocfVal != null && capexVal != null ? ocfVal - Math.abs(capexVal) : null;
     const divVal = v(divs, fy);
+
+    // Dette : total direct, sinon non-courant (+ courant si présent)
+    let debtVal = v(debtTotal, fy);
+    if (debtVal == null) {
+      const nc = v(debtNoncurrent, fy);
+      const cu = v(debtCurrent, fy);
+      if (nc != null || cu != null) debtVal = (nc ?? 0) + (cu ?? 0);
+    }
 
     income.push({
       date,
@@ -171,12 +201,36 @@ export async function fetchSecFinancials(ticker) {
       calendarYear: fy,
       totalAssets: v(assets, fy),
       cashAndCashEquivalents: v(cash, fy),
-      totalDebt: v(debt, fy),
+      totalDebt: debtVal,
       totalCurrentLiabilities: v(curLiab, fy),
       _source: "sec",
     });
   }
 
+  return { income, balance, cashflow, _years: sorted };
+}
+
+export async function fetchSecFinancials(ticker) {
+  const cik = await getCik(ticker);
+  if (!cik) {
+    warn(`[SEC] ${ticker}: pas de CIK trouvé (non-US ?)`);
+    return null;
+  }
+
+  warn(`[SEC] ${ticker}: CIK=${cik}, chargement companyfacts...`);
+  const data = await secFetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`);
+  const gaap = data?.facts?.["us-gaap"];
+  const ifrs = data?.facts?.["ifrs-full"];
+  const facts = gaap || ifrs;
+  if (!facts) {
+    warn(`[SEC] ${ticker}: pas de données us-gaap ni ifrs-full`);
+    return null;
+  }
+
+  const parsed = parseSecFacts(facts, { gaap, ifrs });
+  if (!parsed) return null;
+
+  const sorted = parsed._years;
   warn(`[SEC] ${ticker}: ${sorted.length} ans (${sorted[sorted.length - 1]}–${sorted[0]})`);
-  return { income, balance, cashflow };
+  return { income: parsed.income, balance: parsed.balance, cashflow: parsed.cashflow };
 }
